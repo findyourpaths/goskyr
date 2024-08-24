@@ -3,17 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log/slog"
 	"math"
 	"os"
 	"runtime/debug"
 	"sync"
 
-	"github.com/jakopako/goskyr/autoconfig"
-	"github.com/jakopako/goskyr/config"
-	"github.com/jakopako/goskyr/ml"
-	"github.com/jakopako/goskyr/output"
-	"github.com/jakopako/goskyr/scraper"
+	"github.com/findyourpaths/goskyr/autoconfig"
+	"github.com/findyourpaths/goskyr/config"
+	"github.com/findyourpaths/goskyr/ml"
+	"github.com/findyourpaths/goskyr/output"
+	"github.com/findyourpaths/goskyr/scraper"
+	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 )
 
@@ -163,7 +163,7 @@ func main() {
 	}
 
 	if config.Global.UserAgent == "" {
-		config.Global.UserAgent = "goskyr web scraper (github.com/jakopako/goskyr)"
+		config.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
 	}
 
 	sc := make(chan scraper.Scraper)

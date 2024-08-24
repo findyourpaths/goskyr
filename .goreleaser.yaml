@@ -116,7 +116,7 @@ changelog:
 
 release:
   github:
-    owner: jakopako
+    owner: findyourpaths
     name: goskyr
   prerelease: auto
   draft: false

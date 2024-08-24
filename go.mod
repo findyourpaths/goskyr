@@ -1,4 +1,4 @@
-module github.com/jakopako/goskyr
+module github.com/findyourpaths/goskyr
 
 go 1.22
 

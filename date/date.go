@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jakopako/goskyr/utils"
+	"github.com/findyourpaths/goskyr/utils"
 )
 
 // CoveredDateParts is used to determine what parts of a date a

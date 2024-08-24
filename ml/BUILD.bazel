@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["ml.go"],
+    importpath = "github.com/findyourpaths/goskyr/ml",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//scraper:go_default_library",
+        "//utils:go_default_library",
+        "@com_github_sjwhitworth_golearn//base:go_default_library",
+        "@com_github_sjwhitworth_golearn//evaluation:go_default_library",
+        "@com_github_sjwhitworth_golearn//knn:go_default_library",
+    ],
+)

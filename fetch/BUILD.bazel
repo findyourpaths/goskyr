@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["fetcher.go"],
+    importpath = "github.com/findyourpaths/goskyr/fetch",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//config:go_default_library",
+        "//types:go_default_library",
+        "//utils:go_default_library",
+        "@com_github_chromedp_cdproto//cdp:go_default_library",
+        "@com_github_chromedp_cdproto//dom:go_default_library",
+        "@com_github_chromedp_chromedp//:go_default_library",
+        "@org_golang_x_exp//slog:go_default_library",
+    ],
+)

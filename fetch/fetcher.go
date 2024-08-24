@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,9 +12,10 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/chromedp"
-	"github.com/jakopako/goskyr/config"
-	"github.com/jakopako/goskyr/types"
-	"github.com/jakopako/goskyr/utils"
+	"github.com/findyourpaths/goskyr/config"
+	"github.com/findyourpaths/goskyr/types"
+	"github.com/findyourpaths/goskyr/utils"
+	"golang.org/x/exp/slog"
 )
 
 type FetchOpts struct {

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/jakopako/goskyr/scraper"
-	"github.com/jakopako/goskyr/utils"
+	"github.com/findyourpaths/goskyr/scraper"
+	"github.com/findyourpaths/goskyr/utils"
 	"github.com/sjwhitworth/golearn/base"
 	"github.com/sjwhitworth/golearn/evaluation"
 	"github.com/sjwhitworth/golearn/knn"

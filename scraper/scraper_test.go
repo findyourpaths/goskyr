@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/jakopako/goskyr/date"
+	"github.com/findyourpaths/goskyr/date"
 )
 
 const (

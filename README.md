@@ -2,9 +2,9 @@
 
 <div style="text-align:center"><img src="goskyr-logo.png" alt="goskyr logo" style="height: 300px; width:300px;"/></div>
 
-[![Release](https://img.shields.io/github/release/jakopako/goskyr.svg)](https://github.com/jakopako/goskyr/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/jakopako/goskyr)](https://goreportcard.com/report/github.com/jakopako/goskyr)
-![tests](https://github.com/jakopako/goskyr/actions/workflows/go-tests.yml/badge.svg?event=push)
+[![Release](https://img.shields.io/github/release/findyourpaths/goskyr.svg)](https://github.com/findyourpaths/goskyr/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/findyourpaths/goskyr)](https://goreportcard.com/report/github.com/findyourpaths/goskyr)
+![tests](https://github.com/findyourpaths/goskyr/actions/workflows/go-tests.yml/badge.svg?event=push)
 
 1. [Quick Start](#quick-start)
 1. [Installation](#installation)
@@ -24,7 +24,7 @@
 1. [Naming](#naming)
 1. [Similar Projects](#similar-projects)
 
-This project's goal is to make it easier to **scrape list-like structured data** from web pages. This could be a list of books from an online book store, a list of plays in a public theater, a list of newspaper articles, etc. Currently, the biggest use-case that I know of is [croncert](https://github.com/jakopako/croncert-config) which is also the main motivation behind this project.
+This project's goal is to make it easier to **scrape list-like structured data** from web pages. This could be a list of books from an online book store, a list of plays in a public theater, a list of newspaper articles, etc. Currently, the biggest use-case that I know of is [croncert](https://github.com/findyourpaths/croncert-config) which is also the main motivation behind this project.
 
 Next to [manually configuring](#manual-configuration--usage) the scraper there is an option of (semi-)automatically generating a configuration file, see [quick start](#quick-start) and [Semi-Automatic Configuration](#semi-automatic-configuration). **Machine learning** can be leveraged to predict field names more or less accurately, see section [Build ML Model for Improved Auto-Config](#build-ml-model-for-improved-auto-config).
 
@@ -58,12 +58,12 @@ Note that the feature to (semi-)automatically generate a configuration file is c
 
 ## Installation
 
-[Download](https://github.com/jakopako/goskyr/releases/latest) a prebuilt binary from the [releases page](https://github.com/jakopako/goskyr/releases), unpack and run!
+[Download](https://github.com/findyourpaths/goskyr/releases/latest) a prebuilt binary from the [releases page](https://github.com/findyourpaths/goskyr/releases), unpack and run!
 
 Or if you have recent go compiler installed download goskyr by running
 
 ```bash
-go install github.com/jakopako/goskyr@latest
+go install github.com/findyourpaths/goskyr@latest
 ```
 
 Or clone the repository and then run with `go run main.go ...` or build it yourself.
@@ -575,17 +575,17 @@ Currently, a KNN classifier is used. The output of the above command shows the r
 
 Note that the classification will probably get better the more data you have to extract your features from. Also there might very well be cases where even a huge number of training data doesn't improve the classification results. This entire ML feature is rather experimental for now and time will tell how well it works and what needs to be improved or changed.
 
-A real life example can be found in the [jakopako/croncert-config](https://github.com/jakopako/croncert-config) repository.
+A real life example can be found in the [findyourpaths/croncert-config](https://github.com/findyourpaths/croncert-config) repository.
 
 ## Related Projects
 
 The main motivation to start this project was a website idea that I wanted to implement. Currently, there are four
 repositories involved in this idea. The first one is of course this one, goskyr. The other three are:
 
-- [croncert-web](https://github.com/jakopako/croncert-web): a website that shows concerts in your area, deployed to [concertcloud.live](https://concertcloud.live).
-- [croncert-config](https://github.com/jakopako/croncert-config): a repository that contains a big configuration file for
+- [croncert-web](https://github.com/findyourpaths/croncert-web): a website that shows concerts in your area, deployed to [concertcloud.live](https://concertcloud.live).
+- [croncert-config](https://github.com/findyourpaths/croncert-config): a repository that contains a big configuration file for
   goskyr, where all the concert venue websites that are part of [concertcloud.live](https://concertcloud.live) are configured. If you're interested, check out this repository to find out how to add new concert locations and to make yourself more familiar with how to use goskyr.
-- [event-api](https://github.com/jakopako/event-api): an API to store and fetch concert info, that serves as backend for
+- [event-api](https://github.com/findyourpaths/event-api): an API to store and fetch concert info, that serves as backend for
   [concertcloud.live](https://concertcloud.live).
 
 ## Build & Release
