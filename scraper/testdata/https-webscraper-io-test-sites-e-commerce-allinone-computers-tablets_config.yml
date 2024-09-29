@@ -1,0 +1,31 @@
+scrapers:
+    - name: file://testdata/https-webscraper-io-test-sites-e-commerce-allinone-computers-tablets.html
+      url: file://testdata/https-webscraper-io-test-sites-e-commerce-allinone-computers-tablets.html
+      item: div.card.thumbnail > div.card-body.product-wrapper
+      fields:
+        - name: field-0
+          type: text
+          location:
+            - selector: div.ratings > p.float-end.review-count
+          can_be_empty: true
+        - name: field-1
+          type: text
+          location:
+            - selector: div.caption > p.card-text.description
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - selector: div.caption > h4 > a.title
+          can_be_empty: true
+        - name: field-3
+          type: url
+          location:
+            - selector: div.caption > h4 > a.title
+              attr: href
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: div.caption > h4.card-title.float-end.price.pull-right
+          can_be_empty: true
