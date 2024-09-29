@@ -3,6 +3,7 @@ package autoconfig
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -10,12 +11,12 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/agnivade/levenshtein"
-	"github.com/gdamore/tcell/v2"
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/findyourpaths/goskyr/utils"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"golang.org/x/net/html"
 )
@@ -215,9 +216,9 @@ func (l locationManager) selectFieldsTable() {
 func (l locationManager) elementsToConfig(s *scraper.Scraper) error {
 	var locPropsSel []*locationProps
 	for _, lm := range l {
-		if lm.selected {
-			locPropsSel = append(locPropsSel, lm)
-		}
+		// if lm.selected {
+		locPropsSel = append(locPropsSel, lm)
+		// }
 	}
 	if len(locPropsSel) == 0 {
 		return fmt.Errorf("no fields selected")
@@ -286,6 +287,7 @@ outer:
 				Name:             e.name,
 				Type:             fieldType,
 				ElementLocations: []scraper.ElementLocation{loc},
+				CanBeEmpty:       true,
 			}
 			s.Fields = append(s.Fields, d)
 		}
@@ -460,9 +462,12 @@ func GetDynamicFieldsConfig(s *scraper.Scraper, minOcc int, removeStaticFields b
 	}
 	s.Name = s.URL
 
+	log.Printf("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
 	var fetcher fetch.Fetcher
 	if s.RenderJs {
 		fetcher = fetch.NewDynamicFetcher("", 0)
+	} else if strings.HasPrefix(s.URL, "file://") {
+		fetcher = &fetch.FileFetcher{}
 	} else {
 		fetcher = &fetch.StaticFetcher{}
 	}

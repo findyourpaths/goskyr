@@ -1,0 +1,21 @@
+scrapers:
+    - name: file://testdata/https-quotes-toscrape-com-tableful.html
+      url: file://testdata/https-quotes-toscrape-com-tableful.html
+      item: body > div.container > table > tbody > tr > td
+      fields:
+        - name: field-0
+          type: text
+          location:
+            - selector: a
+          can_be_empty: true
+        - name: field-1
+          type: url
+          location:
+            - selector: a
+              attr: href
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - {}
+          can_be_empty: true

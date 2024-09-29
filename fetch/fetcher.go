@@ -2,11 +2,15 @@ package fetch
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -33,30 +37,45 @@ type StaticFetcher struct {
 }
 
 func (s *StaticFetcher) Fetch(url string, opts FetchOpts) (string, error) {
+	log.Printf("StaticFetcher.Fetch(url: %q, opts: %#v)", url, opts)
+	// s.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+	s.UserAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 	slog.Debug("fetching page", slog.String("fetcher", "static"), slog.String("url", url), slog.String("user-agent", s.UserAgent))
 	var resString string
-	client := &http.Client{}
+
+	// See: https://stackoverflow.com/questions/64272533/get-request-returns-403-status-code-parsing
+	// needed for http://www.cnvc.org/trainers
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			MaxVersion: tls.VersionTLS12,
+		},
+	}
+	client := &http.Client{Transport: tr}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return resString, err
+		return resString, fmt.Errorf("when fetching url, error in creating new request: %w", err)
 	}
 	req.Header.Set("User-Agent", s.UserAgent)
 	req.Header.Set("Accept", "*/*")
+	// req.Header.Set("Accept-Encoding", "identity")
+	// req.Header.Set("Connection", "Keep-Alive")
+
 	res, err := client.Do(req)
 	if err != nil {
-		return resString, err
+		return resString, fmt.Errorf("when fetching url, error in doing request: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		return resString, fmt.Errorf("status code error: %d %s", res.StatusCode, res.Status)
+		return resString, fmt.Errorf("when fetching url, status code error: %d %s", res.StatusCode, res.Status)
 	}
 	bytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return resString, err
 	}
 	resString = string(bytes)
+	log.Printf("StaticFetcher.Fetch() returning resString")
 	return resString, nil
 }
 
@@ -173,4 +192,17 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 	// elapsed := time.Since(start)
 	// log.Printf("fetching %s took %s", url, elapsed)
 	return body, err
+}
+
+// The FileFetcher fetches static page content
+type FileFetcher struct {
+}
+
+func (s *FileFetcher) Fetch(url string, opts FetchOpts) (string, error) {
+	fpath := strings.TrimPrefix(url, "file://")
+	bs, err := ioutil.ReadFile(fpath)
+	if err != nil {
+		return "", fmt.Errorf("error reading file %q: %w", fpath, err)
+	}
+	return string(bs), nil
 }

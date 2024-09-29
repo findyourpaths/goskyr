@@ -40,6 +40,7 @@ func worker(sc chan scraper.Scraper, ic chan map[string]interface{}, gc *scraper
 func main() {
 	singleScraper := flag.String("s", "", "The name of the scraper to be run.")
 	toStdout := flag.Bool("stdout", false, "If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file.")
+	toJSON := flag.Bool("json", false, "If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout.")
 	configLoc := flag.String("c", "./config.yml", "The location of the configuration. Can be a directory containing config files or a single config file.")
 	printVersion := flag.Bool("v", false, "The version of goskyr.")
 	generateConfig := flag.String("g", "", "Automatically generate a config file for the given url.")
@@ -51,6 +52,7 @@ func main() {
 	buildModel := flag.String("t", "", "Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class")
 	modelPath := flag.String("model", "", "Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag.")
 	debugFlag := flag.Bool("debug", false, "Prints debug logs and writes scraped html's to files.")
+	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
 
 	flag.Parse()
 
@@ -127,14 +129,14 @@ func main() {
 		return
 	}
 
-	config, err := scraper.NewConfig(*configLoc)
+	conf, err := scraper.NewConfig(*configLoc)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v", err))
 		os.Exit(1)
 	}
 
 	if *extractFeatures != "" {
-		if err := ml.ExtractFeatures(config, *extractFeatures, *wordsDir); err != nil {
+		if err := ml.ExtractFeatures(conf, *extractFeatures, *wordsDir); err != nil {
 			slog.Error(fmt.Sprintf("%v", err))
 			os.Exit(1)
 		}
@@ -148,29 +150,31 @@ func main() {
 	var writer output.Writer
 	if *toStdout {
 		writer = &output.StdoutWriter{}
+	} else if *toJSON {
+		writer = &output.JSONWriter{}
 	} else {
-		switch config.Writer.Type {
+		switch conf.Writer.Type {
 		case output.STDOUT_WRITER_TYPE:
 			writer = &output.StdoutWriter{}
 		case output.API_WRITER_TYPE:
-			writer = output.NewAPIWriter(&config.Writer)
+			writer = output.NewAPIWriter(&conf.Writer)
 		case output.FILE_WRITER_TYPE:
-			writer = output.NewFileWriter(&config.Writer)
+			writer = output.NewFileWriter(&conf.Writer)
 		default:
-			slog.Error(fmt.Sprintf("writer of type %s not implemented", config.Writer.Type))
+			slog.Error(fmt.Sprintf("writer of type %s not implemented", conf.Writer.Type))
 			os.Exit(1)
 		}
 	}
 
-	if config.Global.UserAgent == "" {
-		config.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
+	if conf.Global.UserAgent == "" {
+		conf.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
 	}
 
 	sc := make(chan scraper.Scraper)
 
 	// fill worker queue
 	go func() {
-		for _, s := range config.Scrapers {
+		for _, s := range conf.Scrapers {
 			if *singleScraper == "" || *singleScraper == s.Name {
 				// s.Debug = *debugFlag
 				sc <- s
@@ -182,7 +186,7 @@ func main() {
 	// start workers
 	nrWorkers := 1
 	if *singleScraper == "" {
-		nrWorkers = int(math.Min(20, float64(len(config.Scrapers))))
+		nrWorkers = int(math.Min(20, float64(len(conf.Scrapers))))
 	}
 	slog.Info(fmt.Sprintf("running with %d threads", nrWorkers))
 	workerWg.Add(nrWorkers)
@@ -190,7 +194,7 @@ func main() {
 	for i := 0; i < nrWorkers; i++ {
 		go func(j int) {
 			defer workerWg.Done()
-			worker(sc, ic, &config.Global, j)
+			worker(sc, ic, &conf.Global, j)
 		}(i)
 	}
 

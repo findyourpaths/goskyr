@@ -806,6 +806,12 @@ def go_dependencies():
         version = "v1.1.2",
     )
     go_repository(
+        name = "com_github_nsf_jsondiff",
+        importpath = "github.com/nsf/jsondiff",
+        sum = "h1:dOYG7LS/WK00RWZc8XGgcUTlTxpp3mKhdR2Q9z9HbXM=",
+        version = "v0.0.0-20230430225905-43f6cf3098c1",
+    )
+    go_repository(
         name = "com_github_nu7hatch_gouuid",
         importpath = "github.com/nu7hatch/gouuid",
         sum = "h1:VhgPp6v9qf9Agr/56bj7Y/xa04UccTW04VP0Qed4vnQ=",

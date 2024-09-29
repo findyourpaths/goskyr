@@ -24,10 +24,15 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["scraper_test.go"],
+    srcs = [
+        "scraper_file_test.go",
+        "scraper_test.go",
+    ],
+    data = glob(["testdata/**"]),
     embed = [":go_default_library"],
     deps = [
         "//date:go_default_library",
+        "@com_github_nsf_jsondiff//:go_default_library",
         "@com_github_puerkitobio_goquery//:go_default_library",
     ],
 )

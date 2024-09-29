@@ -53,14 +53,14 @@ const (
                                     </a>
                                 </div>
                             </div>`
-	htmlString2 = `                                        
+	htmlString2 = `
 	<h2>
 		<a href="https://www.eventfabrik-muenchen.de/event/heinz-rudolf-kunze-verstaerkung-2/"
 			title="Heinz Rudolf Kunze &amp; Verstärkung &#8211; ABGESAGT">
 			<span>Di. | 03.05.2022</span><span>Heinz Rudolf Kunze &amp; Verstärkung
 				&#8211; ABGESAGT</span> </a>
 	</h2>`
-	htmlString3 = `                                        
+	htmlString3 = `
 	<h2>
 		<a href="?bli=bla"
 			title="Heinz Rudolf Kunze &amp; Verstärkung &#8211; ABGESAGT">
@@ -77,14 +77,14 @@ const (
 			<div class="beschreibung"><em>Osterferienprogramm Ukrainehilfe / ПРОГРАМА ПАСХАЛЬНИХ КАНІКУЛ ПІДТРИМКА УКРАЇНЦІВ</em></div>
 		</a>
 	</div>`
-	htmlString5 = `                                        
+	htmlString5 = `
 	<h2>
 		<a href="?bli=bla"
 			title="Heinz Rudolf Kunze &amp; Verstärkung &#8211; ABGESAGT">
 			<span>29.02.</span><span>Heinz Rudolf Kunze &amp; Verstärkung
 				&#8211; ABGESAGT</span> </a>
 	</h2>`
-	htmlString6 = `                                        
+	htmlString6 = `
 	<h2>
 		<a href="../site/event/id/165"
 			title="Heinz Rudolf Kunze &amp; Verstärkung &#8211; ABGESAGT">
@@ -840,4 +840,8 @@ func TestGuessYearStartBeforeReference(t *testing.T) {
 			t.Fatalf("expected '%v' as year of date but got '%v'", expectedItems[i]["date"], d["date"])
 		}
 	}
+}
+
+func TestScrapeIMDB(t *testing.T) {
+
 }

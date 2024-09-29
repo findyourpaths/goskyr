@@ -256,7 +256,7 @@ type Scraper struct {
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
 func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string]interface{}, error) {
-
+	// log.Printf("Scraper.GetItems(globalConfig: %#v, rawDyn: %t)", globalConfig, rawDyn)
 	scrLogger := slog.With(slog.String("name", c.Name))
 	// initialize fetcher
 	if c.RenderJs {
@@ -264,9 +264,12 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 		defer dynFetcher.Cancel()
 		c.fetcher = dynFetcher
 	} else {
-		c.fetcher = &fetch.StaticFetcher{
-			UserAgent: globalConfig.UserAgent,
-		}
+		// c.fetcher = &fetch.StaticFetcher{
+		// 	UserAgent: globalConfig.UserAgent,
+		// 	// UserAgent: globalConfig.UserAgent,
+		// 	UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+		// }
+		c.fetcher = &fetch.FileFetcher{}
 	}
 
 	var items []map[string]interface{}
@@ -287,9 +290,14 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 
 	for hasNextPage {
 		baseUrl := getBaseURL(pageURL, doc)
+		// log.Printf("in Scraper.GetItems(), c.Item: %#v", c.Item)
+		// log.Printf("in Scraper.GetItems(), len(doc.Find(c.Item).Nodes): %d", len(doc.Find(c.Item).Nodes))
 		doc.Find(c.Item).Each(func(i int, s *goquery.Selection) {
+			// log.Printf("in Scraper.GetItems(), c.Item match %d", i)
+			// log.Printf("in Scraper.GetItems(), c.Item matched, and c.Fields: %#v", c.Fields)
 			currentItem := make(map[string]interface{})
 			for _, f := range c.Fields {
+				// log.Printf("in Scraper.GetItems(), looking at field: %#v", f)
 				if f.Value != "" {
 					if !rawDyn {
 						// add static fields
@@ -372,6 +380,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 
 	c.guessYear(items, time.Now())
 
+	// log.Printf("Scraper.GetItems() returning")
 	return items, nil
 }
 

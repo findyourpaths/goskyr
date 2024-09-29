@@ -1,0 +1,32 @@
+scrapers:
+    - name: file://testdata/https-quotes-toscrape-com.html
+      url: file://testdata/https-quotes-toscrape-com.html
+      item: body > div.container > div.row > div.col-md-8 > div.quote
+      fields:
+        - name: field-2
+          type: text
+          location:
+            - selector: div.tags > a.tag
+          can_be_empty: true
+        - name: field-3
+          type: url
+          location:
+            - selector: div.tags > a.tag
+              attr: href
+          can_be_empty: true
+        - name: field-4
+          type: url
+          location:
+            - selector: span > a
+              attr: href
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: span > small.author
+          can_be_empty: true
+        - name: field-6
+          type: text
+          location:
+            - selector: span.text
+          can_be_empty: true
