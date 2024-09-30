@@ -548,6 +548,12 @@ def go_dependencies():
         version = "v0.0.0-20150330215556-f50fe3d243e1",
     )
     go_repository(
+        name = "com_github_jessevdk_go_flags",
+        importpath = "github.com/jessevdk/go-flags",
+        sum = "h1:Cvu5U8UGrLay1rZfv/zP7iLpSHGUZ/Ou68T0iX1bBK4=",
+        version = "v1.6.1",
+    )
+    go_repository(
         name = "com_github_jmespath_go_jmespath",
         importpath = "github.com/jmespath/go-jmespath",
         sum = "h1:OS12ieG61fsCg5+qLJ+SsW9NicxNkg3b25OyT2yCeUc=",

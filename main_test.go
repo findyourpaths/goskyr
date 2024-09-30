@@ -4,7 +4,7 @@
 // This code is in the public domain.
 //
 // See: https://eli.thegreenplace.net/2022/file-driven-testing-in-go/
-package scraper
+package main
 
 import (
 	"encoding/json"
@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/nsf/jsondiff"
 )
 
@@ -20,7 +21,7 @@ var goldenSuffix = ".json"
 
 var writeActualTestOutputs = false
 
-func TestScraperFiles(t *testing.T) {
+func TestScraper(t *testing.T) {
 	// Find the paths of all input files in the data directory.
 	paths, err := filepath.Glob(filepath.Join("testdata", "*"+configSuffix))
 	if err != nil {
@@ -41,7 +42,7 @@ func TestScraperFiles(t *testing.T) {
 
 			// >>> This is the actual code under test.
 			// configPath := filepath.Join("testdata", path+configSuffix)
-			conf, err := NewConfig(path)
+			conf, err := scraper.NewConfig(path)
 			if err != nil {
 				t.Fatalf("cannot open config file path at %q: %v", path, err)
 			}
