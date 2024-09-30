@@ -980,6 +980,12 @@ def go_dependencies():
         version = "v2.0.0-alpha.7",
     )
     go_repository(
+        name = "com_github_sergi_go_diff",
+        importpath = "github.com/sergi/go-diff",
+        sum = "h1:xkr+Oxo4BOQKmkn/B9eMK0g5Kg/983T9DqqPHwYqD+8=",
+        version = "v1.3.1",
+    )
+    go_repository(
         name = "com_github_shabbyrobe_xmlwriter",
         importpath = "github.com/shabbyrobe/xmlwriter",
         sum = "h1:2cO3RojjYl3hVTbEvJVqrMaFmORhL6O06qdW42toftk=",
@@ -1216,8 +1222,8 @@ def go_dependencies():
     go_repository(
         name = "in_gopkg_yaml_v2",
         importpath = "gopkg.in/yaml.v2",
-        sum = "h1:clyUAQHOM3G0M3f5vQj7LuJrETvjVot3Z5el9nffUtU=",
-        version = "v2.3.0",
+        sum = "h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=",
+        version = "v2.4.0",
     )
     go_repository(
         name = "in_gopkg_yaml_v3",

@@ -22,7 +22,9 @@ type mainOpts struct {
 	M               int    `short:"m" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
 	SingleScraper   string `short:"s" description:"The name of the scraper to be run."`
 	ToStdout        bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
+	ToFile          bool   `long:"file" default:"true" description:"If set to true the scraped data will be written to a file despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to a file."`
 	ToJSON          bool   `long:"json" description:"If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout."`
+	Interactive     bool   `short:"interactive" default:"true" description:"Run interactively to generate the config file."`
 	ConfigLoc       string `short:"c" default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."`
 	PrintVersion    bool   `short:"v" description:"The version of goskyr."`
 	GenerateConfig  string `short:"g" description:"Automatically generate a config file for the given url."`
@@ -35,63 +37,7 @@ type mainOpts struct {
 	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
 }
 
-// configLoc := flag.String("c", "./config.yml", "The location of the configuration. Can be a directory containing config files or a single config file.")
-// generateConfig := flag.String("g", "", "Automatically generate a config file for the given url.")
-// toStdout := flag.Bool("stdout", false, "If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file.")
-// wordsDir := flag.String("w", "word-lists", "The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b).")
-
 var opts mainOpts
-
-// 	// Slice of bool will append 'true' each time the option
-// 	// is encountered (can be set multiple times, like -vvv)
-// 	Verbose []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
-
-// 	// Example of automatic marshalling to desired type (uint)
-// 	Offset uint `long:"offset" description:"Offset"`
-
-// 	// Example of a callback, called each time the option is found.
-// 	Call func(string) `short:"c" description:"Call phone number"`
-
-// 	// Example of a required flag
-// 	Name string `short:"n" long:"name" description:"A name" required:"true"`
-
-// 	// Example of a flag restricted to a pre-defined set of strings
-// 	Animal string `long:"animal" choice:"cat" choice:"dog"`
-
-// 	// Example of a value name
-// 	File string `short:"f" long:"file" description:"A file" value-name:"FILE"`
-
-// 	// Example of a pointer
-// 	Ptr *int `short:"p" description:"A pointer to an integer"`
-
-// 	// Example of a slice of strings
-// 	StringSlice []string `short:"s" description:"A slice of strings"`
-
-// 	// Example of a slice of pointers
-// 	PtrSlice []*string `long:"ptrslice" description:"A slice of pointers to string"`
-
-// 	// Example of a map
-// 	IntMap map[string]int `long:"intmap" description:"A map from string to int"`
-
-// 	// Example of env variable
-// 	Thresholds []int `long:"thresholds" default:"1" default:"2" env:"THRESHOLD_VALUES"  env-delim:","`
-// }
-
-// func parse() {
-// 	// Parse flags from `args'. Note that here we use flags.ParseArgs for
-// 	// the sake of making a working example. Normally, you would simply use
-// 	// flags.Parse(&opts) which uses os.Args
-
-// 	fmt.Printf("Verbosity: %v\n", opts.Verbose)
-// 	fmt.Printf("Offset: %d\n", opts.Offset)
-// 	fmt.Printf("Name: %s\n", opts.Name)
-// 	fmt.Printf("Animal: %s\n", opts.Animal)
-// 	fmt.Printf("Ptr: %d\n", *opts.Ptr)
-// 	fmt.Printf("StringSlice: %v\n", opts.StringSlice)
-// 	fmt.Printf("PtrSlice: [%v %v]\n", *opts.PtrSlice[0], *opts.PtrSlice[1])
-// 	fmt.Printf("IntMap: [a:%v b:%v]\n", opts.IntMap["a"], opts.IntMap["b"])
-// 	fmt.Printf("Remaining args: %s\n", strings.Join(args, " "))
-// }
 
 var version = "dev"
 
@@ -143,7 +89,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	if opts.GenerateConfig != "" {
-		if err := doGenerateConfig(opts); err != nil {
+		if _, err := GenerateConfig(opts); err != nil {
 			slog.Error(err.Error())
 			os.Exit(1)
 		}
@@ -239,17 +185,16 @@ func main() {
 	writerWg.Wait()
 }
 
-func doGenerateConfig(opts mainOpts) error {
-
+func GenerateConfig(opts mainOpts) (string, error) {
 	slog.Debug("starting to generate config")
 	s := &scraper.Scraper{URL: opts.GenerateConfig}
 	if opts.RenderJs {
 		s.RenderJs = true
 	}
 	slog.Debug(fmt.Sprintf("analyzing url %s", s.URL))
-	err := autoconfig.GetDynamicFieldsConfig(s, opts.M, opts.F, opts.ModelPath, opts.WordsDir)
+	err := autoconfig.GetDynamicFieldsConfig(s, opts.M, opts.F, opts.ModelPath, opts.WordsDir, opts.Interactive)
 	if err != nil {
-		return err
+		return "", err
 	}
 	c := scraper.Config{
 		Scrapers: []scraper.Scraper{
@@ -258,23 +203,27 @@ func doGenerateConfig(opts mainOpts) error {
 	}
 	yamlData, err := yaml.Marshal(&c)
 	if err != nil {
-		return fmt.Errorf("error while marshaling. %v", err)
+		return "", fmt.Errorf("error while marshaling. %v", err)
 	}
 
 	if opts.ToStdout {
 		fmt.Println(string(yamlData))
-	} else {
+		return string(yamlData), nil
+	}
+
+	if opts.ToFile {
 		f, err := os.Create(opts.ConfigLoc)
 		if err != nil {
-			return fmt.Errorf("error opening file: %v", err)
+			return "", fmt.Errorf("error opening file: %v", err)
 		}
 		defer f.Close()
 		_, err = f.Write(yamlData)
 		if err != nil {
-			return fmt.Errorf("error writing to file: %v", err)
+			return "", fmt.Errorf("error writing to file: %v", err)
 		}
 		slog.Info(fmt.Sprintf("successfully wrote config to file %s", opts.ConfigLoc))
+		return string(yamlData), nil
 	}
 
-	return nil
+	return string(yamlData), nil
 }

@@ -45,5 +45,6 @@ go_test(
     deps = [
         "//scraper:go_default_library",
         "@com_github_nsf_jsondiff//:go_default_library",
+        "@com_github_sergi_go_diff//diffmatchpatch:go_default_library",
     ],
 )

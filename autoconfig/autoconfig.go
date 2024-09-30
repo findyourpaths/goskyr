@@ -3,7 +3,6 @@ package autoconfig
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -456,13 +455,13 @@ func filter(l locationManager, minCount int, removeStaticFields bool) locationMa
 	return l[:i]
 }
 
-func GetDynamicFieldsConfig(s *scraper.Scraper, minOcc int, removeStaticFields bool, modelName, wordsDir string) error {
+func GetDynamicFieldsConfig(s *scraper.Scraper, minOcc int, removeStaticFields bool, modelName, wordsDir string, interactive bool) error {
 	if s.URL == "" {
 		return errors.New("URL field cannot be empty")
 	}
 	s.Name = s.URL
 
-	log.Printf("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
+	// log.Printf("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
 	var fetcher fetch.Fetcher
 	if s.RenderJs {
 		fetcher = fetch.NewDynamicFetcher("", 0)
@@ -618,7 +617,9 @@ parse:
 	}
 
 	if len(locMan) > 0 {
-		locMan.selectFieldsTable()
+		if interactive {
+			locMan.selectFieldsTable()
+		}
 		return locMan.elementsToConfig(s)
 	}
 	return fmt.Errorf("no fields found")

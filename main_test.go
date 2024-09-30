@@ -8,18 +8,69 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/nsf/jsondiff"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
+var htmlSuffix = ".html"
 var configSuffix = "_config.yml"
-var goldenSuffix = ".json"
+var jsonSuffix = ".json"
 
-var writeActualTestOutputs = false
+var writeActualTestOutputs = true
+
+func TestAutoconfig(t *testing.T) {
+	// Find the paths of all input files in the data directory.
+	paths, err := filepath.Glob(filepath.Join("testdata", "*"+htmlSuffix))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return
+	for _, path := range paths {
+		_, filename := filepath.Split(path)
+		testname := filename[:len(filename)-len(htmlSuffix)]
+
+		// Each path turns into a test: the test name is the filename without the
+		// extension.
+		t.Run(testname, func(t *testing.T) {
+			// >>> This is the actual code under test.
+			opts := mainOpts{
+				GenerateConfig: "file://" + path,
+			}
+			log.Printf("opts.GenerateConfig: %q", opts.GenerateConfig)
+			actual, err := GenerateConfig(opts)
+
+			if writeActualTestOutputs {
+				actualPath := "/tmp/" + testname + configSuffix
+				if err := WriteStringFile(actualPath, string(actual)); err != nil {
+					t.Fatalf("failed to write actual test output to %q: %v", actualPath, err)
+				}
+			}
+			// <<<
+
+			// Each input file is expected to have a "golden output" file, with the
+			// same path except the .input extension is replaced by the golden suffix.
+			configFile := filepath.Join("testdata", testname+configSuffix)
+			expected, err := os.ReadFile(configFile)
+			if err != nil {
+				t.Fatal("error reading golden file:", err)
+			}
+
+			dmp := diffmatchpatch.New()
+			diffs := dmp.DiffMain(string(expected), actual, false)
+			if len(diffs) != 0 {
+				t.Errorf("actual output (%d) does not match expected output (%d)", len(actual), len(expected))
+				// t.Errorf("JSON output does not match expected output:\n%s", dmp.DiffPrettyText(diffs))
+			}
+		})
+	}
+}
 
 func TestScraper(t *testing.T) {
 	// Find the paths of all input files in the data directory.
@@ -62,7 +113,7 @@ func TestScraper(t *testing.T) {
 			}
 
 			if writeActualTestOutputs {
-				actualPath := "/tmp/" + testname + goldenSuffix
+				actualPath := "/tmp/" + testname + jsonSuffix
 				if err := WriteStringFile(actualPath, string(actual)); err != nil {
 					t.Fatalf("failed to write actual test output to %q: %v", actualPath, err)
 				}
@@ -71,8 +122,8 @@ func TestScraper(t *testing.T) {
 
 			// Each input file is expected to have a "golden output" file, with the
 			// same path except the .input extension is replaced by the golden suffix.
-			goldenfile := filepath.Join("testdata", testname+goldenSuffix)
-			expected, err := os.ReadFile(goldenfile)
+			jsonfile := filepath.Join("testdata", testname+jsonSuffix)
+			expected, err := os.ReadFile(jsonfile)
 			if err != nil {
 				t.Fatal("error reading golden file:", err)
 			}
