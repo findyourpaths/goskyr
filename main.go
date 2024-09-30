@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"math"
 	"os"
@@ -13,9 +12,86 @@ import (
 	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scraper"
+	"github.com/jessevdk/go-flags"
 	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 )
+
+type mainOpts struct {
+	F               bool   `short:"f" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
+	M               int    `short:"m" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	SingleScraper   string `short:"s" description:"The name of the scraper to be run."`
+	ToStdout        bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
+	ToJSON          bool   `long:"json" description:"If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout."`
+	ConfigLoc       string `short:"c" default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."`
+	PrintVersion    bool   `short:"v" description:"The version of goskyr."`
+	GenerateConfig  string `short:"g" description:"Automatically generate a config file for the given url."`
+	ExtractFeatures string `short:"e" description:"Extract ML features based on the given configuration file (-c) and write them to the given file in csv format."`
+	WordsDir        string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
+	BuildModel      string `short:"t" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
+	DebugFlag       bool   `long:"debug" description:"Prints debug logs and writes scraped html's to files."`
+	ModelPath       string `long:"model" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
+	RenderJs        bool   `short:"r" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
+	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
+}
+
+// configLoc := flag.String("c", "./config.yml", "The location of the configuration. Can be a directory containing config files or a single config file.")
+// generateConfig := flag.String("g", "", "Automatically generate a config file for the given url.")
+// toStdout := flag.Bool("stdout", false, "If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file.")
+// wordsDir := flag.String("w", "word-lists", "The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b).")
+
+var opts mainOpts
+
+// 	// Slice of bool will append 'true' each time the option
+// 	// is encountered (can be set multiple times, like -vvv)
+// 	Verbose []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
+
+// 	// Example of automatic marshalling to desired type (uint)
+// 	Offset uint `long:"offset" description:"Offset"`
+
+// 	// Example of a callback, called each time the option is found.
+// 	Call func(string) `short:"c" description:"Call phone number"`
+
+// 	// Example of a required flag
+// 	Name string `short:"n" long:"name" description:"A name" required:"true"`
+
+// 	// Example of a flag restricted to a pre-defined set of strings
+// 	Animal string `long:"animal" choice:"cat" choice:"dog"`
+
+// 	// Example of a value name
+// 	File string `short:"f" long:"file" description:"A file" value-name:"FILE"`
+
+// 	// Example of a pointer
+// 	Ptr *int `short:"p" description:"A pointer to an integer"`
+
+// 	// Example of a slice of strings
+// 	StringSlice []string `short:"s" description:"A slice of strings"`
+
+// 	// Example of a slice of pointers
+// 	PtrSlice []*string `long:"ptrslice" description:"A slice of pointers to string"`
+
+// 	// Example of a map
+// 	IntMap map[string]int `long:"intmap" description:"A map from string to int"`
+
+// 	// Example of env variable
+// 	Thresholds []int `long:"thresholds" default:"1" default:"2" env:"THRESHOLD_VALUES"  env-delim:","`
+// }
+
+// func parse() {
+// 	// Parse flags from `args'. Note that here we use flags.ParseArgs for
+// 	// the sake of making a working example. Normally, you would simply use
+// 	// flags.Parse(&opts) which uses os.Args
+
+// 	fmt.Printf("Verbosity: %v\n", opts.Verbose)
+// 	fmt.Printf("Offset: %d\n", opts.Offset)
+// 	fmt.Printf("Name: %s\n", opts.Name)
+// 	fmt.Printf("Animal: %s\n", opts.Animal)
+// 	fmt.Printf("Ptr: %d\n", *opts.Ptr)
+// 	fmt.Printf("StringSlice: %v\n", opts.StringSlice)
+// 	fmt.Printf("PtrSlice: [%v %v]\n", *opts.PtrSlice[0], *opts.PtrSlice[1])
+// 	fmt.Printf("IntMap: [a:%v b:%v]\n", opts.IntMap["a"], opts.IntMap["b"])
+// 	fmt.Printf("Remaining args: %s\n", strings.Join(args, " "))
+// }
 
 var version = "dev"
 
@@ -38,25 +114,12 @@ func worker(sc chan scraper.Scraper, ic chan map[string]interface{}, gc *scraper
 }
 
 func main() {
-	singleScraper := flag.String("s", "", "The name of the scraper to be run.")
-	toStdout := flag.Bool("stdout", false, "If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file.")
-	toJSON := flag.Bool("json", false, "If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout.")
-	configLoc := flag.String("c", "./config.yml", "The location of the configuration. Can be a directory containing config files or a single config file.")
-	printVersion := flag.Bool("v", false, "The version of goskyr.")
-	generateConfig := flag.String("g", "", "Automatically generate a config file for the given url.")
-	m := flag.Int("m", 20, "The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag.")
-	f := flag.Bool("f", false, "Only show fields that have varying values across the list of items. Works in combination with the -g flag.")
-	renderJs := flag.Bool("r", false, "Render JS before generating a configuration file. Works in combination with the -g flag.")
-	extractFeatures := flag.String("e", "", "Extract ML features based on the given configuration file (-c) and write them to the given file in csv format.")
-	wordsDir := flag.String("w", "word-lists", "The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b).")
-	buildModel := flag.String("t", "", "Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class")
-	modelPath := flag.String("model", "", "Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag.")
-	debugFlag := flag.Bool("debug", false, "Prints debug logs and writes scraped html's to files.")
-	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
+	_, err := flags.Parse(&opts)
+	if err != nil {
+		os.Exit(1)
+	}
 
-	flag.Parse()
-
-	if *printVersion {
+	if opts.PrintVersion {
 		buildInfo, ok := debug.ReadBuildInfo()
 		if ok {
 			if buildInfo.Main.Version != "" && buildInfo.Main.Version != "(devel)" {
@@ -68,9 +131,9 @@ func main() {
 		return
 	}
 
-	config.Debug = *debugFlag
+	config.Debug = opts.DebugFlag
 	var logLevel slog.Level
-	if *debugFlag {
+	if opts.DebugFlag {
 		logLevel = slog.LevelDebug
 	} else {
 		logLevel = slog.LevelInfo
@@ -79,64 +142,30 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
-	if *generateConfig != "" {
-		slog.Debug("starting to generate config")
-		s := &scraper.Scraper{URL: *generateConfig}
-		if *renderJs {
-			s.RenderJs = true
-		}
-		slog.Debug(fmt.Sprintf("analyzing url %s", s.URL))
-		err := autoconfig.GetDynamicFieldsConfig(s, *m, *f, *modelPath, *wordsDir)
-		if err != nil {
-			slog.Error(fmt.Sprintf("%v", err))
+	if opts.GenerateConfig != "" {
+		if err := doGenerateConfig(opts); err != nil {
+			slog.Error(err.Error())
 			os.Exit(1)
-		}
-		c := scraper.Config{
-			Scrapers: []scraper.Scraper{
-				*s,
-			},
-		}
-		yamlData, err := yaml.Marshal(&c)
-		if err != nil {
-			slog.Error(fmt.Sprintf("error while marshaling. %v", err))
-			os.Exit(1)
-		}
-
-		if *toStdout {
-			fmt.Println(string(yamlData))
-		} else {
-			f, err := os.Create(*configLoc)
-			if err != nil {
-				slog.Error(fmt.Sprintf("error opening file: %v", err))
-				os.Exit(1)
-			}
-			defer f.Close()
-			_, err = f.Write(yamlData)
-			if err != nil {
-				slog.Error(fmt.Sprintf("error writing to file: %v", err))
-				os.Exit(1)
-			}
-			slog.Info(fmt.Sprintf("successfully wrote config to file %s", *configLoc))
 		}
 		return
 	}
 
-	if *buildModel != "" {
-		if err := ml.TrainModel(*buildModel); err != nil {
+	if opts.BuildModel != "" {
+		if err := ml.TrainModel(opts.BuildModel); err != nil {
 			slog.Error(fmt.Sprintf("%v", err))
 			os.Exit(1)
 		}
 		return
 	}
 
-	conf, err := scraper.NewConfig(*configLoc)
+	conf, err := scraper.NewConfig(opts.ConfigLoc)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v", err))
 		os.Exit(1)
 	}
 
-	if *extractFeatures != "" {
-		if err := ml.ExtractFeatures(conf, *extractFeatures, *wordsDir); err != nil {
+	if opts.ExtractFeatures != "" {
+		if err := ml.ExtractFeatures(conf, opts.ExtractFeatures, opts.WordsDir); err != nil {
 			slog.Error(fmt.Sprintf("%v", err))
 			os.Exit(1)
 		}
@@ -148,9 +177,9 @@ func main() {
 	ic := make(chan map[string]interface{})
 
 	var writer output.Writer
-	if *toStdout {
+	if opts.ToStdout {
 		writer = &output.StdoutWriter{}
-	} else if *toJSON {
+	} else if opts.ToJSON {
 		writer = &output.JSONWriter{}
 	} else {
 		switch conf.Writer.Type {
@@ -175,8 +204,8 @@ func main() {
 	// fill worker queue
 	go func() {
 		for _, s := range conf.Scrapers {
-			if *singleScraper == "" || *singleScraper == s.Name {
-				// s.Debug = *debugFlag
+			if opts.SingleScraper == "" || opts.SingleScraper == s.Name {
+				// s.Debug = opts.DebugFlag
 				sc <- s
 			}
 		}
@@ -185,7 +214,7 @@ func main() {
 
 	// start workers
 	nrWorkers := 1
-	if *singleScraper == "" {
+	if opts.SingleScraper == "" {
 		nrWorkers = int(math.Min(20, float64(len(conf.Scrapers))))
 	}
 	slog.Info(fmt.Sprintf("running with %d threads", nrWorkers))
@@ -208,4 +237,44 @@ func main() {
 	workerWg.Wait()
 	close(ic)
 	writerWg.Wait()
+}
+
+func doGenerateConfig(opts mainOpts) error {
+
+	slog.Debug("starting to generate config")
+	s := &scraper.Scraper{URL: opts.GenerateConfig}
+	if opts.RenderJs {
+		s.RenderJs = true
+	}
+	slog.Debug(fmt.Sprintf("analyzing url %s", s.URL))
+	err := autoconfig.GetDynamicFieldsConfig(s, opts.M, opts.F, opts.ModelPath, opts.WordsDir)
+	if err != nil {
+		return err
+	}
+	c := scraper.Config{
+		Scrapers: []scraper.Scraper{
+			*s,
+		},
+	}
+	yamlData, err := yaml.Marshal(&c)
+	if err != nil {
+		return fmt.Errorf("error while marshaling. %v", err)
+	}
+
+	if opts.ToStdout {
+		fmt.Println(string(yamlData))
+	} else {
+		f, err := os.Create(opts.ConfigLoc)
+		if err != nil {
+			return fmt.Errorf("error opening file: %v", err)
+		}
+		defer f.Close()
+		_, err = f.Write(yamlData)
+		if err != nil {
+			return fmt.Errorf("error writing to file: %v", err)
+		}
+		slog.Info(fmt.Sprintf("successfully wrote config to file %s", opts.ConfigLoc))
+	}
+
+	return nil
 }
