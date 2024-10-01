@@ -124,6 +124,15 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 	// 	chromedp.WithErrorf(log.Printf),
 	// )
 	defer cancel()
+
+	if strings.HasPrefix(urlStr, "file://") && !strings.HasPrefix(urlStr, "file:///") {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("error getting working directory while absolutizing file url: %v", err)
+		}
+		urlStr = "file://" + wd + "/" + strings.TrimPrefix(urlStr, "file://")
+	}
+
 	var body string
 	sleepTime := time.Duration(d.WaitMilliseconds) * time.Millisecond
 	actions := []chromedp.Action{
@@ -147,7 +156,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 				actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
 					var nodes []*cdp.Node
 					if err := chromedp.Nodes(ia.Selector, &nodes, chromedp.AtLeast(0)).Do(ctx); err != nil {
-						return fmt.Errorf("Error accessing nodes: %v", err)
+						return fmt.Errorf("error accessing nodes: %v", err)
 					}
 					if len(nodes) == 0 {
 						return nil
@@ -160,13 +169,17 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 			}
 		}
 	}
+
 	actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
 		node, err := dom.GetDocument().Do(ctx)
 		if err != nil {
-			return fmt.Errorf("Error getting document: %v", err)
+			return fmt.Errorf("error getting document: %v", err)
 		}
 		body, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-		return fmt.Errorf("Error getting node: %v", err)
+		if err != nil {
+			return fmt.Errorf("error getting node: %v", err)
+		}
+		return nil
 	}))
 
 	if config.Debug {
@@ -186,12 +199,13 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 	}
 
 	// run task list
-	err := chromedp.Run(ctx,
-		actions...,
-	)
+	if err := chromedp.Run(ctx, actions...); err != nil {
+		return "", fmt.Errorf("error running chromedp: %v", err)
+	}
+
 	// elapsed := time.Since(start)
 	// log.Printf("fetching %s took %s", url, elapsed)
-	return body, fmt.Errorf("Error running chromedp: %v", err)
+	return body, nil
 }
 
 // The FileFetcher fetches static page content
