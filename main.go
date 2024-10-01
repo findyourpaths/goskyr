@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"runtime/debug"
@@ -18,13 +19,13 @@ import (
 )
 
 type mainOpts struct {
-	F               bool   `short:"f" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
-	M               int    `short:"m" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
-	SingleScraper   string `short:"s" description:"The name of the scraper to be run."`
-	ToStdout        bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
-	ToFile          bool   `long:"file" default:"true" description:"If set to true the scraped data will be written to a file despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to a file."`
+	F             bool   `short:"f" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
+	M             int    `short:"m" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	SingleScraper string `short:"s" description:"The name of the scraper to be run."`
+	ToStdout      bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
+	// NoFile          bool   `long:"nofile" description:"If set to false the scraped data will be written to a file despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to a file."`
 	ToJSON          bool   `long:"json" description:"If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout."`
-	Interactive     bool   `short:"interactive" default:"true" description:"Run interactively to generate the config file."`
+	NonInteractive  bool   `long:"noninteractive" description:"Run interactively to generate the config file."`
 	ConfigLoc       string `short:"c" default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."`
 	PrintVersion    bool   `short:"v" description:"The version of goskyr."`
 	GenerateConfig  string `short:"g" description:"Automatically generate a config file for the given url."`
@@ -60,11 +61,14 @@ func worker(sc chan scraper.Scraper, ic chan map[string]interface{}, gc *scraper
 }
 
 func main() {
+	log.Printf("parsing args")
 	_, err := flags.Parse(&opts)
 	if err != nil {
+		slog.Error(err.Error())
 		os.Exit(1)
 	}
 
+	log.Printf("checking PrintVersion")
 	if opts.PrintVersion {
 		buildInfo, ok := debug.ReadBuildInfo()
 		if ok {
@@ -88,7 +92,9 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
+	log.Printf("checking GenerateConfig: %q", opts.GenerateConfig)
 	if opts.GenerateConfig != "" {
+		log.Printf("calling GenerateConfig: %q", opts.GenerateConfig)
 		if _, err := GenerateConfig(opts); err != nil {
 			slog.Error(err.Error())
 			os.Exit(1)
@@ -186,13 +192,14 @@ func main() {
 }
 
 func GenerateConfig(opts mainOpts) (string, error) {
+	log.Printf("called GenerateConfig: %q", opts.GenerateConfig)
 	slog.Debug("starting to generate config")
 	s := &scraper.Scraper{URL: opts.GenerateConfig}
 	if opts.RenderJs {
 		s.RenderJs = true
 	}
 	slog.Debug(fmt.Sprintf("analyzing url %s", s.URL))
-	err := autoconfig.GetDynamicFieldsConfig(s, opts.M, opts.F, opts.ModelPath, opts.WordsDir, opts.Interactive)
+	err := autoconfig.GetDynamicFieldsConfig(s, opts.M, opts.F, opts.ModelPath, opts.WordsDir, !opts.NonInteractive)
 	if err != nil {
 		return "", err
 	}
@@ -211,7 +218,7 @@ func GenerateConfig(opts mainOpts) (string, error) {
 		return string(yamlData), nil
 	}
 
-	if opts.ToFile {
+	if opts.ConfigLoc != "" {
 		f, err := os.Create(opts.ConfigLoc)
 		if err != nil {
 			return "", fmt.Errorf("error opening file: %v", err)

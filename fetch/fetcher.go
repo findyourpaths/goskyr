@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -37,7 +36,7 @@ type StaticFetcher struct {
 }
 
 func (s *StaticFetcher) Fetch(url string, opts FetchOpts) (string, error) {
-	log.Printf("StaticFetcher.Fetch(url: %q, opts: %#v)", url, opts)
+	// log.Printf("StaticFetcher.Fetch(url: %q, opts: %#v)", url, opts)
 	// s.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 	s.UserAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 	slog.Debug("fetching page", slog.String("fetcher", "static"), slog.String("url", url), slog.String("user-agent", s.UserAgent))
@@ -75,7 +74,7 @@ func (s *StaticFetcher) Fetch(url string, opts FetchOpts) (string, error) {
 		return resString, err
 	}
 	resString = string(bytes)
-	log.Printf("StaticFetcher.Fetch() returning resString")
+	// log.Printf("StaticFetcher.Fetch() returning resString")
 	return resString, nil
 }
 
@@ -114,6 +113,7 @@ func (d *DynamicFetcher) Cancel() {
 }
 
 func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
+	// log.Printf("DynamicFetcher.Fetch(urlStr: %q, opts: %#v)", urlStr, opts)
 	logger := slog.With(slog.String("fetcher", "dynamic"), slog.String("url", urlStr))
 	logger.Debug("fetching page", slog.String("user-agent", d.UserAgent))
 	// start := time.Now()
@@ -147,7 +147,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 				actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
 					var nodes []*cdp.Node
 					if err := chromedp.Nodes(ia.Selector, &nodes, chromedp.AtLeast(0)).Do(ctx); err != nil {
-						return err
+						return fmt.Errorf("Error accessing nodes: %v", err)
 					}
 					if len(nodes) == 0 {
 						return nil
@@ -163,10 +163,10 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 	actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
 		node, err := dom.GetDocument().Do(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error getting document: %v", err)
 		}
 		body, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-		return err
+		return fmt.Errorf("Error getting node: %v", err)
 	}))
 
 	if config.Debug {
@@ -191,7 +191,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 	)
 	// elapsed := time.Since(start)
 	// log.Printf("fetching %s took %s", url, elapsed)
-	return body, err
+	return body, fmt.Errorf("Error running chromedp: %v", err)
 }
 
 // The FileFetcher fetches static page content
@@ -199,6 +199,7 @@ type FileFetcher struct {
 }
 
 func (s *FileFetcher) Fetch(url string, opts FetchOpts) (string, error) {
+	// log.Printf("FileFetcher.Fetch(url: %q, opts: %#v)", url, opts)
 	fpath := strings.TrimPrefix(url, "file://")
 	bs, err := ioutil.ReadFile(fpath)
 	if err != nil {

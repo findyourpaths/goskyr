@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -263,13 +264,13 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 		dynFetcher := fetch.NewDynamicFetcher(globalConfig.UserAgent, c.PageLoadWait)
 		defer dynFetcher.Cancel()
 		c.fetcher = dynFetcher
-	} else {
-		// c.fetcher = &fetch.StaticFetcher{
-		// 	UserAgent: globalConfig.UserAgent,
-		// 	// UserAgent: globalConfig.UserAgent,
-		// 	UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-		// }
+	} else if strings.HasPrefix(c.URL, "file://") {
 		c.fetcher = &fetch.FileFetcher{}
+	} else {
+		c.fetcher = &fetch.StaticFetcher{
+			UserAgent: globalConfig.UserAgent,
+			// UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+		}
 	}
 
 	var items []map[string]interface{}
@@ -285,14 +286,36 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 
 	hasNextPage, pageURL, doc, err := c.fetchPage(nil, currentPage, c.URL, globalConfig.UserAgent, c.Interaction)
 	if err != nil {
-		return items, err
+		// log.Printf("pageURL: %q", pageURL)
+		return items, fmt.Errorf("failed to fetch next page: %w", err)
 	}
 
 	for hasNextPage {
 		baseUrl := getBaseURL(pageURL, doc)
+
 		// log.Printf("in Scraper.GetItems(), c.Item: %#v", c.Item)
 		// log.Printf("in Scraper.GetItems(), len(doc.Find(c.Item).Nodes): %d", len(doc.Find(c.Item).Nodes))
+		// if len(doc.Find(c.Item).Nodes) == 0 {
+		// 	log.Printf("in Scraper.GetItems(), no items found, shortening selector to find the longest prefix that selects items")
+		// 	itemPath := c.Item
+		// 	for {
+		// 		log.Printf("in Scraper.GetItems(), itemPath: %#v", itemPath)
+		// 		if len(doc.Find(itemPath).Nodes) != 0 {
+		// 			log.Printf("in Scraper.GetItems(), len(doc.Find(itemPath).Nodes): %d", len(doc.Find(itemPath).Nodes))
+		// 			for _, node := range doc.Find(itemPath).Nodes {
+		// 				log.Printf("%#v", node)
+		// 			}
+		// 			break
+		// 		}
+		// 		itemPathParts := strings.Split(itemPath, " > ")
+		// 		itemPath = strings.Join(itemPathParts[0:len(itemPathParts)-1], " > ")
+		// 	}
+		// }
+
 		doc.Find(c.Item).Each(func(i int, s *goquery.Selection) {
+			// for i, node := range s.Nodes {
+			// 	log.Printf("%d: %#v", i, node)
+			// }
 			// log.Printf("in Scraper.GetItems(), c.Item match %d", i)
 			// log.Printf("in Scraper.GetItems(), c.Item matched, and c.Fields: %#v", c.Fields)
 			currentItem := make(map[string]interface{})
@@ -335,6 +358,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 					if f.OnSubpage != "" && f.Value == "" {
 						// check whether we fetched the page already
 						subpageURL := fmt.Sprint(currentItem[f.OnSubpage])
+						log.Printf("looking at subpageURL: %q", subpageURL)
 						_, found := subDocs[subpageURL]
 						if !found {
 							subRes, err := c.fetcher.Fetch(subpageURL, fetch.FetchOpts{})
@@ -374,7 +398,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 		currentPage++
 		hasNextPage, pageURL, doc, err = c.fetchPage(doc, currentPage, pageURL, globalConfig.UserAgent, nil)
 		if err != nil {
-			return items, err
+			return items, fmt.Errorf("failed to fetch next page: %w", err)
 		}
 	}
 
@@ -536,6 +560,8 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 }
 
 func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Document, error) {
+	// log.Printf("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
+	// log.Printf("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
 	res, err := c.fetcher.Fetch(urlStr, opts)
 	if err != nil {
 		return nil, err

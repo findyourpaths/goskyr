@@ -42,6 +42,7 @@ func TestAutoconfig(t *testing.T) {
 			// >>> This is the actual code under test.
 			opts := mainOpts{
 				GenerateConfig: "file://" + path,
+				ConfigLoc:      "",
 			}
 			log.Printf("opts.GenerateConfig: %q", opts.GenerateConfig)
 			actual, err := GenerateConfig(opts)
@@ -73,41 +74,45 @@ func TestAutoconfig(t *testing.T) {
 }
 
 func TestScraper(t *testing.T) {
-	// Find the paths of all input files in the data directory.
-	paths, err := filepath.Glob(filepath.Join("testdata", "*"+configSuffix))
-	if err != nil {
-		t.Fatal(err)
+	// Find the paths of all input files in the data directories.
+	allPaths := []string{}
+	for _, glob := range []string{
+		filepath.Join("testdata", "*"+configSuffix),
+		filepath.Join("testdata/chicago", "*"+configSuffix),
+	} {
+		paths, err := filepath.Glob(glob)
+		if err != nil {
+			t.Fatal(err)
+		}
+		allPaths = append(allPaths, paths...)
 	}
 
-	for _, path := range paths {
+	for _, path := range allPaths {
 		_, filename := filepath.Split(path)
 		testname := filename[:len(filename)-len(configSuffix)]
 
 		// Each path turns into a test: the test name is the filename without the
 		// extension.
 		t.Run(testname, func(t *testing.T) {
-			// source, err := os.ReadFile(path)
-			// if err != nil {
-			// 	t.Fatal("error reading source file:", err)
-			// }
-
-			// >>> This is the actual code under test.
-			// configPath := filepath.Join("testdata", path+configSuffix)
 			conf, err := scraper.NewConfig(path)
 			if err != nil {
 				t.Fatalf("cannot open config file path at %q: %v", path, err)
 			}
-			if len(conf.Scrapers) != 1 {
-				t.Fatalf("looking for a single scraper in config at %q, instead found %d", path, len(conf.Scrapers))
+
+			allItems := []map[string]interface{}{}
+			for i, s := range conf.Scrapers {
+				// TODO: handle scrapers that require javascript.
+				if s.RenderJs {
+					continue
+				}
+				items, err := s.GetItems(&conf.Global, true)
+				if err != nil {
+					t.Fatalf("failed to get items for scraper config %d at %q: %v", i, path, err)
+				}
+				allItems = append(allItems, items...)
 			}
 
-			s := conf.Scrapers[0]
-			items, err := s.GetItems(&conf.Global, false)
-			if err != nil {
-				t.Fatalf("failed to get items for config at %q: %v", path, err)
-			}
-
-			actual, err := json.MarshalIndent(items, "", "  ")
+			actual, err := json.MarshalIndent(allItems, "", "  ")
 			if err != nil {
 				t.Fatalf("failed to marshal json: %v", err)
 			}
@@ -118,11 +123,10 @@ func TestScraper(t *testing.T) {
 					t.Fatalf("failed to write actual test output to %q: %v", actualPath, err)
 				}
 			}
-			// <<<
 
 			// Each input file is expected to have a "golden output" file, with the
 			// same path except the .input extension is replaced by the golden suffix.
-			jsonfile := filepath.Join("testdata", testname+jsonSuffix)
+			jsonfile := path[:len(path)-len(configSuffix)] + jsonSuffix
 			expected, err := os.ReadFile(jsonfile)
 			if err != nil {
 				t.Fatal("error reading golden file:", err)
