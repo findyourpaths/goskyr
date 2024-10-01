@@ -101,10 +101,6 @@ func TestScraper(t *testing.T) {
 
 			allItems := []map[string]interface{}{}
 			for i, s := range conf.Scrapers {
-				// TODO: handle scrapers that require javascript.
-				// if s.RenderJs {
-				// 	continue
-				// }
 				items, err := s.GetItems(&conf.Global, true)
 				if err != nil {
 					t.Fatalf("failed to get items for scraper config %d at %q: %v", i, path, err)

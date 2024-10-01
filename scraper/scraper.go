@@ -335,6 +335,12 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 	return items, nil
 }
 
+// GetItem fetches and returns an items from a website according to the
+// Scraper's paramaters. When rawDyn is set to true the item returned is not
+// processed according to its type but instead the raw value based only on the
+// location is returned (ignore regex_extract??). And only those of dynamic
+// fields, ie fields that don't have a predefined value and that are present on
+// the main page (not subpages). This is used by the ML feature generation.
 func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (map[string]interface{}, error) {
 	// for i, node := range s.Nodes {
 	// 	log.Printf("%d: %#v", i, node)

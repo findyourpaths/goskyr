@@ -61,14 +61,12 @@ func worker(sc chan scraper.Scraper, ic chan map[string]interface{}, gc *scraper
 }
 
 func main() {
-	log.Printf("parsing args")
 	_, err := flags.Parse(&opts)
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
 
-	log.Printf("checking PrintVersion")
 	if opts.PrintVersion {
 		buildInfo, ok := debug.ReadBuildInfo()
 		if ok {
@@ -92,9 +90,7 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
-	log.Printf("checking GenerateConfig: %q", opts.GenerateConfig)
 	if opts.GenerateConfig != "" {
-		log.Printf("calling GenerateConfig: %q", opts.GenerateConfig)
 		if _, err := GenerateConfig(opts); err != nil {
 			slog.Error(err.Error())
 			os.Exit(1)
@@ -218,19 +214,19 @@ func GenerateConfig(opts mainOpts) (string, error) {
 		return string(yamlData), nil
 	}
 
-	if opts.ConfigLoc != "" {
-		f, err := os.Create(opts.ConfigLoc)
-		if err != nil {
-			return "", fmt.Errorf("error opening file: %v", err)
-		}
-		defer f.Close()
-		_, err = f.Write(yamlData)
-		if err != nil {
-			return "", fmt.Errorf("error writing to file: %v", err)
-		}
-		slog.Info(fmt.Sprintf("successfully wrote config to file %s", opts.ConfigLoc))
+	if opts.ConfigLoc == "" {
 		return string(yamlData), nil
 	}
 
+	f, err := os.Create(opts.ConfigLoc)
+	if err != nil {
+		return "", fmt.Errorf("error opening file: %v", err)
+	}
+	defer f.Close()
+	_, err = f.Write(yamlData)
+	if err != nil {
+		return "", fmt.Errorf("error writing to file: %v", err)
+	}
+	slog.Info(fmt.Sprintf("successfully wrote config to file %s", opts.ConfigLoc))
 	return string(yamlData), nil
 }
