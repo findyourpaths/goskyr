@@ -87,6 +87,16 @@ type locationProps struct {
 	iStrip    int // this is needed for the squashLocationManager function
 }
 
+func makeLocationProps(nodePath []node, example string) locationProps {
+	p := make([]node, len(nodePath))
+	copy(p, nodePath)
+	return locationProps{
+		path:     p,
+		examples: []string{example},
+		count:    1,
+	}
+}
+
 type locationManager []*locationProps
 
 func (l locationManager) setColors() {
@@ -223,27 +233,9 @@ func (l locationManager) elementsToConfig(s *scraper.Scraper) error {
 		return fmt.Errorf("no fields selected")
 	}
 
-	// find shared root selector
-	var rootSelector path
-outer:
-	for i := 0; ; i++ {
-		var n node
-		for j, e := range locPropsSel {
-			if i >= len(e.path) {
-				rootSelector = e.path[:i]
-				break outer
-			}
-			if j == 0 {
-				n = e.path[i]
-			} else {
-				if !n.equals(e.path[i]) {
-					rootSelector = e.path[:i]
-					break outer
-				}
-			}
-		}
-	}
+	rootSelector := findSharedRootSelector(locPropsSel)
 	s.Item = shortenRootSelector(rootSelector).string()
+
 	// for now we assume that there will only be one date field
 	t := time.Now()
 	zone, _ := t.Zone()
@@ -253,6 +245,7 @@ outer:
 		Type:         "date",
 		DateLocation: zone,
 	}
+
 	for _, e := range locPropsSel {
 		loc := scraper.ElementLocation{
 			Selector:   e.path[len(rootSelector):].string(),
@@ -260,7 +253,7 @@ outer:
 			Attr:       e.attr,
 		}
 		fieldType := "text"
-		var d scraper.Field
+
 		if strings.HasPrefix(e.name, "date-component") {
 			cd := date.CoveredDateParts{
 				Day:   strings.Contains(e.name, "day"),
@@ -278,23 +271,44 @@ outer:
 				// first lang wins
 				dateField.DateLanguage = lang
 			}
-		} else {
-			if loc.Attr == "href" || loc.Attr == "src" {
-				fieldType = "url"
-			}
-			d = scraper.Field{
-				Name:             e.name,
-				Type:             fieldType,
-				ElementLocations: []scraper.ElementLocation{loc},
-				CanBeEmpty:       true,
-			}
-			s.Fields = append(s.Fields, d)
+			continue
 		}
+
+		if loc.Attr == "href" || loc.Attr == "src" {
+			fieldType = "url"
+		}
+		d := scraper.Field{
+			Name:             e.name,
+			Type:             fieldType,
+			ElementLocations: []scraper.ElementLocation{loc},
+			CanBeEmpty:       true,
+		}
+		s.Fields = append(s.Fields, d)
 	}
+
 	if len(dateField.Components) > 0 {
 		s.Fields = append(s.Fields, dateField)
 	}
 	return nil
+}
+
+func findSharedRootSelector(locPropsSel []*locationProps) path {
+	for i := 0; ; i++ {
+		var n node
+		for j, e := range locPropsSel {
+			if i >= len(e.path) {
+				return e.path[:i]
+			}
+			if j == 0 {
+				n = e.path[i]
+			} else {
+				if !n.equals(e.path[i]) {
+					return e.path[:i]
+				}
+			}
+		}
+	}
+	return []node{}
 }
 
 func shortenRootSelector(p path) path {
@@ -430,26 +444,31 @@ func filter(l locationManager, minCount int, removeStaticFields bool) locationMa
 	// or if the examples are all the same (if removeStaticFields is true)
 	i := 0
 	for _, p := range l {
-		if p.count >= minCount {
-			// first reverse the examples list and only take the first x
-			utils.ReverseSlice(p.examples)
-			p.examples = p.examples[:minCount]
-			if removeStaticFields {
-				eqEx := true
-				for _, ex := range p.examples {
-					if ex != p.examples[0] {
-						eqEx = false
-						break
-					}
-				}
-				if !eqEx {
-					l[i] = p
-					i++
-				}
-			} else {
-				l[i] = p
-				i++
+		// fmt.Printf("%2d of %q\n", p.count, p.path.string())
+		if p.count < minCount {
+			// if p.count != minCount {
+			continue
+		}
+
+		// first reverse the examples list and only take the first x
+		utils.ReverseSlice(p.examples)
+		p.examples = p.examples[:minCount]
+		if !removeStaticFields {
+			l[i] = p
+			i++
+			continue
+		}
+
+		eqEx := true
+		for _, ex := range p.examples {
+			if ex != p.examples[0] {
+				eqEx = false
+				break
 			}
+		}
+		if !eqEx {
+			l[i] = p
+			i++
 		}
 	}
 	return l[:i]
@@ -497,6 +516,15 @@ func GetDynamicFieldsConfig(s *scraper.Scraper, minOcc int, removeStaticFields b
 	a.Parse()
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
 	a.LocMan = filter(a.LocMan, minOcc, removeStaticFields)
+	// for _, lm := range a.LocMan {
+	// fmt.Printf("lm: %#v\n", lm)
+
+	// fmt.Printf("lm.path.string(): %#v\n", lm.path.string())
+	// for i, ex := range lm.examples {
+	// 	fmt.Printf("lm.example %d: %q\n", i, ex)
+	// }
+	// }
+
 	a.LocMan.setColors()
 	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
 		return err
@@ -539,18 +567,13 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			return true
 		}
 
-		text := string(a.Z.Text())
 		p := a.NodePath.string()
+		text := string(a.Z.Text())
 		textTrimmed := strings.TrimSpace(text)
+		// fmt.Printf("in Analyzer.ParseToken(tt: %s), text: %q\n", tt, text)
 		if len(textTrimmed) > 0 {
-			ti := a.NrChildren[p]
-			lp := locationProps{
-				path:      make([]node, len(a.NodePath)),
-				examples:  []string{textTrimmed},
-				textIndex: ti,
-				count:     1,
-			}
-			copy(lp.path, a.NodePath)
+			lp := makeLocationProps(a.NodePath, textTrimmed)
+			lp.textIndex = a.NrChildren[p]
 			a.LocMan = append(a.LocMan, &lp)
 		}
 		a.NrChildren[p] += 1
@@ -565,6 +588,7 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			return true
 		}
 
+		// fmt.Printf("in Analyzer.ParseToken(tt: %s), tag name: %q\n", tt, tagNameStr)
 		// br can also be self closing tag, see later case statement
 		if tagNameStr == "br" || tagNameStr == "input" {
 			a.NrChildren[a.NodePath.string()] += 1
@@ -598,18 +622,15 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			classes:       cls,
 			pseudoClasses: pCls,
 		}
+		// fmt.Printf("newNode: %#v\n", newNode)
 		a.NodePath = append(a.NodePath, newNode)
 		a.Depth++
 		a.ChildNodes[a.NodePath.string()] = []node{}
 
 		for attrKey, attrValue := range attrs {
-			lp := locationProps{
-				path:     make([]node, len(a.NodePath)),
-				examples: []string{attrValue},
-				attr:     attrKey,
-				count:    1,
-			}
-			copy(lp.path, a.NodePath)
+			lp := makeLocationProps(a.NodePath, attrValue)
+			lp.attr = attrKey
+			// fmt.Printf("lp: %#v\n", lp)
 			a.LocMan = append(a.LocMan, &lp)
 		}
 
@@ -620,6 +641,8 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 
 		tn, _ := a.Z.TagName()
 		tagNameStr := string(tn)
+		// fmt.Printf("in Analyzer.ParseToken(tt: %s), tag name: %q\n", tt, tagNameStr)
+
 		if tagNameStr != "br" && tagNameStr != "input" && tagNameStr != "img" && tagNameStr != "link" {
 			return true
 		}
@@ -641,13 +664,8 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 		tmpNodePath = append(tmpNodePath, newNode)
 
 		for attrKey, attrValue := range attrs {
-			lp := locationProps{
-				path:     make([]node, len(tmpNodePath)),
-				examples: []string{attrValue},
-				attr:     attrKey,
-				count:    1,
-			}
-			copy(lp.path, tmpNodePath)
+			lp := makeLocationProps(tmpNodePath, attrValue)
+			lp.attr = attrKey
 			a.LocMan = append(a.LocMan, &lp)
 		}
 	}
