@@ -313,85 +313,12 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 		// }
 
 		doc.Find(c.Item).Each(func(i int, s *goquery.Selection) {
-			// for i, node := range s.Nodes {
-			// 	log.Printf("%d: %#v", i, node)
-			// }
-			// log.Printf("in Scraper.GetItems(), c.Item match %d", i)
-			// log.Printf("in Scraper.GetItems(), c.Item matched, and c.Fields: %#v", c.Fields)
-			currentItem := make(map[string]interface{})
-			for _, f := range c.Fields {
-				// log.Printf("in Scraper.GetItems(), looking at field: %#v", f)
-				if f.Value != "" {
-					if !rawDyn {
-						// add static fields
-						currentItem[f.Name] = f.Value
-					}
-				} else {
-					// handle all dynamic fields on the main page
-					if f.OnSubpage == "" {
-						var err error
-						if rawDyn {
-							err = extractRawField(&f, currentItem, s)
-						} else {
-							err = extractField(&f, currentItem, s, baseUrl)
-						}
-						if err != nil {
-							scrLogger.Error(fmt.Sprintf("error while parsing field %s: %v. Skipping item %v.", f.Name, err, currentItem))
-							return
-						}
-					}
-					// to speed things up we check the filter after each field.
-					// Like that we safe time if we already know for sure that
-					// we want to filter out a certain item. Especially, if
-					// certain elements would need to be fetched from subpages.
-					// filter fast!
-					if !c.filterItem(currentItem) {
-						return
-					}
-				}
+			item, err := c.GetItem(s, baseUrl, rawDyn)
+			if err != nil {
+				scrLogger.Error(err.Error())
 			}
-
-			// handle all fields on subpages
-			if !rawDyn {
-				subDocs := make(map[string]*goquery.Document)
-				for _, f := range c.Fields {
-					if f.OnSubpage != "" && f.Value == "" {
-						// check whether we fetched the page already
-						subpageURL := fmt.Sprint(currentItem[f.OnSubpage])
-						log.Printf("looking at subpageURL: %q", subpageURL)
-						_, found := subDocs[subpageURL]
-						if !found {
-							subRes, err := c.fetcher.Fetch(subpageURL, fetch.FetchOpts{})
-							if err != nil {
-								scrLogger.Error(fmt.Sprintf("%v. Skipping item %v.", err, currentItem))
-								return
-							}
-							subDoc, err := goquery.NewDocumentFromReader(strings.NewReader(subRes))
-							if err != nil {
-								scrLogger.Error(fmt.Sprintf("error while reading document: %v. Skipping item %v", err, currentItem))
-								return
-							}
-							subDocs[subpageURL] = subDoc
-						}
-						baseURLSubpage := getBaseURL(subpageURL, subDocs[subpageURL])
-						err = extractField(&f, currentItem, subDocs[subpageURL].Selection, baseURLSubpage)
-						if err != nil {
-							scrLogger.Error(fmt.Sprintf("error while parsing field %s: %v. Skipping item %v.", f.Name, err, currentItem))
-							return
-						}
-						// filter fast!
-						if !c.filterItem(currentItem) {
-							return
-						}
-					}
-				}
-			}
-
-			// check if item should be filtered
-			filter := c.filterItem(currentItem)
-			if filter {
-				currentItem = c.removeHiddenFields(currentItem)
-				items = append(items, currentItem)
+			if item != nil {
+				items = append(items, item)
 			}
 		})
 
@@ -406,6 +333,91 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 
 	// log.Printf("Scraper.GetItems() returning")
 	return items, nil
+}
+
+func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (map[string]interface{}, error) {
+	// for i, node := range s.Nodes {
+	// 	log.Printf("%d: %#v", i, node)
+	// }
+	// log.Printf("in Scraper.GetItems(), c.Item match %d", i)
+	// log.Printf("in Scraper.GetItems(), c.Item matched, and c.Fields: %#v", c.Fields)
+	currentItem := make(map[string]interface{})
+	for _, f := range c.Fields {
+		// log.Printf("in Scraper.GetItems(), looking at field: %#v", f)
+		if f.Value != "" {
+			if !rawDyn {
+				// add static fields
+				currentItem[f.Name] = f.Value
+			}
+			continue
+		}
+
+		// handle all dynamic fields on the main page
+		if f.OnSubpage == "" {
+			var err error
+			if rawDyn {
+				err = extractRawField(&f, currentItem, s)
+			} else {
+				err = extractField(&f, currentItem, s, baseUrl)
+			}
+			if err != nil {
+				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping item %v.", f.Name, err, currentItem)
+			}
+		}
+
+		// to speed things up we check the filter after each field.
+		// Like that we safe time if we already know for sure that
+		// we want to filter out a certain item. Especially, if
+		// certain elements would need to be fetched from subpages.
+		// filter fast!
+		if !c.filterItem(currentItem) {
+			return nil, nil
+		}
+	}
+
+	// handle all fields on subpages
+	if !rawDyn {
+		subDocs := make(map[string]*goquery.Document)
+		for _, f := range c.Fields {
+			if f.OnSubpage == "" || f.Value != "" {
+				continue
+			}
+
+			// check whether we fetched the page already
+			subpageURL := fmt.Sprint(currentItem[f.OnSubpage])
+			log.Printf("looking at subpageURL: %q", subpageURL)
+			_, found := subDocs[subpageURL]
+			if !found {
+				subRes, err := c.fetcher.Fetch(subpageURL, fetch.FetchOpts{})
+				if err != nil {
+					return nil, fmt.Errorf("error while fetching subpage: %v. Skipping item %v.", err, currentItem)
+				}
+				subDoc, err := goquery.NewDocumentFromReader(strings.NewReader(subRes))
+				if err != nil {
+					return nil, fmt.Errorf("error while reading subpage document: %v. Skipping item %v", err, currentItem)
+				}
+				subDocs[subpageURL] = subDoc
+			}
+
+			baseURLSubpage := getBaseURL(subpageURL, subDocs[subpageURL])
+			err := extractField(&f, currentItem, subDocs[subpageURL].Selection, baseURLSubpage)
+			if err != nil {
+				return nil, fmt.Errorf("error while parsing subpage field %s: %v. Skipping item %v.", f.Name, err, currentItem)
+			}
+			// filter fast!
+			if !c.filterItem(currentItem) {
+				return nil, nil
+			}
+		}
+	}
+
+	// check if item should be filtered
+	filter := c.filterItem(currentItem)
+	if filter {
+		currentItem = c.removeHiddenFields(currentItem)
+		return currentItem, nil
+	}
+	return nil, nil
 }
 
 func (c *Scraper) guessYear(items []map[string]interface{}, ref time.Time) {
@@ -517,46 +529,50 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 			return false, "", nil, err
 		}
 		return true, currentPageUrl, newDoc, nil
-	} else {
-		if c.Paginator.Location.Selector != "" {
-			if c.RenderJs {
-				// check if node c.Paginator.Location.Selector is present in doc
-				pagSelector := doc.Find(c.Paginator.Location.Selector)
-				if len(pagSelector.Nodes) > 0 {
-					if nextPageI < c.Paginator.MaxPages || c.Paginator.MaxPages == 0 {
-						ia := []*types.Interaction{
-							{
-								Selector: c.Paginator.Location.Selector,
-								Type:     types.InteractionTypeClick,
-								Count:    nextPageI, // we always need to 'restart' the clicks because we always re-fetch the page
-							},
-						}
-						nextPageDoc, err := c.fetchToDoc(currentPageUrl, fetch.FetchOpts{Interaction: ia})
-						if err != nil {
-							return false, "", nil, err
-						}
-						return true, currentPageUrl, nextPageDoc, nil
-					}
+	}
+
+	if c.Paginator.Location.Selector == "" {
+		return false, "", nil, nil
+	}
+
+	if c.RenderJs {
+		// check if node c.Paginator.Location.Selector is present in doc
+		pagSelector := doc.Find(c.Paginator.Location.Selector)
+		if len(pagSelector.Nodes) > 0 {
+			if nextPageI < c.Paginator.MaxPages || c.Paginator.MaxPages == 0 {
+				ia := []*types.Interaction{
+					{
+						Selector: c.Paginator.Location.Selector,
+						Type:     types.InteractionTypeClick,
+						Count:    nextPageI, // we always need to 'restart' the clicks because we always re-fetch the page
+					},
 				}
-			} else {
-				baseUrl := getBaseURL(currentPageUrl, doc)
-				nextPageUrl, err := getURLString(&c.Paginator.Location, doc.Selection, baseUrl)
+				nextPageDoc, err := c.fetchToDoc(currentPageUrl, fetch.FetchOpts{Interaction: ia})
 				if err != nil {
 					return false, "", nil, err
 				}
-				if nextPageUrl != "" {
-					nextPageDoc, err := c.fetchToDoc(nextPageUrl, fetch.FetchOpts{})
-					if err != nil {
-						return false, "", nil, err
-					}
-					if nextPageI < c.Paginator.MaxPages || c.Paginator.MaxPages == 0 {
-						return true, nextPageUrl, nextPageDoc, nil
-					}
-				}
+				return true, currentPageUrl, nextPageDoc, nil
 			}
 		}
 		return false, "", nil, nil
 	}
+
+	baseUrl := getBaseURL(currentPageUrl, doc)
+	nextPageUrl, err := getURLString(&c.Paginator.Location, doc.Selection, baseUrl)
+	if err != nil {
+		return false, "", nil, err
+	}
+	if nextPageUrl != "" {
+		nextPageDoc, err := c.fetchToDoc(nextPageUrl, fetch.FetchOpts{})
+		if err != nil {
+			return false, "", nil, err
+		}
+		if nextPageI < c.Paginator.MaxPages || c.Paginator.MaxPages == 0 {
+			return true, nextPageUrl, nextPageDoc, nil
+		}
+	}
+
+	return false, "", nil, nil
 }
 
 func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Document, error) {
