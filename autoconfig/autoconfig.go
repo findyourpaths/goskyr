@@ -488,141 +488,170 @@ func GetDynamicFieldsConfig(s *scraper.Scraper, minOcc int, removeStaticFields b
 		return err
 	}
 
-	// start analyzing the html
-	z := html.NewTokenizer(strings.NewReader(htmlStr))
-	locMan := locationManager{}
-	nrChildren := map[string]int{}    // the nr of children a node (represented by a path) has, including non-html-tag nodes (ie text)
-	childNodes := map[string][]node{} // the children of the node at the specified nodePath; used for :nth-child() logic
-	nodePath := path{}
-	depth := 0
-	inBody := false
-parse:
-	for {
-		tt := z.Next()
-		switch tt {
-		case html.ErrorToken:
-			break parse
-		case html.TextToken:
-			if inBody {
-				text := string(z.Text())
-				p := nodePath.string()
-				textTrimmed := strings.TrimSpace(text)
-				if len(textTrimmed) > 0 {
-					ti := nrChildren[p]
-					lp := locationProps{
-						path:      make([]node, len(nodePath)),
-						examples:  []string{textTrimmed},
-						textIndex: ti,
-						count:     1,
-					}
-					copy(lp.path, nodePath)
-					locMan = append(locMan, &lp)
-				}
-				nrChildren[p] += 1
-			}
-		case html.StartTagToken, html.EndTagToken:
-			tn, _ := z.TagName()
-			tagNameStr := string(tn)
-			if tagNameStr == "body" {
-				inBody = !inBody
-			}
-			if inBody {
-				// br can also be self closing tag, see later case statement
-				if tagNameStr == "br" || tagNameStr == "input" {
-					nrChildren[nodePath.string()] += 1
-					childNodes[nodePath.string()] = append(childNodes[nodePath.string()], node{tagName: tagNameStr})
-					continue
-				}
-				if tt == html.StartTagToken {
-					attrs, cls, pCls := getTagMetadata(tagNameStr, z, childNodes[nodePath.string()])
-					nrChildren[nodePath.string()] += 1
-					childNodes[nodePath.string()] = append(childNodes[nodePath.string()], node{tagName: tagNameStr, classes: cls})
-
-					newNode := node{
-						tagName:       tagNameStr,
-						classes:       cls,
-						pseudoClasses: pCls,
-					}
-					nodePath = append(nodePath, newNode)
-					depth++
-					childNodes[nodePath.string()] = []node{}
-
-					for attrKey, attrValue := range attrs {
-						lp := locationProps{
-							path:     make([]node, len(nodePath)),
-							examples: []string{attrValue},
-							attr:     attrKey,
-							count:    1,
-						}
-						copy(lp.path, nodePath)
-						locMan = append(locMan, &lp)
-					}
-				} else {
-					n := true
-					for n && depth > 0 {
-						if nodePath[len(nodePath)-1].tagName == tagNameStr {
-							if tagNameStr == "body" {
-								break parse
-							}
-							n = false
-						}
-						delete(nrChildren, nodePath.string())
-						delete(childNodes, nodePath.string())
-						nodePath = nodePath[:len(nodePath)-1]
-						depth--
-					}
-				}
-			}
-		case html.SelfClosingTagToken:
-			if inBody {
-				tn, _ := z.TagName()
-				tagNameStr := string(tn)
-				if tagNameStr == "br" || tagNameStr == "input" || tagNameStr == "img" || tagNameStr == "link" {
-					attrs, cls, pCls := getTagMetadata(tagNameStr, z, childNodes[nodePath.string()])
-					nrChildren[nodePath.string()] += 1
-					childNodes[nodePath.string()] = append(childNodes[nodePath.string()], node{tagName: tagNameStr, classes: cls})
-
-					if len(attrs) > 0 {
-						tmpNodePath := make([]node, len(nodePath))
-						copy(tmpNodePath, nodePath)
-						newNode := node{
-							tagName:       tagNameStr,
-							classes:       cls,
-							pseudoClasses: pCls,
-						}
-						tmpNodePath = append(tmpNodePath, newNode)
-
-						for attrKey, attrValue := range attrs {
-							lp := locationProps{
-								path:     make([]node, len(tmpNodePath)),
-								examples: []string{attrValue},
-								attr:     attrKey,
-								count:    1,
-							}
-							copy(lp.path, tmpNodePath)
-							locMan = append(locMan, &lp)
-						}
-					}
-					continue
-				}
-			}
-		}
+	a := &Analyzer{
+		Z:          html.NewTokenizer(strings.NewReader(htmlStr)),
+		NrChildren: map[string]int{},
+		ChildNodes: map[string][]node{},
 	}
 
-	locMan = squashLocationManager(locMan, minOcc)
-	locMan = filter(locMan, minOcc, removeStaticFields)
-	locMan.setColors()
-	if err := locMan.findFieldNames(modelName, wordsDir); err != nil {
+	a.Parse()
+	a.LocMan = squashLocationManager(a.LocMan, minOcc)
+	a.LocMan = filter(a.LocMan, minOcc, removeStaticFields)
+	a.LocMan.setColors()
+	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
 		return err
 	}
 
-	if len(locMan) > 0 {
+	if len(a.LocMan) > 0 {
 		if interactive {
-			locMan.selectFieldsTable()
+			a.LocMan.selectFieldsTable()
 		}
-		return locMan.elementsToConfig(s)
+		return a.LocMan.elementsToConfig(s)
 	}
 	return fmt.Errorf("no fields found")
+}
+
+// Analyzer contains all the necessary config parameters and structs needed
+// to analyze the webpage.
+type Analyzer struct {
+	Z          *html.Tokenizer
+	LocMan     locationManager
+	NrChildren map[string]int    // the nr of children a node (represented by a path) has, including non-html-tag nodes (ie text)
+	ChildNodes map[string][]node // the children of the node at the specified nodePath; used for :nth-child() logic
+	NodePath   path
+	Depth      int
+	InBody     bool
+}
+
+func (a *Analyzer) Parse() {
+	// start analyzing the html
+	for keepGoing := true; keepGoing; keepGoing = a.ParseToken(a.Z.Next()) {
+	}
+}
+
+func (a *Analyzer) ParseToken(tt html.TokenType) bool {
+	switch tt {
+	case html.ErrorToken:
+		return false
+
+	case html.TextToken:
+		if !a.InBody {
+			return true
+		}
+
+		text := string(a.Z.Text())
+		p := a.NodePath.string()
+		textTrimmed := strings.TrimSpace(text)
+		if len(textTrimmed) > 0 {
+			ti := a.NrChildren[p]
+			lp := locationProps{
+				path:      make([]node, len(a.NodePath)),
+				examples:  []string{textTrimmed},
+				textIndex: ti,
+				count:     1,
+			}
+			copy(lp.path, a.NodePath)
+			a.LocMan = append(a.LocMan, &lp)
+		}
+		a.NrChildren[p] += 1
+
+	case html.StartTagToken, html.EndTagToken:
+		tn, _ := a.Z.TagName()
+		tagNameStr := string(tn)
+		if tagNameStr == "body" {
+			a.InBody = !a.InBody
+		}
+		if !a.InBody {
+			return true
+		}
+
+		// br can also be self closing tag, see later case statement
+		if tagNameStr == "br" || tagNameStr == "input" {
+			a.NrChildren[a.NodePath.string()] += 1
+			a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr})
+			return true
+		}
+
+		if tt != html.StartTagToken {
+			n := true
+			for n && a.Depth > 0 {
+				if a.NodePath[len(a.NodePath)-1].tagName == tagNameStr {
+					if tagNameStr == "body" {
+						return false
+					}
+					n = false
+				}
+				delete(a.NrChildren, a.NodePath.string())
+				delete(a.ChildNodes, a.NodePath.string())
+				a.NodePath = a.NodePath[:len(a.NodePath)-1]
+				a.Depth--
+			}
+			return true
+		}
+
+		attrs, cls, pCls := getTagMetadata(tagNameStr, a.Z, a.ChildNodes[a.NodePath.string()])
+		a.NrChildren[a.NodePath.string()] += 1
+		a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr, classes: cls})
+
+		newNode := node{
+			tagName:       tagNameStr,
+			classes:       cls,
+			pseudoClasses: pCls,
+		}
+		a.NodePath = append(a.NodePath, newNode)
+		a.Depth++
+		a.ChildNodes[a.NodePath.string()] = []node{}
+
+		for attrKey, attrValue := range attrs {
+			lp := locationProps{
+				path:     make([]node, len(a.NodePath)),
+				examples: []string{attrValue},
+				attr:     attrKey,
+				count:    1,
+			}
+			copy(lp.path, a.NodePath)
+			a.LocMan = append(a.LocMan, &lp)
+		}
+
+	case html.SelfClosingTagToken:
+		if !a.InBody {
+			return true
+		}
+
+		tn, _ := a.Z.TagName()
+		tagNameStr := string(tn)
+		if tagNameStr != "br" && tagNameStr != "input" && tagNameStr != "img" && tagNameStr != "link" {
+			return true
+		}
+
+		attrs, cls, pCls := getTagMetadata(tagNameStr, a.Z, a.ChildNodes[a.NodePath.string()])
+		a.NrChildren[a.NodePath.string()] += 1
+		a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr, classes: cls})
+		if len(attrs) == 0 {
+			return true
+		}
+
+		tmpNodePath := make([]node, len(a.NodePath))
+		copy(tmpNodePath, a.NodePath)
+		newNode := node{
+			tagName:       tagNameStr,
+			classes:       cls,
+			pseudoClasses: pCls,
+		}
+		tmpNodePath = append(tmpNodePath, newNode)
+
+		for attrKey, attrValue := range attrs {
+			lp := locationProps{
+				path:     make([]node, len(tmpNodePath)),
+				examples: []string{attrValue},
+				attr:     attrKey,
+				count:    1,
+			}
+			copy(lp.path, tmpNodePath)
+			a.LocMan = append(a.LocMan, &lp)
+		}
+	}
+	return true
 }
 
 // getTagMetadata, for a given node returns a map of key value pairs (only for the attriutes we're interested in) and
