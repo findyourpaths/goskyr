@@ -120,22 +120,23 @@ func (l locationManager) setColors() {
 }
 
 func (l locationManager) findFieldNames(modelName, wordsDir string) error {
-	if modelName != "" {
-		ll, err := ml.LoadLabler(modelName, wordsDir)
-		if err != nil {
-			return err
-		}
-		for _, e := range l {
-			pred, err := ll.PredictLabel(e.examples...)
-			if err != nil {
-				return err
-			}
-			e.name = pred // TODO: if label has occured already, add index (eg text-1, text-2...)
-		}
-	} else {
+	if modelName == "" {
 		for i, e := range l {
 			e.name = fmt.Sprintf("field-%d", i)
 		}
+		return nil
+	}
+
+	ll, err := ml.LoadLabler(modelName, wordsDir)
+	if err != nil {
+		return err
+	}
+	for _, e := range l {
+		pred, err := ll.PredictLabel(e.examples...)
+		if err != nil {
+			return err
+		}
+		e.name = pred // TODO: if label has occured already, add index (eg text-1, text-2...)
 	}
 	return nil
 }
@@ -444,7 +445,7 @@ func filter(l locationManager, minCount int, removeStaticFields bool) locationMa
 	// or if the examples are all the same (if removeStaticFields is true)
 	i := 0
 	for _, p := range l {
-		// fmt.Printf("%2d of %q\n", p.count, p.path.string())
+		fmt.Printf("%2d of %q\n", p.count, p.path.string())
 		if p.count < minCount {
 			// if p.count != minCount {
 			continue
@@ -474,11 +475,15 @@ func filter(l locationManager, minCount int, removeStaticFields bool) locationMa
 	return l[:i]
 }
 
-func GetDynamicFieldsConfig(s *scraper.Scraper, minOcc int, removeStaticFields bool, modelName, wordsDir string, interactive bool) error {
-	if s.URL == "" {
-		return errors.New("URL field cannot be empty")
+func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStaticFields bool, modelName, wordsDir string, interactive bool) (*scraper.Config, error) {
+	if len(myurl) == 0 {
+		return nil, errors.New("URL field cannot be empty")
 	}
-	s.Name = s.URL
+	s := scraper.Scraper{
+		URL:      myurl,
+		Name:     myurl,
+		RenderJs: renderJs,
+	}
 
 	// log.Printf("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
 	var fetcher fetch.Fetcher
@@ -491,20 +496,20 @@ func GetDynamicFieldsConfig(s *scraper.Scraper, minOcc int, removeStaticFields b
 	}
 	res, err := fetcher.Fetch(s.URL, fetch.FetchOpts{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// A bit hacky. But goquery seems to manipulate the html (I only know of goquery adding tbody tags if missing)
 	// so we rely on goquery to read the html for both scraping AND figuring out the scraping config.
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Now we have to translate the goquery doc back into a string
 	htmlStr, err := goquery.OuterHtml(doc.Children())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	a := &Analyzer{
@@ -514,29 +519,40 @@ func GetDynamicFieldsConfig(s *scraper.Scraper, minOcc int, removeStaticFields b
 	}
 
 	a.Parse()
+	for i, lp := range a.LocMan {
+		fmt.Printf("raw %2d lp.path.string(): %q\n", i, lp.path.string())
+	}
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
+	for i, lp := range a.LocMan {
+		fmt.Printf("squashed %2d lp.path.string(): %q\n", i, lp.path.string())
+	}
 	a.LocMan = filter(a.LocMan, minOcc, removeStaticFields)
-	// for _, lm := range a.LocMan {
-	// fmt.Printf("lm: %#v\n", lm)
-
-	// fmt.Printf("lm.path.string(): %#v\n", lm.path.string())
-	// for i, ex := range lm.examples {
-	// 	fmt.Printf("lm.example %d: %q\n", i, ex)
-	// }
-	// }
-
-	a.LocMan.setColors()
-	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
-		return err
+	for i, lp := range a.LocMan {
+		fmt.Printf("filtered %2d lp.path.string(): %q\n", i, lp.path.string())
 	}
-
-	if len(a.LocMan) > 0 {
-		if interactive {
-			a.LocMan.selectFieldsTable()
+	for _, lm := range a.LocMan {
+		// fmt.Printf("lm: %#v\n", lm)
+		fmt.Printf("lm.path.string(): %#v\n", lm.path.string())
+		for i, ex := range lm.examples {
+			fmt.Printf("lm.example %d: %q\n", i, ex)
 		}
-		return a.LocMan.elementsToConfig(s)
 	}
-	return fmt.Errorf("no fields found")
+
+	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
+		return nil, err
+	}
+	if len(a.LocMan) == 0 {
+		return nil, fmt.Errorf("no fields found")
+	}
+
+	if interactive {
+		a.LocMan.setColors()
+		a.LocMan.selectFieldsTable()
+	}
+	if err := a.LocMan.elementsToConfig(&s); err != nil {
+		return nil, err
+	}
+	return &scraper.Config{Scrapers: []scraper.Scraper{s}}, nil
 }
 
 // Analyzer contains all the necessary config parameters and structs needed
@@ -569,8 +585,8 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 
 		p := a.NodePath.string()
 		text := string(a.Z.Text())
-		textTrimmed := strings.TrimSpace(text)
 		// fmt.Printf("in Analyzer.ParseToken(tt: %s), text: %q\n", tt, text)
+		textTrimmed := strings.TrimSpace(text)
 		if len(textTrimmed) > 0 {
 			lp := makeLocationProps(a.NodePath, textTrimmed)
 			lp.textIndex = a.NrChildren[p]

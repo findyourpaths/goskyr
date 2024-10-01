@@ -293,8 +293,8 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 	for hasNextPage {
 		baseUrl := getBaseURL(pageURL, doc)
 
-		// log.Printf("in Scraper.GetItems(), c.Item: %#v", c.Item)
-		// log.Printf("in Scraper.GetItems(), len(doc.Find(c.Item).Nodes): %d", len(doc.Find(c.Item).Nodes))
+		log.Printf("in Scraper.GetItems(), c.Item: %#v", c.Item)
+		log.Printf("in Scraper.GetItems(), len(doc.Find(c.Item).Nodes): %d", len(doc.Find(c.Item).Nodes))
 		// if len(doc.Find(c.Item).Nodes) == 0 {
 		// 	log.Printf("in Scraper.GetItems(), no items found, shortening selector to find the longest prefix that selects items")
 		// 	itemPath := c.Item

@@ -190,19 +190,10 @@ func main() {
 func GenerateConfig(opts mainOpts) (string, error) {
 	log.Printf("called GenerateConfig: %q", opts.GenerateConfig)
 	slog.Debug("starting to generate config")
-	s := &scraper.Scraper{URL: opts.GenerateConfig}
-	if opts.RenderJs {
-		s.RenderJs = true
-	}
-	slog.Debug(fmt.Sprintf("analyzing url %s", s.URL))
-	err := autoconfig.GetDynamicFieldsConfig(s, opts.M, opts.F, opts.ModelPath, opts.WordsDir, !opts.NonInteractive)
+	slog.Debug(fmt.Sprintf("analyzing url %s", opts.GenerateConfig))
+	c, err := autoconfig.GetDynamicFieldsConfig(opts.GenerateConfig, opts.RenderJs, opts.M, opts.F, opts.ModelPath, opts.WordsDir, !opts.NonInteractive)
 	if err != nil {
 		return "", err
-	}
-	c := scraper.Config{
-		Scrapers: []scraper.Scraper{
-			*s,
-		},
 	}
 	yamlData, err := yaml.Marshal(&c)
 	if err != nil {
