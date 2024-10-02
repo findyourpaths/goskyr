@@ -45,11 +45,12 @@ func TestAutoconfig(t *testing.T) {
 				ConfigLoc:      "",
 			}
 			log.Printf("opts.GenerateConfig: %q", opts.GenerateConfig)
-			actual, err := GenerateConfig(opts)
+			c, err := GenerateConfig(opts)
 
+			actual = c.String()
 			if writeActualTestOutputs {
 				actualPath := "/tmp/" + testname + configSuffix
-				if err := WriteStringFile(actualPath, string(actual)); err != nil {
+				if err := WriteStringFile(actualPath, actual); err != nil {
 					t.Fatalf("failed to write actual test output to %q: %v", actualPath, err)
 				}
 			}

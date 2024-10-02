@@ -16,6 +16,7 @@ require (
 
 require (
 	github.com/antchfx/jsonquery v1.3.5
+	github.com/blend/go-sdk v1.1.1
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
 	github.com/sergi/go-diff v1.3.1

@@ -15,7 +15,6 @@ import (
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/jessevdk/go-flags"
 	"golang.org/x/exp/slog"
-	"gopkg.in/yaml.v3"
 )
 
 type mainOpts struct {
@@ -187,37 +186,23 @@ func main() {
 	writerWg.Wait()
 }
 
-func GenerateConfig(opts mainOpts) (string, error) {
+func GenerateConfig(opts mainOpts) (*scraper.Config, error) {
 	log.Printf("called GenerateConfig: %q", opts.GenerateConfig)
 	slog.Debug("starting to generate config")
 	slog.Debug(fmt.Sprintf("analyzing url %s", opts.GenerateConfig))
 	c, err := autoconfig.GetDynamicFieldsConfig(opts.GenerateConfig, opts.RenderJs, opts.M, opts.F, opts.ModelPath, opts.WordsDir, !opts.NonInteractive)
 	if err != nil {
-		return "", err
-	}
-	yamlData, err := yaml.Marshal(&c)
-	if err != nil {
-		return "", fmt.Errorf("error while marshaling. %v", err)
+		return nil, err
 	}
 
 	if opts.ToStdout {
-		fmt.Println(string(yamlData))
-		return string(yamlData), nil
+		fmt.Println(c.String())
+	}
+	if opts.ConfigLoc != "" {
+		if err := c.Write(opts.ConfigLoc); err != nil {
+			return nil, err
+		}
 	}
 
-	if opts.ConfigLoc == "" {
-		return string(yamlData), nil
-	}
-
-	f, err := os.Create(opts.ConfigLoc)
-	if err != nil {
-		return "", fmt.Errorf("error opening file: %v", err)
-	}
-	defer f.Close()
-	_, err = f.Write(yamlData)
-	if err != nil {
-		return "", fmt.Errorf("error writing to file: %v", err)
-	}
-	slog.Info(fmt.Sprintf("successfully wrote config to file %s", opts.ConfigLoc))
-	return string(yamlData), nil
+	return c, nil
 }

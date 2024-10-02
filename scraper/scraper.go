@@ -44,6 +44,29 @@ type Config struct {
 	Global   GlobalConfig        `yaml:"global,omitempty"`
 }
 
+func (c Config) String() string {
+	yamlData, err := yaml.Marshal(&c)
+	if err != nil {
+		log.Fatalf("error while marshaling config. %v", err)
+	}
+	return string(yamlData)
+}
+
+func (c Config) Write(fpath string) error {
+	f, err := os.Create(fpath)
+	if err != nil {
+		return fmt.Errorf("error opening file at %q: %v", fpath, err)
+	}
+	defer f.Close()
+
+	if _, err = f.WriteString(c.String()); err != nil {
+		return fmt.Errorf("error writing file at %q: %v", fpath, err)
+	}
+
+	slog.Info(fmt.Sprintf("successfully wrote config to file %q", fpath))
+	return nil
+}
+
 func NewConfig(configPath string) (*Config, error) {
 	var config Config
 	fileInfo, err := os.Stat(configPath)

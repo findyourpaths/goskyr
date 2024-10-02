@@ -12,6 +12,7 @@ go_library(
         "//scraper:go_default_library",
         "//utils:go_default_library",
         "@com_github_agnivade_levenshtein//:go_default_library",
+        "@com_github_blend_go_sdk//logger:go_default_library",
         "@com_github_gdamore_tcell_v2//:go_default_library",
         "@com_github_puerkitobio_goquery//:go_default_library",
         "@com_github_rivo_tview//:go_default_library",

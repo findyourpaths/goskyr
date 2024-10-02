@@ -1,6 +1,7 @@
 package autoconfig
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -226,8 +227,7 @@ func (l locationManager) selectFieldsTable() {
 
 // for now we assume that there will only be one date field
 func (l locationManager) processFields(locPropsSel []*locationProps, rootSelector path) []scraper.Field {
-	t := time.Now()
-	zone, _ := t.Zone()
+	zone, _ := time.Now().Zone()
 	zone = strings.Replace(zone, "CEST", "CET", 1) // quick hack for issue #209
 	dateField := scraper.Field{
 		Name:         "date",
@@ -284,17 +284,17 @@ func (l locationManager) processFields(locPropsSel []*locationProps, rootSelecto
 
 func findSharedRootSelector(locPropsSel []*locationProps) path {
 	for i := 0; ; i++ {
-		log.Printf("i: %d", i)
+		// log.Printf("i: %d", i)
 		var n node
 		for j, e := range locPropsSel {
-			log.Printf("  j: %d", j)
-			log.Printf("  len(e.path): %d", len(e.path))
-			log.Printf("  e.path[:i].string(): %#v", e.path[:i].string())
-			log.Printf("  n: %#v", n)
+			// log.Printf("  j: %d", j)
+			// log.Printf("  len(e.path): %d", len(e.path))
+			// log.Printf("  e.path[:i].string(): %#v", e.path[:i].string())
+			// log.Printf("  n: %#v", n)
 			if i >= len(e.path) {
 				return e.path[:i]
 			}
-			log.Printf("  e.path[i]: %#v", e.path[i])
+			// log.Printf("  e.path[i]: %#v", e.path[i])
 			if j == 0 {
 				n = e.path[i]
 			} else {
@@ -436,42 +436,85 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 	return false
 }
 
-func filter(l locationManager, minCount int, removeStaticFields bool) locationManager {
-	// remove if count is smaller than minCount
-	// or if the examples are all the same (if removeStaticFields is true)
-	i := 0
-	for _, p := range l {
-		// fmt.Printf("%2d of %q\n", p.count, p.path.string())
-		if p.count < minCount {
+// remove if count is smaller than minCount
+func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
+	var filtered []*locationProps
+	for _, lp := range lps {
+		if lp.count < minCount {
 			// if p.count != minCount {
 			continue
 		}
+		filtered = append(filtered, lp)
+	}
+	return filtered
+}
 
-		// first reverse the examples list and only take the first x
-		utils.ReverseSlice(p.examples)
-		p.examples = p.examples[:minCount]
+var numStaticFields = 3
+
+// remove if the examples are all the same (if removeStaticFields is true)
+func filterStaticFields(lps []*locationProps, removeStaticFields bool) locationManager {
+	var filtered []*locationProps
+	for _, lp := range lps {
+		// first reverse the examples list and only take the first numStaticFields.
+		utils.ReverseSlice(lp.examples)
+		lp.examples = lp.examples[:numStaticFields]
 		if !removeStaticFields {
-			l[i] = p
-			i++
+			filtered = append(filtered, lp)
 			continue
 		}
 
 		eqEx := true
-		for _, ex := range p.examples {
-			if ex != p.examples[0] {
+		for _, ex := range lp.examples {
+			if ex != lp.examples[0] {
 				eqEx = false
 				break
 			}
 		}
 		if !eqEx {
-			l[i] = p
-			i++
+			filtered = append(filtered, lp)
 		}
 	}
-	return l[:i]
+	return filtered
 }
 
-func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStaticFields bool, modelName, wordsDir string, interactive bool) (*scraper.Config, error) {
+// Go one element beyond the root selector length and find the cluster with the largest number of fields.
+// Filter out all of the other fields.
+func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*locationProps, path) {
+	// log.Printf("filterAllButLargestCluster(lps (%d), rootSelector.string(): %q)", len(lps), rootSelector.string())
+	clusterCounts := map[string]int{}
+	newLen := len(rootSelector) + 1
+	maxCount := 0
+	var maxPath path
+	for _, lp := range lps {
+		// log.Printf("looking at lp with count: %d and path: %q", lp.count, lp.path.string())
+		// check whether we reached the end.
+		if newLen > len(lp.path) {
+			return lps, rootSelector
+		}
+		p := lp.path[0:newLen]
+		pStr := p.string()
+		clusterCounts[pStr] += lp.count
+		if clusterCounts[pStr] > maxCount {
+			maxCount = clusterCounts[pStr]
+			maxPath = p
+		}
+	}
+
+	maxPathStr := maxPath.string()
+	// log.Printf("maxCount: %d", maxCount)
+	// log.Printf("maxPathStr: %q", maxPathStr)
+	var filtered []*locationProps
+	for _, lp := range lps {
+		if lp.path[0:newLen].string() != maxPathStr {
+			continue
+		}
+		filtered = append(filtered, lp)
+	}
+	// log.Printf("filterAllButLargestCluster() returning filtered (%d), maxPath.string(): %q)", len(filtered), maxPath.string())
+	return filtered, maxPath
+}
+
+func GetDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, removeStaticFields bool, modelName, wordsDir string, interactive bool) (*scraper.Config, error) {
 	if len(myurl) == 0 {
 		return nil, errors.New("URL field cannot be empty")
 	}
@@ -522,9 +565,13 @@ func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStati
 	for i, lp := range a.LocMan {
 		fmt.Printf("squashed %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
 	}
-	a.LocMan = filter(a.LocMan, minOcc, removeStaticFields)
+	a.LocMan = filterBelowMinCount(a.LocMan, minOcc)
 	for i, lp := range a.LocMan {
-		fmt.Printf("filtered %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+		fmt.Printf("filtered min count %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+	}
+	a.LocMan = filterStaticFields(a.LocMan, removeStaticFields)
+	for i, lp := range a.LocMan {
+		fmt.Printf("filtered static %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
 	}
 	for _, lm := range a.LocMan {
 		// fmt.Printf("lm: %#v\n", lm)
@@ -558,19 +605,42 @@ func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStati
 	}
 
 	rootSelector := findSharedRootSelector(locPropsSel)
-	log.Printf("in locationManager.GetDynamicFieldsConfig(): root selector: %#v", rootSelector.string())
-	s.Item = shortenRootSelector(rootSelector).string()
-	log.Printf("in locationManager.GetDynamicFieldsConfig(): s.Item: %#v", s.Item)
-	s.Fields = a.LocMan.processFields(locPropsSel, rootSelector)
+	var newRootSelector path
+	var c *scraper.Config
+	for {
+		log.Printf("in locationManager.GetDynamicFieldsConfig(): root selector: %#v", rootSelector.string())
+		s.Item = shortenRootSelector(rootSelector).string()
+		s.Item = rootSelector.string()
+		log.Printf("in locationManager.GetDynamicFieldsConfig(): s.Item: %#v", s.Item)
+		s.Fields = a.LocMan.processFields(locPropsSel, rootSelector)
 
-	c := &scraper.Config{Scrapers: []scraper.Scraper{s}}
-	items, err := c.Scrapers[0].GetItems(&c.Global, true)
-	if err != nil {
-		return nil, err
+		c = &scraper.Config{Scrapers: []scraper.Scraper{s}}
+		items, err := s.GetItems(&c.Global, true)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("autoconfig produced scraper that returns %d items with %d total fields:\n%s", len(items), scraper.TotalFieldsInItems(items), ItemsToString(items))
+		locPropsSel, newRootSelector = filterAllButLargestCluster(locPropsSel, rootSelector)
+		if newRootSelector.string() == rootSelector.string() {
+			break
+		}
+		rootSelector = newRootSelector
 	}
-	log.Printf("autoconfig produced scraper that returns %d items with %d total fields", len(items), scraper.TotalFieldsInItems(items))
+
+	for i, lp := range a.LocMan {
+		fmt.Printf("filtered static %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+	}
 
 	return c, nil
+}
+
+func ItemsToString(items []map[string]interface{}) string {
+	content, err := json.MarshalIndent(items, "", "  ")
+	if err != nil {
+		fmt.Printf("error while writing items: %v", err)
+		return ""
+	}
+	return string(content)
 }
 
 // Analyzer contains all the necessary config parameters and structs needed
