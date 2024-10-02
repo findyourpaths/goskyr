@@ -3,6 +3,7 @@ package autoconfig
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -223,21 +224,8 @@ func (l locationManager) selectFieldsTable() {
 	}
 }
 
-func (l locationManager) elementsToConfig(s *scraper.Scraper) error {
-	var locPropsSel []*locationProps
-	for _, lm := range l {
-		// if lm.selected {
-		locPropsSel = append(locPropsSel, lm)
-		// }
-	}
-	if len(locPropsSel) == 0 {
-		return fmt.Errorf("no fields selected")
-	}
-
-	rootSelector := findSharedRootSelector(locPropsSel)
-	s.Item = shortenRootSelector(rootSelector).string()
-
-	// for now we assume that there will only be one date field
+// for now we assume that there will only be one date field
+func (l locationManager) processFields(locPropsSel []*locationProps, rootSelector path) []scraper.Field {
 	t := time.Now()
 	zone, _ := t.Zone()
 	zone = strings.Replace(zone, "CEST", "CET", 1) // quick hack for issue #209
@@ -246,6 +234,7 @@ func (l locationManager) elementsToConfig(s *scraper.Scraper) error {
 		Type:         "date",
 		DateLocation: zone,
 	}
+	fields := []scraper.Field{}
 
 	for _, e := range locPropsSel {
 		loc := scraper.ElementLocation{
@@ -284,25 +273,32 @@ func (l locationManager) elementsToConfig(s *scraper.Scraper) error {
 			ElementLocations: []scraper.ElementLocation{loc},
 			CanBeEmpty:       true,
 		}
-		s.Fields = append(s.Fields, d)
+		fields = append(fields, d)
 	}
 
 	if len(dateField.Components) > 0 {
-		s.Fields = append(s.Fields, dateField)
+		fields = append(fields, dateField)
 	}
-	return nil
+	return fields
 }
 
 func findSharedRootSelector(locPropsSel []*locationProps) path {
 	for i := 0; ; i++ {
+		log.Printf("i: %d", i)
 		var n node
 		for j, e := range locPropsSel {
+			log.Printf("  j: %d", j)
+			log.Printf("  len(e.path): %d", len(e.path))
+			log.Printf("  e.path[:i].string(): %#v", e.path[:i].string())
+			log.Printf("  n: %#v", n)
 			if i >= len(e.path) {
 				return e.path[:i]
 			}
+			log.Printf("  e.path[i]: %#v", e.path[i])
 			if j == 0 {
 				n = e.path[i]
 			} else {
+				// Look for divergence and if found, return what we have so far.
 				if !n.equals(e.path[i]) {
 					return e.path[:i]
 				}
@@ -445,7 +441,7 @@ func filter(l locationManager, minCount int, removeStaticFields bool) locationMa
 	// or if the examples are all the same (if removeStaticFields is true)
 	i := 0
 	for _, p := range l {
-		fmt.Printf("%2d of %q\n", p.count, p.path.string())
+		// fmt.Printf("%2d of %q\n", p.count, p.path.string())
 		if p.count < minCount {
 			// if p.count != minCount {
 			continue
@@ -520,15 +516,15 @@ func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStati
 
 	a.Parse()
 	for i, lp := range a.LocMan {
-		fmt.Printf("raw %2d lp.path.string(): %q\n", i, lp.path.string())
+		fmt.Printf("raw %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
 	}
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
 	for i, lp := range a.LocMan {
-		fmt.Printf("squashed %2d lp.path.string(): %q\n", i, lp.path.string())
+		fmt.Printf("squashed %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
 	}
 	a.LocMan = filter(a.LocMan, minOcc, removeStaticFields)
 	for i, lp := range a.LocMan {
-		fmt.Printf("filtered %2d lp.path.string(): %q\n", i, lp.path.string())
+		fmt.Printf("filtered %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
 	}
 	for _, lm := range a.LocMan {
 		// fmt.Printf("lm: %#v\n", lm)
@@ -545,14 +541,36 @@ func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStati
 		return nil, fmt.Errorf("no fields found")
 	}
 
+	var locPropsSel []*locationProps
 	if interactive {
 		a.LocMan.setColors()
 		a.LocMan.selectFieldsTable()
+		for _, lm := range a.LocMan {
+			if lm.selected {
+				locPropsSel = append(locPropsSel, lm)
+			}
+		}
+	} else {
+		locPropsSel = a.LocMan
 	}
-	if err := a.LocMan.elementsToConfig(&s); err != nil {
+	if len(locPropsSel) == 0 {
+		return nil, fmt.Errorf("no fields selected")
+	}
+
+	rootSelector := findSharedRootSelector(locPropsSel)
+	log.Printf("in locationManager.GetDynamicFieldsConfig(): root selector: %#v", rootSelector.string())
+	s.Item = shortenRootSelector(rootSelector).string()
+	log.Printf("in locationManager.GetDynamicFieldsConfig(): s.Item: %#v", s.Item)
+	s.Fields = a.LocMan.processFields(locPropsSel, rootSelector)
+
+	c := &scraper.Config{Scrapers: []scraper.Scraper{s}}
+	items, err := c.Scrapers[0].GetItems(&c.Global, true)
+	if err != nil {
 		return nil, err
 	}
-	return &scraper.Config{Scrapers: []scraper.Scraper{s}}, nil
+	log.Printf("autoconfig produced scraper that returns %d items with %d total fields", len(items), scraper.TotalFieldsInItems(items))
+
+	return c, nil
 }
 
 // Analyzer contains all the necessary config parameters and structs needed

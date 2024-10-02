@@ -332,7 +332,20 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 	c.guessYear(items, time.Now())
 
 	// log.Printf("Scraper.GetItems() returning")
+	log.Printf("Scraper.GetItems() returning %d items with %d total fields", len(items), TotalFieldsInItems(items))
 	return items, nil
+}
+
+func TotalFieldsInItems(items []map[string]interface{}) int {
+	numFields := 0
+	for _, item := range items {
+		for _, v := range item {
+			if v != nil && v != "" {
+				numFields++
+			}
+		}
+	}
+	return numFields
 }
 
 // GetItem fetches and returns an items from a website according to the
