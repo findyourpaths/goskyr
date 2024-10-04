@@ -29,8 +29,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var debug = false
-
 // GlobalConfig is used for storing global configuration parameters that
 // are needed across all scrapers
 type GlobalConfig struct {
@@ -298,11 +296,11 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 		}
 	}
 
-	var items output.ItemMaps
+	items := output.ItemMaps{}
 
 	scrLogger.Debug("initializing filters")
 	if err := c.initializeFilters(); err != nil {
-		return items, err
+		return nil, err
 	}
 
 	hasNextPage := true
@@ -312,7 +310,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 	hasNextPage, pageURL, doc, err := c.fetchPage(nil, currentPage, c.URL, globalConfig.UserAgent, c.Interaction)
 	if err != nil {
 		// slog.Debug("pageURL: %q", pageURL)
-		return items, fmt.Errorf("failed to fetch next page: %w", err)
+		return nil, fmt.Errorf("failed to fetch next page: %w", err)
 	}
 
 	for hasNextPage {
@@ -350,7 +348,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 		currentPage++
 		hasNextPage, pageURL, doc, err = c.fetchPage(doc, currentPage, pageURL, globalConfig.UserAgent, nil)
 		if err != nil {
-			return items, fmt.Errorf("failed to fetch next page: %w", err)
+			return nil, fmt.Errorf("failed to fetch next page: %w", err)
 		}
 	}
 
@@ -372,7 +370,7 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (out
 	// }
 	// slog.Debug("in Scraper.GetItems(), c.Item match %d", i)
 	// slog.Debug("in Scraper.GetItems(), c.Item matched, and c.Fields: %#v", c.Fields)
-	currentItem := make(output.ItemMap)
+	currentItem := output.ItemMap{}
 	for _, f := range c.Fields {
 		// slog.Debug("in Scraper.GetItems(), looking at field: %#v", f)
 		if f.Value != "" {
@@ -619,30 +617,33 @@ func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Docu
 		return nil, err
 	}
 
-	// in debug mode we want to write all the html's to files
-	if config.Debug {
-		u, _ := url.Parse(urlStr)
-		r, err := utils.RandomString(u.Host)
-		if err != nil {
-			return nil, err
-		}
-		filename := fmt.Sprintf("/tmp/%s.html", r)
-		slog.Debug(fmt.Sprintf("writing html to file %s", filename), slog.String("url", urlStr))
-		htmlStr, err := goquery.OuterHtml(doc.Children())
-		if err != nil {
-			return nil, fmt.Errorf("failed to write html file: %v", err)
-		}
-
-		f, err := os.Create(filename)
-		if err != nil {
-			return nil, fmt.Errorf("failed to write html file: %v", err)
-		}
-		defer f.Close()
-		_, err = f.WriteString(htmlStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to write html file: %v", err)
-		}
+	if !config.Debug {
+		return doc, nil
 	}
+
+	// In debug mode we want to write all the htmls to files.
+	u, _ := url.Parse(urlStr)
+	r, err := utils.RandomString(u.Host)
+	if err != nil {
+		return nil, err
+	}
+	filename := fmt.Sprintf("/tmp/%s.html", r)
+	slog.Debug(fmt.Sprintf("writing html to file %s", filename), slog.String("url", urlStr))
+	htmlStr, err := goquery.OuterHtml(doc.Children())
+	if err != nil {
+		return nil, fmt.Errorf("failed to write html file: %v", err)
+	}
+
+	f, err := os.Create(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write html file: %v", err)
+	}
+	defer f.Close()
+	_, err = f.WriteString(htmlStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write html file: %v", err)
+	}
+
 	return doc, nil
 }
 

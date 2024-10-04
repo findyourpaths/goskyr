@@ -1,0 +1,51 @@
+scrapers:
+    - name: file://testdata/enneagram/spirit_rock_org.html
+      url: file://testdata/enneagram/spirit_rock_org.html
+      item: body > div > div > div > article.hentry.page.post-1053.status-publish.type-page > div.entry-content > div.et-boc > div.et_builder_inner_content.et_pb_gutters3 > div.et_pb_section.et_pb_section_1.et_pb_with_background.et_section_regular > div.et_pb_row.et_pb_row_0 > div.et-last-child.et_pb_column.et_pb_column_0.et_pb_column_4_4.et_pb_css_mix_blend_mode_passthrough > div.et_pb_bg_layout_light.et_pb_module.et_pb_text.et_pb_text_0.et_pb_text_align_left > div.et_pb_text_inner > div.ajde_evcal_calendar.evoEL > div.eventon_events_list.sepmonths > div.sep_month_events > div.event.eventon_list_event.evo_eventtop
+      fields:
+        - name: field-0
+          type: text
+          location:
+            - selector: p.desc_trig_outter > a.desc_trig.evcal_list_a > span.evcal_desc.evo_info.hide_eventtopdata > span.evcal_desc3 > span.event-flags > span.flag-style
+          can_be_empty: true
+        - name: field-1
+          type: text
+          location:
+            - selector: p.desc_trig_outter > a.desc_trig.evcal_list_a > span.evcal_desc.evo_info.hide_eventtopdata > span.evcal_desc3 > span > em
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - selector: p.desc_trig_outter > a.desc_trig.evcal_list_a > span.evcal_desc.evo_info.hide_eventtopdata > span.evcal_desc_info > em.evcal_location > em.event_location_name
+          can_be_empty: true
+        - name: field-3
+          type: text
+          location:
+            - selector: p.desc_trig_outter > a.desc_trig.evcal_list_a > span.evcal_desc.evo_info.hide_eventtopdata > span.evcal_desc2.evcal_event_title
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: p.desc_trig_outter > a.desc_trig.evcal_list_a > span.evcal_cblock > span.evo_start > em.month
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: p.desc_trig_outter > a.desc_trig.evcal_list_a > span.evcal_cblock > span.evo_start > em.date
+          can_be_empty: true
+        - name: field-6
+          type: text
+          location:
+            - selector: div.evo_event_schema > script
+          can_be_empty: true
+        - name: field-7
+          type: text
+          location:
+            - selector: div.evo_event_schema > span
+          can_be_empty: true
+        - name: field-8
+          type: url
+          location:
+            - selector: div.evo_event_schema > a
+              attr: href
+          can_be_empty: true

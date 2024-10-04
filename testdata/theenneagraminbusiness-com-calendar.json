@@ -1,0 +1,11 @@
+[
+  {
+    "field-0": "(function(d, s, id) {\n  var js, fjs = d.getElementsByTagName(s)[0];\n  if (d.getElementById(id)) return;\n  js = d.createElement(s); js.id = id;\n  js.src = \"//connect.facebook.net/en_US/all.js#xfbml=1\u0026amp;appId=222664301147991\";\n  fjs.parentNode.insertBefore(js, fjs);\n}(document, 'script', 'facebook-jssdk'));",
+    "field-1": "may 2023",
+    "field-2": "https://evolution.team/enneagram-community-office-hours",
+    "field-3": "https://shared.outlook.inky.com/link?domain=evolution.team\u0026t=h.eJx1jcsOgyAURH_FsK7yErGu_BXUqxAFGh41TdN_r2y663IyM-e8UQ4HGiqkU3rEAWN4-iMn412TQFkMzoHagrL17K3NzqRX7dfVzFBrn0NEtwrt5e8g-bAJ0VEqKN5OcGPS8LsbN-VoHMTYXCDM-lm0QClXQKQgV7qvQhHBSEvltHBMu04KyTgjTc-LBIpE2QnCeHlP7Q8oNJVOH_bCLKOljP7Uny9nv03b.MEUCIQDklIHhLfOsyJYdiWTEtmRC6NSwSxbL1tFjVb_zUS-aIwIgfeaoMCV_7XtusNIrZ-XUJZd4Vjwi42crjv-D5_vceSo",
+    "field-4": "Join our community of Enneagram aficionados at our",
+    "field-5": "Training",
+    "field-6": "https://theenneagraminbusiness.com/professional-services/training/"
+  }
+]

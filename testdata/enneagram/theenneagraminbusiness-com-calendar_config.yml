@@ -1,0 +1,21 @@
+scrapers:
+    - name: file://testdata/enneagram/theenneagraminbusiness-com-calendar.html
+      url: file://testdata/enneagram/theenneagraminbusiness-com-calendar.html
+      item: body > div > div > div.col-full > div > section > article.hentry.page.post-547.status-publish.type-page > section.entry > div.ajde_evcal_calendar.list_cal.ul > div.evcal_list_month.eventon_events_list
+      fields:
+        - name: field-2
+          type: text
+          location:
+            - selector: div.event.eventon_list_event.evo_eventtop > div.evcal_eventcard.event_description > div.bordb.evcal_evdata_row.evcal_event_details.evo_metarow_details.evorow > div.evcal_evdata_cell > div.eventon_full_description > div.eventon_desc_in > p > a
+          can_be_empty: true
+        - name: field-3
+          type: url
+          location:
+            - selector: div.event.eventon_list_event.evo_eventtop > div.evcal_eventcard.event_description > div.bordb.evcal_evdata_row.evcal_event_details.evo_metarow_details.evorow > div.evcal_evdata_cell > div.eventon_full_description > div.eventon_desc_in > p > a
+              attr: href
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: div.event.eventon_list_event.evo_eventtop > div.evcal_eventcard.event_description > div.bordb.evcal_evdata_row.evcal_event_details.evo_metarow_details.evorow > div.evcal_evdata_cell > div.eventon_full_description > div.eventon_desc_in > p
+          can_be_empty: true

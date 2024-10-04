@@ -1,0 +1,76 @@
+scrapers:
+    - name: file://testdata/chicago/https-www-subt-net.html
+      url: file://testdata/chicago/https-www-subt-net.html
+      item: body > div.site > div.site-content > div.content-area > main.site-main > article.hentry.page.post-49.status-publish.type-page > div.entry-content > div.is-layout-flow.wp-block-group.wp-block-group-is-layout-flow > div > ul.display-flex.grid-container.seetickets-list-events > li.display-flex.grid-item.mb-12.mdc-card.mdc-card.mdc-card--outlined.mt-12.seetickets-list-event-container
+      fields:
+        - name: field-0
+          type: url
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.buy-and-share-block > a.fs-12.seetickets-buy-btn
+              attr: href
+          can_be_empty: true
+        - name: field-1
+          type: url
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.buy-and-share-block > div.align-center.display-flex.mb-12.seetickets-social-media-container > a.seetickets-social-share:nth-child(3)
+              attr: href
+          can_be_empty: true
+        - name: field-2
+          type: url
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.buy-and-share-block > div.align-center.display-flex.mb-12.seetickets-social-media-container > a.seetickets-social-share
+              attr: href
+          can_be_empty: true
+        - name: field-3
+          type: text
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.event-info-block > p.fs-12
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.event-info-block > p.fs-12.prices-age > span.price
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.event-info-block > p.fs-12.prices-age > span.ages
+          can_be_empty: true
+        - name: field-6
+          type: text
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.event-info-block > p.doortime-showtime.fs-12 > span.event-time
+          can_be_empty: true
+        - name: field-7
+          type: text
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.event-info-block > p.doortime-showtime.fs-12 > span.door-time
+          can_be_empty: true
+        - name: field-8
+          type: text
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.event-info-block > p.bold.event-date.fs-18.mt-1r
+          can_be_empty: true
+        - name: field-9
+          type: text
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.event-info-block > p.bold.event-title.fs-18.mb-12 > a
+          can_be_empty: true
+        - name: field-10
+          type: url
+          location:
+            - selector: div.display-flex.seetickets-list-event-content-container > div.event-info-block > p.bold.event-title.fs-18.mb-12 > a
+              attr: href
+          can_be_empty: true
+        - name: field-11
+          type: url
+          location:
+            - selector: div.display-flex.seetickets-list-view-event-image-container > a > img.seetickets-list-view-event-image
+              attr: src
+          can_be_empty: true
+        - name: field-12
+          type: url
+          location:
+            - selector: div.display-flex.seetickets-list-view-event-image-container > a
+              attr: href
+          can_be_empty: true

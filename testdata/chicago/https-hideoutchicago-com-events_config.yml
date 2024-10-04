@@ -1,0 +1,49 @@
+scrapers:
+  - name: Hideout
+    url: file://testdata/chicago/https-hideoutchicago-com-events.html
+    item: div.eventWrapper
+    fields:
+      - name: location
+        value: The Hideout
+      - name: city
+        value: Chicago
+      - name: "type"
+        value: "concert"
+      - name: "sourceUrl"
+        value: "https://hideoutchicago.com/events/"
+      - name: url
+        type: url
+        location:
+          selector: a.url
+          attr: href
+      - name: title
+        type: text
+        location:
+          selector: a.url
+          attr: title
+      - name: comment
+        type: text
+        location:
+          selector: div.singleEventDescription
+          entire_subtree: true
+          max_length: 200
+        on_subpage: url
+      - name: date
+        type: date
+        components:
+          - covers:
+              day: true
+              month: true
+              year: true
+            location:
+              selector: div.singleEventDate
+            layout: ["Mon, Jan 2, 2006", "Mon, January 2, 2006"]
+          - covers:
+              time: true
+            location:
+              selector: div.eventDoorStartDate
+              entire_subtree: true
+              regex_extract:
+                exp: "Show: [0-9:]+pm"
+            layout: ["Show: 3pm", "Show: 3:04pm"]
+        date_location: America/Chicago

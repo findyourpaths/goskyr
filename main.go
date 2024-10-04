@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"sync"
 
 	"github.com/findyourpaths/goskyr/autoconfig"
@@ -17,8 +18,8 @@ import (
 )
 
 type mainOpts struct {
-	F             bool   `short:"f" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
-	M             int    `short:"m" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	Varying       bool   `short:"f" long:"varying" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
+	Min           int    `short:"m" long:"min" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
 	SingleScraper string `short:"s" description:"The name of the scraper to be run."`
 	ToStdout      bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
 	// NoFile          bool   `long:"nofile" description:"If set to false the scraped data will be written to a file despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to a file."`
@@ -32,7 +33,7 @@ type mainOpts struct {
 	BuildModel      string `short:"t" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
 	DebugFlag       bool   `long:"debug" description:"Prints debug logs and writes scraped html's to files."`
 	ModelPath       string `long:"model" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
-	RenderJs        bool   `short:"r" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
+	RenderJs        bool   `short:"r" long:"renderjs" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
 	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
 }
 
@@ -89,7 +90,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	if opts.GenerateConfig != "" {
-		if _, err := GenerateConfig(opts); err != nil {
+		if _, err := GenerateConfigs(opts); err != nil {
 			slog.Error(err.Error())
 			os.Exit(1)
 		}
@@ -185,22 +186,27 @@ func main() {
 	writerWg.Wait()
 }
 
-func GenerateConfig(opts mainOpts) (*scraper.Config, error) {
+func GenerateConfigs(opts mainOpts) ([]*scraper.Config, error) {
 	slog.Debug("starting to generate config")
 	slog.Debug("analyzing", "url", opts.GenerateConfig)
-	c, err := autoconfig.GetDynamicFieldsConfig(opts.GenerateConfig, opts.RenderJs, opts.M, opts.F, opts.ModelPath, opts.WordsDir, !opts.NonInteractive)
+	cs, ims, err := autoconfig.NewDynamicFieldsConfigs(opts.GenerateConfig, opts.RenderJs, opts.Min, opts.Varying, opts.ModelPath, opts.WordsDir, !opts.NonInteractive)
 	if err != nil {
 		return nil, err
 	}
 
-	if opts.ToStdout {
-		fmt.Println(c.String())
-	}
-	if opts.ConfigLoc != "" {
-		if err := c.Write(opts.ConfigLoc); err != nil {
-			return nil, err
+	for i, c := range cs {
+		if opts.ToStdout {
+			fmt.Println(c.String())
+		}
+		if opts.ConfigLoc != "" {
+			if err := c.Write(opts.ConfigLoc + "_" + strconv.Itoa(i)); err != nil {
+				return nil, err
+			}
+			if err := ims[i].Write(opts.ConfigLoc + "_items-" + strconv.Itoa(i)); err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	return c, nil
+	return cs, nil
 }

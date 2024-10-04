@@ -14,14 +14,13 @@ import (
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/ml"
+	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"golang.org/x/net/html"
 )
-
-var debug = false
 
 // A node is our representation of a node in an html tree
 type node struct {
@@ -450,32 +449,22 @@ func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
 	return filtered
 }
 
-var numStaticFields = 3
-
-// remove if the examples are all the same (if removeStaticFields is true)
-func filterStaticFields(lps []*locationProps, removeStaticFields bool) locationManager {
-	var filtered []*locationProps
+// remove if the examples are all the same (if onlyVarying is true)
+func filterStaticFields(lps []*locationProps) locationManager {
+	var kept []*locationProps
 	for _, lp := range lps {
-		// first reverse the examples list and only take the first numStaticFields.
-		utils.ReverseSlice(lp.examples)
-		lp.examples = lp.examples[:numStaticFields]
-		if !removeStaticFields {
-			filtered = append(filtered, lp)
-			continue
-		}
-
-		eqEx := true
+		varied := false
 		for _, ex := range lp.examples {
 			if ex != lp.examples[0] {
-				eqEx = false
+				varied = true
 				break
 			}
 		}
-		if !eqEx {
-			filtered = append(filtered, lp)
+		if varied {
+			kept = append(kept, lp)
 		}
 	}
-	return filtered
+	return kept
 }
 
 // Go one element beyond the root selector length and find the cluster with the largest number of fields.
@@ -515,9 +504,9 @@ func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*loc
 	return filtered, maxPath
 }
 
-func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStaticFields bool, modelName, wordsDir string, interactive bool) (*scraper.Config, error) {
+func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, interactive bool) ([]*scraper.Config, []output.ItemMaps, error) {
 	if len(myurl) == 0 {
-		return nil, errors.New("URL field cannot be empty")
+		return nil, nil, errors.New("URL field cannot be empty")
 	}
 	s := scraper.Scraper{
 		URL:      myurl,
@@ -536,20 +525,20 @@ func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStati
 	}
 	res, err := fetcher.Fetch(s.URL, fetch.FetchOpts{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// A bit hacky. But goquery seems to manipulate the html (I only know of goquery adding tbody tags if missing)
 	// so we rely on goquery to read the html for both scraping AND figuring out the scraping config.
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Now we have to translate the goquery doc back into a string
 	htmlStr, err := goquery.OuterHtml(doc.Children())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	a := &Analyzer{
@@ -576,7 +565,9 @@ func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStati
 			fmt.Printf("filtered min count %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
 		}
 	}
-	a.LocMan = filterStaticFields(a.LocMan, removeStaticFields)
+	if onlyVarying {
+		a.LocMan = filterStaticFields(a.LocMan)
+	}
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		for i, lp := range a.LocMan {
 			fmt.Printf("filtered static %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
@@ -591,10 +582,10 @@ func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStati
 	}
 
 	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(a.LocMan) == 0 {
-		return nil, fmt.Errorf("no fields found")
+		return nil, nil, fmt.Errorf("no fields found")
 	}
 
 	var locPropsSel []*locationProps
@@ -610,41 +601,44 @@ func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStati
 		locPropsSel = a.LocMan
 	}
 	if len(locPropsSel) == 0 {
-		return nil, fmt.Errorf("no fields selected")
+		return nil, nil, fmt.Errorf("no fields selected")
 	}
 
 	rootSelector := findSharedRootSelector(locPropsSel)
 	var newRootSelector path
-	var c *scraper.Config
+	var cs []*scraper.Config
+	var ims []output.ItemMaps
 
-	//for {
-	slog.Debug("in locationManager.GetDynamicFieldsConfig()", "root selector", rootSelector)
-	s.Item = shortenRootSelector(rootSelector).string()
-	s.Item = rootSelector.string()
-	slog.Debug("in locationManager.GetDynamicFieldsConfig()", "s.Item", s.Item)
-	s.Fields = a.LocMan.processFields(locPropsSel, rootSelector)
+	for {
+		slog.Debug("in locationManager.GetDynamicFieldsConfig()", "root selector", rootSelector)
+		s.Item = shortenRootSelector(rootSelector).string()
+		s.Item = rootSelector.string()
+		slog.Debug("in locationManager.GetDynamicFieldsConfig()", "s.Item", s.Item)
+		s.Fields = a.LocMan.processFields(locPropsSel, rootSelector)
 
-	c = &scraper.Config{Scrapers: []scraper.Scraper{s}}
-	items, err := s.GetItems(&c.Global, true)
-	if err != nil {
-		return nil, err
+		c := &scraper.Config{Scrapers: []scraper.Scraper{s}}
+		items, err := s.GetItems(&c.Global, true)
+		if err != nil {
+			return nil, nil, err
+		}
+		slog.Debug("autoconfig produced scraper returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
+		if slog.Default().Enabled(nil, slog.LevelDebug) {
+			fmt.Printf(items.String())
+		}
+		cs = append(cs, c)
+		ims = append(ims, items)
+		locPropsSel, newRootSelector = filterAllButLargestCluster(locPropsSel, rootSelector)
+		if newRootSelector.string() == rootSelector.string() {
+			break
+		}
+		rootSelector = newRootSelector
 	}
-	slog.Debug("autoconfig produced scraper returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		fmt.Printf(items.String())
-	}
-	locPropsSel, newRootSelector = filterAllButLargestCluster(locPropsSel, rootSelector)
-	// if newRootSelector.string() == rootSelector.string() {
-	// 	break
-	// }
-	rootSelector = newRootSelector
-	//	}
 
 	for i, lp := range a.LocMan {
 		slog.Debug("filtered static of lp.path.string()", "i", i, "lp.count", lp.count, "lp.path", lp.path)
 	}
 
-	return c, nil
+	return cs, ims, nil
 }
 
 // Analyzer contains all the necessary config parameters and structs needed

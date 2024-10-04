@@ -1,0 +1,54 @@
+scrapers:
+    - name: file://testdata/chicago/https-www-sleeping-village-com-events.html
+      url: file://testdata/chicago/https-www-sleeping-village-com-events.html
+      item: body > div.body.page.page-events.page-id-4920.page-template.page-template-.page-template-listings.page-template-pages.page-template-templates.page-template-templatespageslistings-php > div > div.siteWrap > div > div.maxWidth > div.listings-block > div.listings-block__inner > div.listings-block-list.listings-block-list--row > div.listings-block-list__wrapper > div.listings-block-list__listing
+      fields:
+        - name: field-2
+          type: text
+          location:
+            - selector: div.listings__buttons > div.listings-buttonWrap > a.plotButton
+          can_be_empty: true
+        - name: field-3
+          type: url
+          location:
+            - selector: div.listings__buttons > div.listings-buttonWrap > a.plotButton
+              attr: href
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: div.listing__details > div.listing__description > p
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: div.listing__details > p.listing-date-time.listingMeta.meta > span.listing-date-time__date > span
+          can_be_empty: true
+        - name: field-6
+          type: text
+          location:
+            - selector: div.listing__details > p.listing-date-time.listingMeta.meta > span
+          can_be_empty: true
+        - name: field-7
+          type: text
+          location:
+            - selector: div.listing__details > a.listing__title-link > div.listing__title > h3
+          can_be_empty: true
+        - name: field-8
+          type: url
+          location:
+            - selector: div.listing__details > a.listing__title-link
+              attr: href
+          can_be_empty: true
+        - name: field-9
+          type: url
+          location:
+            - selector: div.listing__image-wrapper.plotHasHoverEffect > div.listing__image > a > img
+              attr: src
+          can_be_empty: true
+        - name: field-10
+          type: url
+          location:
+            - selector: div.listing__image-wrapper.plotHasHoverEffect > div.listing__image > a
+              attr: href
+          can_be_empty: true

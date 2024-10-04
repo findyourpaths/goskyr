@@ -1,0 +1,53 @@
+scrapers:
+    - name: http://www.emptybottle.com
+      url: http://www.emptybottle.com
+      item: body > div.Site.loaded > div.Site-inner.Site-inner--index > div.Content-outer > main.Index > section.Index-page > div.Index-page-content > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.row.sqs-row > div.col.span-9.sqs-col-9 > div.code-block.sqs-block.sqs-block-code > div.sqs-block-content > div.empty-bottle > div.eb-item
+      fields:
+        - name: field-1
+          type: text
+          location:
+            - selector: div.content-back > div.item-description
+              child_index: 3
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - selector: div.content-back > div.item-description
+          can_be_empty: true
+        - name: field-3
+          type: url
+          location:
+            - selector: div.content-front > div.buttons-outer > a.buy-button
+              attr: href
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: div.content-front > div.show-details > div.title
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: div.content-front > div.show-details > ul.performing > li
+          can_be_empty: true
+        - name: field-6
+          type: text
+          location:
+            - selector: div.content-front > div.show-details > div.date-time-outer > div.start-time
+          can_be_empty: true
+        - name: field-7
+          type: text
+          location:
+            - selector: div.content-front > div.show-details > div.date-time-outer > div.date
+          can_be_empty: true
+        - name: field-8
+          type: text
+          location:
+            - selector: div.content-front > div.show-details > ul.performing > li:nth-child(2)
+          can_be_empty: true
+        - name: field-9
+          type: text
+          location:
+            - selector: div.content-front > div.show-details > ul.performing > li:nth-child(3)
+          can_be_empty: true
+      render_js: true
