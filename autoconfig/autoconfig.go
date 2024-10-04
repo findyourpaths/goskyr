@@ -1,10 +1,9 @@
 package autoconfig
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +20,8 @@ import (
 	"github.com/rivo/tview"
 	"golang.org/x/net/html"
 )
+
+var debug = false
 
 // A node is our representation of a node in an html tree
 type node struct {
@@ -284,17 +285,17 @@ func (l locationManager) processFields(locPropsSel []*locationProps, rootSelecto
 
 func findSharedRootSelector(locPropsSel []*locationProps) path {
 	for i := 0; ; i++ {
-		// log.Printf("i: %d", i)
+		// slog.Debug("i: %d", i)
 		var n node
 		for j, e := range locPropsSel {
-			// log.Printf("  j: %d", j)
-			// log.Printf("  len(e.path): %d", len(e.path))
-			// log.Printf("  e.path[:i].string(): %#v", e.path[:i].string())
-			// log.Printf("  n: %#v", n)
+			// slog.Debug("  j: %d", j)
+			// slog.Debug("  len(e.path): %d", len(e.path))
+			// slog.Debug("  e.path[:i].string(): %#v", e.path[:i].string())
+			// slog.Debug("  n: %#v", n)
 			if i >= len(e.path) {
 				return e.path[:i]
 			}
-			// log.Printf("  e.path[i]: %#v", e.path[i])
+			// slog.Debug("  e.path[i]: %#v", e.path[i])
 			if j == 0 {
 				n = e.path[i]
 			} else {
@@ -480,13 +481,13 @@ func filterStaticFields(lps []*locationProps, removeStaticFields bool) locationM
 // Go one element beyond the root selector length and find the cluster with the largest number of fields.
 // Filter out all of the other fields.
 func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*locationProps, path) {
-	// log.Printf("filterAllButLargestCluster(lps (%d), rootSelector.string(): %q)", len(lps), rootSelector.string())
+	// slog.Debug("filterAllButLargestCluster(lps (%d), rootSelector.string(): %q)", len(lps), rootSelector.string())
 	clusterCounts := map[string]int{}
 	newLen := len(rootSelector) + 1
 	maxCount := 0
 	var maxPath path
 	for _, lp := range lps {
-		// log.Printf("looking at lp with count: %d and path: %q", lp.count, lp.path.string())
+		// slog.Debug("looking at lp with count: %d and path: %q", lp.count, lp.path.string())
 		// check whether we reached the end.
 		if newLen > len(lp.path) {
 			return lps, rootSelector
@@ -501,8 +502,8 @@ func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*loc
 	}
 
 	maxPathStr := maxPath.string()
-	// log.Printf("maxCount: %d", maxCount)
-	// log.Printf("maxPathStr: %q", maxPathStr)
+	// slog.Debug("maxCount: %d", maxCount)
+	// slog.Debug("maxPathStr: %q", maxPathStr)
 	var filtered []*locationProps
 	for _, lp := range lps {
 		if lp.path[0:newLen].string() != maxPathStr {
@@ -510,11 +511,11 @@ func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*loc
 		}
 		filtered = append(filtered, lp)
 	}
-	// log.Printf("filterAllButLargestCluster() returning filtered (%d), maxPath.string(): %q)", len(filtered), maxPath.string())
+	// slog.Debug("filterAllButLargestCluster() returning filtered (%d), maxPath.string(): %q)", len(filtered), maxPath.string())
 	return filtered, maxPath
 }
 
-func GetDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, removeStaticFields bool, modelName, wordsDir string, interactive bool) (*scraper.Config, error) {
+func GetDynamicFieldsConfig(myurl string, renderJs bool, minOcc int, removeStaticFields bool, modelName, wordsDir string, interactive bool) (*scraper.Config, error) {
 	if len(myurl) == 0 {
 		return nil, errors.New("URL field cannot be empty")
 	}
@@ -524,7 +525,7 @@ func GetDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, removeStat
 		RenderJs: renderJs,
 	}
 
-	// log.Printf("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
+	// slog.Debug("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
 	var fetcher fetch.Fetcher
 	if s.RenderJs {
 		fetcher = fetch.NewDynamicFetcher("", 0)
@@ -558,26 +559,34 @@ func GetDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, removeStat
 	}
 
 	a.Parse()
-	for i, lp := range a.LocMan {
-		fmt.Printf("raw %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		for i, lp := range a.LocMan {
+			fmt.Printf("raw %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+		}
 	}
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
-	for i, lp := range a.LocMan {
-		fmt.Printf("squashed %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		for i, lp := range a.LocMan {
+			fmt.Printf("squashed %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+		}
 	}
 	a.LocMan = filterBelowMinCount(a.LocMan, minOcc)
-	for i, lp := range a.LocMan {
-		fmt.Printf("filtered min count %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		for i, lp := range a.LocMan {
+			fmt.Printf("filtered min count %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+		}
 	}
 	a.LocMan = filterStaticFields(a.LocMan, removeStaticFields)
-	for i, lp := range a.LocMan {
-		fmt.Printf("filtered static %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
-	}
-	for _, lm := range a.LocMan {
-		// fmt.Printf("lm: %#v\n", lm)
-		fmt.Printf("lm.path.string(): %#v\n", lm.path.string())
-		for i, ex := range lm.examples {
-			fmt.Printf("lm.example %d: %q\n", i, ex)
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		for i, lp := range a.LocMan {
+			fmt.Printf("filtered static %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+		}
+		for _, lm := range a.LocMan {
+			// fmt.Printf("lm: %#v\n", lm)
+			fmt.Printf("lm.path.string(): %#v\n", lm.path.string())
+			for i, ex := range lm.examples {
+				fmt.Printf("lm.example %d: %q\n", i, ex)
+			}
 		}
 	}
 
@@ -607,40 +616,35 @@ func GetDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, removeStat
 	rootSelector := findSharedRootSelector(locPropsSel)
 	var newRootSelector path
 	var c *scraper.Config
-	for {
-		log.Printf("in locationManager.GetDynamicFieldsConfig(): root selector: %#v", rootSelector.string())
-		s.Item = shortenRootSelector(rootSelector).string()
-		s.Item = rootSelector.string()
-		log.Printf("in locationManager.GetDynamicFieldsConfig(): s.Item: %#v", s.Item)
-		s.Fields = a.LocMan.processFields(locPropsSel, rootSelector)
 
-		c = &scraper.Config{Scrapers: []scraper.Scraper{s}}
-		items, err := s.GetItems(&c.Global, true)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("autoconfig produced scraper that returns %d items with %d total fields:\n%s", len(items), scraper.TotalFieldsInItems(items), ItemsToString(items))
-		locPropsSel, newRootSelector = filterAllButLargestCluster(locPropsSel, rootSelector)
-		if newRootSelector.string() == rootSelector.string() {
-			break
-		}
-		rootSelector = newRootSelector
+	//for {
+	slog.Debug("in locationManager.GetDynamicFieldsConfig()", "root selector", rootSelector)
+	s.Item = shortenRootSelector(rootSelector).string()
+	s.Item = rootSelector.string()
+	slog.Debug("in locationManager.GetDynamicFieldsConfig()", "s.Item", s.Item)
+	s.Fields = a.LocMan.processFields(locPropsSel, rootSelector)
+
+	c = &scraper.Config{Scrapers: []scraper.Scraper{s}}
+	items, err := s.GetItems(&c.Global, true)
+	if err != nil {
+		return nil, err
 	}
+	slog.Debug("autoconfig produced scraper returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		fmt.Printf(items.String())
+	}
+	locPropsSel, newRootSelector = filterAllButLargestCluster(locPropsSel, rootSelector)
+	// if newRootSelector.string() == rootSelector.string() {
+	// 	break
+	// }
+	rootSelector = newRootSelector
+	//	}
 
 	for i, lp := range a.LocMan {
-		fmt.Printf("filtered static %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
+		slog.Debug("filtered static of lp.path.string()", "i", i, "lp.count", lp.count, "lp.path", lp.path)
 	}
 
 	return c, nil
-}
-
-func ItemsToString(items []map[string]interface{}) string {
-	content, err := json.MarshalIndent(items, "", "  ")
-	if err != nil {
-		fmt.Printf("error while writing items: %v", err)
-		return ""
-	}
-	return string(content)
 }
 
 // Analyzer contains all the necessary config parameters and structs needed

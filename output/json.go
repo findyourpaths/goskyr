@@ -9,10 +9,10 @@ import (
 
 type JSONWriter struct{}
 
-func (s *JSONWriter) Write(items chan map[string]interface{}) {
+func (s *JSONWriter) Write(items chan ItemMap) {
 	logger := slog.With(slog.String("writer", STDOUT_WRITER_TYPE))
 
-	items2 := []map[string]interface{}{}
+	items2 := ItemMaps{}
 	for item := range items {
 		items2 = append(items2, item)
 	}

@@ -19,7 +19,7 @@ func NewFileWriter(wc *WriterConfig) *FileWriter {
 		writerConfig: wc,
 	}
 }
-func (fr *FileWriter) Write(items chan map[string]interface{}) {
+func (fr *FileWriter) Write(items chan ItemMap) {
 	logger := slog.With(slog.String("writer", FILE_WRITER_TYPE))
 	f, err := os.Create(fr.writerConfig.FilePath)
 	if err != nil {
@@ -27,7 +27,7 @@ func (fr *FileWriter) Write(items chan map[string]interface{}) {
 		os.Exit(1)
 	}
 	defer f.Close()
-	allItems := []map[string]interface{}{}
+	allItems := ItemMaps{}
 	for item := range items {
 		allItems = append(allItems, item)
 	}

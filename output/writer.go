@@ -3,7 +3,7 @@ package output
 type Writer interface {
 	// if a writer encounters a fatal error it should call log.Fatalf
 	// to prevent the crawler from uselessly continuing to run.
-	Write(itemsList chan map[string]interface{})
+	Write(itemsList chan ItemMap)
 }
 
 // .WriterConfig defines the necessary paramters to make a new writer

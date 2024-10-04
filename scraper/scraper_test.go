@@ -7,6 +7,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/findyourpaths/goskyr/date"
+	"github.com/findyourpaths/goskyr/output"
 )
 
 const (
@@ -94,7 +95,7 @@ const (
 )
 
 func TestFilterItemMatchTrue(t *testing.T) {
-	item := map[string]interface{}{"title": "Jacob Collier - Concert"}
+	item := output.ItemMap{"title": "Jacob Collier - Concert"}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -120,7 +121,7 @@ func TestFilterItemMatchTrue(t *testing.T) {
 }
 
 func TestFilterItemMatchFalse(t *testing.T) {
-	item := map[string]interface{}{"title": "Jacob Collier - Cancelled"}
+	item := output.ItemMap{"title": "Jacob Collier - Cancelled"}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -147,7 +148,7 @@ func TestFilterItemMatchFalse(t *testing.T) {
 
 func TestFilterItemByDateMatchTrue(t *testing.T) {
 	loc, _ := time.LoadLocation("UTC")
-	item := map[string]interface{}{"date": time.Date(2023, 10, 20, 19, 1, 0, 0, loc)}
+	item := output.ItemMap{"date": time.Date(2023, 10, 20, 19, 1, 0, 0, loc)}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -175,7 +176,7 @@ func TestFilterItemByDateMatchTrue(t *testing.T) {
 
 func TestFilterItemByDateMatchTrue2(t *testing.T) {
 	loc, _ := time.LoadLocation("UTC")
-	item := map[string]interface{}{"date": time.Date(2023, 10, 20, 19, 0, 0, 0, loc)}
+	item := output.ItemMap{"date": time.Date(2023, 10, 20, 19, 0, 0, 0, loc)}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -203,7 +204,7 @@ func TestFilterItemByDateMatchTrue2(t *testing.T) {
 
 func TestFilterItemByDateMatchFalse(t *testing.T) {
 	loc, _ := time.LoadLocation("UTC")
-	item := map[string]interface{}{"date": time.Date(2023, 10, 20, 19, 1, 0, 0, loc)}
+	item := output.ItemMap{"date": time.Date(2023, 10, 20, 19, 1, 0, 0, loc)}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -242,7 +243,7 @@ func TestRemoveHiddenFields(t *testing.T) {
 			},
 		},
 	}
-	item := map[string]interface{}{"hidden": "bli", "visible": "bla"}
+	item := output.ItemMap{"hidden": "bli", "visible": "bla"}
 	r := s.removeHiddenFields(item)
 	if _, ok := r["hidden"]; ok {
 		t.Fatal("the field 'hidden' should have been removed from the item")
@@ -265,7 +266,7 @@ func TestExtractFieldText(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
@@ -294,7 +295,7 @@ func TestExtractFieldTextEntireSubtree(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
@@ -325,7 +326,7 @@ func TestExtractFieldTextAllNodes(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
@@ -356,7 +357,7 @@ func TestExtractFieldTextRegex(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -385,7 +386,7 @@ func TestExtractFieldUrl(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "https://www.dachstock.ch/events")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -414,7 +415,7 @@ func TestExtractFieldUrlFull(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -443,7 +444,7 @@ func TestExtractFieldUrlQuery(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -472,7 +473,7 @@ func TestExtractFieldUrlFile(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "https://www.roxy.ulm.de/programm/programm.php")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -501,7 +502,7 @@ func TestExtractFieldUrlParentDir(t *testing.T) {
 			},
 		},
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "http://point11.ch/site/home")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -542,7 +543,7 @@ func TestExtractFieldDate(t *testing.T) {
 		},
 		DateLocation: "Europe/Berlin",
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
@@ -595,7 +596,7 @@ func TestExtractFieldDateTransform(t *testing.T) {
 		},
 		DateLocation: "Europe/Berlin",
 	}
-	event := map[string]interface{}{}
+	event := output.ItemMap{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
@@ -661,7 +662,7 @@ func TestGuessYearSimple(t *testing.T) {
 		},
 	}
 	loc, _ := time.LoadLocation("CET")
-	items := []map[string]interface{}{
+	items := output.ItemMaps{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -672,7 +673,7 @@ func TestGuessYearSimple(t *testing.T) {
 			"date": time.Date(2023, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	expectedItems := []map[string]interface{}{
+	expectedItems := output.ItemMaps{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -704,7 +705,7 @@ func TestGuessYearUnordered(t *testing.T) {
 		},
 	}
 	loc, _ := time.LoadLocation("CET")
-	items := []map[string]interface{}{
+	items := output.ItemMaps{
 		{
 			"date": time.Date(2023, 11, 2, 20, 30, 0, 0, loc),
 		},
@@ -721,7 +722,7 @@ func TestGuessYearUnordered(t *testing.T) {
 			"date": time.Date(2023, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	expectedItems := []map[string]interface{}{
+	expectedItems := output.ItemMaps{
 		{
 			"date": time.Date(2023, 11, 2, 20, 30, 0, 0, loc),
 		},
@@ -758,7 +759,7 @@ func TestGuessYear2Years(t *testing.T) {
 		},
 	}
 	loc, _ := time.LoadLocation("CET")
-	items := []map[string]interface{}{
+	items := output.ItemMaps{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -775,7 +776,7 @@ func TestGuessYear2Years(t *testing.T) {
 			"date": time.Date(2023, 2, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	expectedItems := []map[string]interface{}{
+	expectedItems := output.ItemMaps{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -812,7 +813,7 @@ func TestGuessYearStartBeforeReference(t *testing.T) {
 		},
 	}
 	loc, _ := time.LoadLocation("CET")
-	items := []map[string]interface{}{
+	items := output.ItemMaps{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -823,7 +824,7 @@ func TestGuessYearStartBeforeReference(t *testing.T) {
 			"date": time.Date(2023, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	expectedItems := []map[string]interface{}{
+	expectedItems := output.ItemMaps{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/nsf/jsondiff"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -47,7 +48,7 @@ func TestAutoconfig(t *testing.T) {
 			log.Printf("opts.GenerateConfig: %q", opts.GenerateConfig)
 			c, err := GenerateConfig(opts)
 
-			actual = c.String()
+			actual := c.String()
 			if writeActualTestOutputs {
 				actualPath := "/tmp/" + testname + configSuffix
 				if err := WriteStringFile(actualPath, actual); err != nil {
@@ -100,7 +101,7 @@ func TestScraper(t *testing.T) {
 				t.Fatalf("cannot open config file path at %q: %v", path, err)
 			}
 
-			allItems := []map[string]interface{}{}
+			allItems := output.ItemMaps{}
 			for i, s := range conf.Scrapers {
 				items, err := s.GetItems(&conf.Global, true)
 				if err != nil {

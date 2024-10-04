@@ -26,7 +26,7 @@ func NewAPIWriter(wc *WriterConfig) *APIWriter {
 	}
 }
 
-func (f *APIWriter) Write(items chan map[string]interface{}) {
+func (f *APIWriter) Write(items chan ItemMap) {
 	logger := slog.With(slog.String("writer", API_WRITER_TYPE))
 	client := &http.Client{
 		Timeout: time.Second * 10,
@@ -37,7 +37,7 @@ func (f *APIWriter) Write(items chan map[string]interface{}) {
 
 	deletedSources := map[string]bool{}
 	nrItemsWritten := 0
-	batch := []map[string]interface{}{}
+	batch := ItemMaps{}
 
 	// This code assumes that within one source, items are ordered
 	// by date ascending.
@@ -77,7 +77,7 @@ func (f *APIWriter) Write(items chan map[string]interface{}) {
 			} else {
 				nrItemsWritten = nrItemsWritten + 100
 			}
-			batch = []map[string]interface{}{}
+			batch = ItemMaps{}
 		}
 	}
 	if err := postBatch(client, batch, apiURL, apiUser, apiPassword); err != nil {
@@ -89,7 +89,7 @@ func (f *APIWriter) Write(items chan map[string]interface{}) {
 	logger.Info(fmt.Sprintf("wrote %d items from %d sources to the api", nrItemsWritten, len(deletedSources)))
 }
 
-func postBatch(client *http.Client, batch []map[string]interface{}, apiURL, apiUser, apiPassword string) error {
+func postBatch(client *http.Client, batch ItemMaps, apiURL, apiUser, apiPassword string) error {
 	concertJSON, err := json.Marshal(batch)
 	if err != nil {
 		return err

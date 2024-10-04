@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"runtime/debug"
@@ -41,7 +40,7 @@ var opts mainOpts
 
 var version = "dev"
 
-func worker(sc chan scraper.Scraper, ic chan map[string]interface{}, gc *scraper.GlobalConfig, threadNr int) {
+func worker(sc chan scraper.Scraper, ic chan output.ItemMap, gc *scraper.GlobalConfig, threadNr int) {
 	workerLogger := slog.With(slog.Int("thread", threadNr))
 	for s := range sc {
 		scraperLogger := workerLogger.With(slog.String("name", s.Name))
@@ -121,7 +120,7 @@ func main() {
 
 	var workerWg sync.WaitGroup
 	var writerWg sync.WaitGroup
-	ic := make(chan map[string]interface{})
+	ic := make(chan output.ItemMap)
 
 	var writer output.Writer
 	if opts.ToStdout {
@@ -187,9 +186,8 @@ func main() {
 }
 
 func GenerateConfig(opts mainOpts) (*scraper.Config, error) {
-	log.Printf("called GenerateConfig: %q", opts.GenerateConfig)
 	slog.Debug("starting to generate config")
-	slog.Debug(fmt.Sprintf("analyzing url %s", opts.GenerateConfig))
+	slog.Debug("analyzing", "url", opts.GenerateConfig)
 	c, err := autoconfig.GetDynamicFieldsConfig(opts.GenerateConfig, opts.RenderJs, opts.M, opts.F, opts.ModelPath, opts.WordsDir, !opts.NonInteractive)
 	if err != nil {
 		return nil, err

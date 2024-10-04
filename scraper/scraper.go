@@ -29,6 +29,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var debug = false
+
 // GlobalConfig is used for storing global configuration parameters that
 // are needed across all scrapers
 type GlobalConfig struct {
@@ -279,8 +281,8 @@ type Scraper struct {
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
-func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string]interface{}, error) {
-	// log.Printf("Scraper.GetItems(globalConfig: %#v, rawDyn: %t)", globalConfig, rawDyn)
+func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemMaps, error) {
+	// slog.Debug("Scraper.GetItems(globalConfig: %#v, rawDyn: %t)", globalConfig, rawDyn)
 	scrLogger := slog.With(slog.String("name", c.Name))
 	// initialize fetcher
 	if c.RenderJs {
@@ -296,7 +298,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 		}
 	}
 
-	var items []map[string]interface{}
+	var items output.ItemMaps
 
 	scrLogger.Debug("initializing filters")
 	if err := c.initializeFilters(); err != nil {
@@ -309,24 +311,24 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 
 	hasNextPage, pageURL, doc, err := c.fetchPage(nil, currentPage, c.URL, globalConfig.UserAgent, c.Interaction)
 	if err != nil {
-		// log.Printf("pageURL: %q", pageURL)
+		// slog.Debug("pageURL: %q", pageURL)
 		return items, fmt.Errorf("failed to fetch next page: %w", err)
 	}
 
 	for hasNextPage {
 		baseUrl := getBaseURL(pageURL, doc)
 
-		log.Printf("in Scraper.GetItems(), c.Item: %#v", c.Item)
-		log.Printf("in Scraper.GetItems(), len(doc.Find(c.Item).Nodes): %d", len(doc.Find(c.Item).Nodes))
+		slog.Debug("in Scraper.GetItems()", "c.Item", c.Item)
+		slog.Debug("in Scraper.GetItems()", "len(doc.Find(c.Item).Nodes)", len(doc.Find(c.Item).Nodes))
 		// if len(doc.Find(c.Item).Nodes) == 0 {
-		// 	log.Printf("in Scraper.GetItems(), no items found, shortening selector to find the longest prefix that selects items")
+		// 	slog.Debug("in Scraper.GetItems(), no items found, shortening selector to find the longest prefix that selects items")
 		// 	itemPath := c.Item
 		// 	for {
-		// 		log.Printf("in Scraper.GetItems(), itemPath: %#v", itemPath)
+		// 		slog.Debug("in Scraper.GetItems(), itemPath: %#v", itemPath)
 		// 		if len(doc.Find(itemPath).Nodes) != 0 {
-		// 			log.Printf("in Scraper.GetItems(), len(doc.Find(itemPath).Nodes): %d", len(doc.Find(itemPath).Nodes))
+		// 			slog.Debug("in Scraper.GetItems(), len(doc.Find(itemPath).Nodes): %d", len(doc.Find(itemPath).Nodes))
 		// 			for _, node := range doc.Find(itemPath).Nodes {
-		// 				log.Printf("%#v", node)
+		// 				slog.Debug("%#v", node)
 		// 			}
 		// 			break
 		// 		}
@@ -354,21 +356,8 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) ([]map[string
 
 	c.guessYear(items, time.Now())
 
-	// log.Printf("Scraper.GetItems() returning")
-	log.Printf("Scraper.GetItems() returning %d items with %d total fields", len(items), TotalFieldsInItems(items))
+	slog.Debug("Scraper.GetItems() returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
 	return items, nil
-}
-
-func TotalFieldsInItems(items []map[string]interface{}) int {
-	numFields := 0
-	for _, item := range items {
-		for _, v := range item {
-			if v != nil && v != "" {
-				numFields++
-			}
-		}
-	}
-	return numFields
 }
 
 // GetItem fetches and returns an items from a website according to the
@@ -377,15 +366,15 @@ func TotalFieldsInItems(items []map[string]interface{}) int {
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not subpages). This is used by the ML feature generation.
-func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (map[string]interface{}, error) {
+func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
 	// for i, node := range s.Nodes {
-	// 	log.Printf("%d: %#v", i, node)
+	// 	slog.Debug("%d: %#v", i, node)
 	// }
-	// log.Printf("in Scraper.GetItems(), c.Item match %d", i)
-	// log.Printf("in Scraper.GetItems(), c.Item matched, and c.Fields: %#v", c.Fields)
-	currentItem := make(map[string]interface{})
+	// slog.Debug("in Scraper.GetItems(), c.Item match %d", i)
+	// slog.Debug("in Scraper.GetItems(), c.Item matched, and c.Fields: %#v", c.Fields)
+	currentItem := make(output.ItemMap)
 	for _, f := range c.Fields {
-		// log.Printf("in Scraper.GetItems(), looking at field: %#v", f)
+		// slog.Debug("in Scraper.GetItems(), looking at field: %#v", f)
 		if f.Value != "" {
 			if !rawDyn {
 				// add static fields
@@ -427,7 +416,7 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (map
 
 			// check whether we fetched the page already
 			subpageURL := fmt.Sprint(currentItem[f.OnSubpage])
-			log.Printf("looking at subpageURL: %q", subpageURL)
+			slog.Debug("looking at subpageURL: %q", subpageURL)
 			_, found := subDocs[subpageURL]
 			if !found {
 				subRes, err := c.fetcher.Fetch(subpageURL, fetch.FetchOpts{})
@@ -462,7 +451,7 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (map
 	return nil, nil
 }
 
-func (c *Scraper) guessYear(items []map[string]interface{}, ref time.Time) {
+func (c *Scraper) guessYear(items output.ItemMaps, ref time.Time) {
 	// get date field names where we need to adapt the year
 	dateFieldsGuessYear := map[string]bool{}
 	for _, f := range c.Fields {
@@ -530,7 +519,7 @@ func (c *Scraper) initializeFilters() error {
 	return nil
 }
 
-func (c *Scraper) filterItem(item map[string]interface{}) bool {
+func (c *Scraper) filterItem(item output.ItemMap) bool {
 	nrMatchTrue := 0
 	filterMatchTrue := false
 	filterMatchFalse := true
@@ -554,7 +543,7 @@ func (c *Scraper) filterItem(item map[string]interface{}) bool {
 	return filterMatchTrue && filterMatchFalse
 }
 
-func (c *Scraper) removeHiddenFields(item map[string]interface{}) map[string]interface{} {
+func (c *Scraper) removeHiddenFields(item output.ItemMap) output.ItemMap {
 	for _, f := range c.Fields {
 		if f.Hide {
 			delete(item, f.Name)
@@ -618,8 +607,8 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 }
 
 func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Document, error) {
-	// log.Printf("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
-	// log.Printf("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
+	// slog.Debug("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
+	// slog.Debug("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
 	res, err := c.fetcher.Fetch(urlStr, opts)
 	if err != nil {
 		return nil, err
@@ -637,7 +626,7 @@ func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Docu
 		if err != nil {
 			return nil, err
 		}
-		filename := fmt.Sprintf("%s.html", r)
+		filename := fmt.Sprintf("/tmp/%s.html", r)
 		slog.Debug(fmt.Sprintf("writing html to file %s", filename), slog.String("url", urlStr))
 		htmlStr, err := goquery.OuterHtml(doc.Children())
 		if err != nil {
@@ -657,7 +646,7 @@ func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Docu
 	return doc, nil
 }
 
-func extractField(field *Field, event map[string]interface{}, s *goquery.Selection, baseURL string) error {
+func extractField(field *Field, event output.ItemMap, s *goquery.Selection, baseURL string) error {
 	switch field.Type {
 	case "text", "": // the default, ie when type is not configured, is 'text'
 		parts := []string{}
@@ -717,7 +706,7 @@ func extractField(field *Field, event map[string]interface{}, s *goquery.Selecti
 	return nil
 }
 
-func extractRawField(field *Field, event map[string]interface{}, s *goquery.Selection) error {
+func extractRawField(field *Field, event output.ItemMap, s *goquery.Selection) error {
 	switch field.Type {
 	case "text", "":
 		parts := []string{}
