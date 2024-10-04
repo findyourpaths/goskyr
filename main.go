@@ -18,22 +18,21 @@ import (
 )
 
 type mainOpts struct {
-	Varying       bool   `short:"f" long:"varying" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
-	Min           int    `short:"m" long:"min" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
-	SingleScraper string `short:"s" description:"The name of the scraper to be run."`
-	ToStdout      bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
-	// NoFile          bool   `long:"nofile" description:"If set to false the scraped data will be written to a file despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to a file."`
-	ToJSON          bool   `long:"json" description:"If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout."`
-	NonInteractive  bool   `long:"noninteractive" description:"Run interactively to generate the config file."`
-	ConfigLoc       string `short:"c" default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."`
-	PrintVersion    bool   `short:"v" description:"The version of goskyr."`
-	GenerateConfig  string `short:"g" description:"Automatically generate a config file for the given url."`
-	ExtractFeatures string `short:"e" description:"Extract ML features based on the given configuration file (-c) and write them to the given file in csv format."`
-	WordsDir        string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
-	BuildModel      string `short:"t" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
-	DebugFlag       bool   `long:"debug" description:"Prints debug logs and writes scraped html's to files."`
-	ModelPath       string `long:"model" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
-	RenderJs        bool   `short:"r" long:"renderjs" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
+	Batch               bool   `short:"b" long:"batch" description:"Run batch (not interactively) to generate the config file."`
+	ConfigFile          string `short:"c" long:"config" default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."`
+	DebugFlag           bool   `short:"d" long:"debug" description:"Prints debug logs and writes scraped html's to files."`
+	ExtractFeatures     string `short:"e" long:"extract" description:"Extract ML features based on the given configuration file (-c) and write them to the given file in csv format."`
+	FieldsVary          bool   `short:"f" long:"fieldsvary" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
+	GenerateForURL      string `short:"g" long:"generate" description:"Automatically generate a config file for the given url."`
+	Min                 int    `short:"m" long:"min" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
+	RenderJs            bool   `short:"r" long:"renderjs" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
+	SingleScraper       string `short:"s" description:"The name of the scraper to be run."`
+	TrainModel          string `short:"t" long:"train" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
+	PrintVersion        bool   `short:"v" description:"The version of goskyr."`
+	WordsDir            string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
+	ToJSON              bool   `long:"json" description:"If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout."`
+	ToStdout            bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
 	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
 }
 
@@ -89,7 +88,7 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
-	if opts.GenerateConfig != "" {
+	if opts.GenerateForURL != "" {
 		if _, err := GenerateConfigs(opts); err != nil {
 			slog.Error(err.Error())
 			os.Exit(1)
@@ -97,15 +96,15 @@ func main() {
 		return
 	}
 
-	if opts.BuildModel != "" {
-		if err := ml.TrainModel(opts.BuildModel); err != nil {
+	if opts.TrainModel != "" {
+		if err := ml.TrainModel(opts.TrainModel); err != nil {
 			slog.Error(fmt.Sprintf("%v", err))
 			os.Exit(1)
 		}
 		return
 	}
 
-	conf, err := scraper.NewConfig(opts.ConfigLoc)
+	conf, err := scraper.NewConfig(opts.ConfigFile)
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v", err))
 		os.Exit(1)
@@ -188,8 +187,8 @@ func main() {
 
 func GenerateConfigs(opts mainOpts) ([]*scraper.Config, error) {
 	slog.Debug("starting to generate config")
-	slog.Debug("analyzing", "url", opts.GenerateConfig)
-	cs, ims, err := autoconfig.NewDynamicFieldsConfigs(opts.GenerateConfig, opts.RenderJs, opts.Min, opts.Varying, opts.ModelPath, opts.WordsDir, !opts.NonInteractive)
+	slog.Debug("analyzing", "url", opts.GenerateForURL)
+	cs, ims, err := autoconfig.NewDynamicFieldsConfigs(opts.GenerateForURL, opts.RenderJs, opts.Min, opts.FieldsVary, opts.PretrainedModelPath, opts.WordsDir, opts.Batch)
 	if err != nil {
 		return nil, err
 	}
@@ -198,11 +197,11 @@ func GenerateConfigs(opts mainOpts) ([]*scraper.Config, error) {
 		if opts.ToStdout {
 			fmt.Println(c.String())
 		}
-		if opts.ConfigLoc != "" {
-			if err := c.Write(opts.ConfigLoc + "_" + strconv.Itoa(i)); err != nil {
+		if opts.ConfigFile != "" {
+			if err := c.Write(opts.ConfigFile + "_" + strconv.Itoa(i)); err != nil {
 				return nil, err
 			}
-			if err := ims[i].Write(opts.ConfigLoc + "_items-" + strconv.Itoa(i)); err != nil {
+			if err := ims[i].Write(opts.ConfigFile + "_items-" + strconv.Itoa(i)); err != nil {
 				return nil, err
 			}
 		}

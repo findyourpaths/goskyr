@@ -49,11 +49,11 @@ func TestAutoconfig(t *testing.T) {
 		t.Run(testname, func(t *testing.T) {
 
 			opts := mainOpts{
-				GenerateConfig: "file://" + path,
+				GenerateForURL: "file://" + path,
 				// ConfigLoc:      filepath.Join("/tmp", "test", testname+configSuffix),
-				NonInteractive: true,
-				Min:            5,
-				Varying:        true,
+				Batch:      true,
+				Min:        5,
+				FieldsVary: true,
 			}
 			cs, err := GenerateConfigs(opts)
 			if err != nil {

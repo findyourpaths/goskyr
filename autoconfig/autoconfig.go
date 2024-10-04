@@ -504,7 +504,7 @@ func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*loc
 	return filtered, maxPath
 }
 
-func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, interactive bool) ([]*scraper.Config, []output.ItemMaps, error) {
+func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, batch bool) ([]*scraper.Config, []output.ItemMaps, error) {
 	if len(myurl) == 0 {
 		return nil, nil, errors.New("URL field cannot be empty")
 	}
@@ -548,10 +548,8 @@ func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVaryin
 	}
 
 	a.Parse()
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range a.LocMan {
-			fmt.Printf("raw %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
-		}
+	for i, lp := range a.LocMan {
+		slog.Debug("raw", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
 	}
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
@@ -589,7 +587,7 @@ func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVaryin
 	}
 
 	var locPropsSel []*locationProps
-	if interactive {
+	if !batch {
 		a.LocMan.setColors()
 		a.LocMan.selectFieldsTable()
 		for _, lm := range a.LocMan {
