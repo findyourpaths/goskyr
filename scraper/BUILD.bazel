@@ -14,10 +14,10 @@ go_library(
         "//utils:go_default_library",
         "@com_github_antchfx_jsonquery//:go_default_library",
         "@com_github_goodsign_monday//:go_default_library",
+        "@com_github_gosimple_slug//:go_default_library",
         "@com_github_ilyakaznacheev_cleanenv//:go_default_library",
         "@com_github_puerkitobio_goquery//:go_default_library",
         "@in_gopkg_yaml_v3//:go_default_library",
-        "@org_golang_x_exp//slog:go_default_library",
         "@org_golang_x_net//html:go_default_library",
     ],
 )
@@ -29,6 +29,7 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//date:go_default_library",
+        "//output:go_default_library",
         "@com_github_puerkitobio_goquery//:go_default_library",
     ],
 )

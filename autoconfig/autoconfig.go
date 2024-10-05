@@ -13,13 +13,10 @@ import (
 	"github.com/agnivade/levenshtein"
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
-	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/findyourpaths/goskyr/utils"
-	"github.com/gdamore/tcell/v2"
 	"github.com/gosimple/slug"
-	"github.com/rivo/tview"
 	"golang.org/x/net/html"
 )
 
@@ -77,157 +74,48 @@ func (p path) distance(p2 path) float64 {
 	return float64(levenshtein.ComputeDistance(p.string(), p2.string()))
 }
 
-type locationProps struct {
-	path      path
-	attr      string
-	textIndex int // this will translate into child index within scraper.ElementLocation
-	count     int
-	examples  []string
-	selected  bool
-	color     tcell.Color
-	distance  float64
-	name      string
-	iStrip    int // this is needed for the squashLocationManager function
-}
-
-func makeLocationProps(nodePath []node, example string) locationProps {
-	p := make([]node, len(nodePath))
-	copy(p, nodePath)
-	return locationProps{
-		path:     p,
-		examples: []string{example},
-		count:    1,
-	}
-}
-
-type locationManager []*locationProps
-
-func (l locationManager) setColors() {
-	if len(l) == 0 {
-		return
-	}
-	for i, e := range l {
-		if i != 0 {
-			e.distance = l[i-1].distance + l[i-1].path.distance(e.path)
-		}
-	}
-	// scale to 1 and map to rgb
-	maxDist := l[len(l)-1].distance * 1.2
-	s := 0.73
-	v := 0.96
-	for _, e := range l {
-		h := e.distance / maxDist
-		r, g, b := utils.HSVToRGB(h, s, v)
-		e.color = tcell.NewRGBColor(r, g, b)
-	}
-}
-
-func (l locationManager) findFieldNames(modelName, wordsDir string) error {
-	if modelName == "" {
-		for i, e := range l {
-			e.name = fmt.Sprintf("field-%d", i)
-		}
-		return nil
-	}
-
-	ll, err := ml.LoadLabler(modelName, wordsDir)
-	if err != nil {
-		return err
-	}
-	for _, e := range l {
-		pred, err := ll.PredictLabel(e.examples...)
-		if err != nil {
-			return err
-		}
-		e.name = pred // TODO: if label has occured already, add index (eg text-1, text-2...)
-	}
-	return nil
-}
-
-func (l locationManager) selectFieldsTable() {
-	app := tview.NewApplication()
-	table := tview.NewTable().SetBorders(true)
-	cols, rows := 5, len(l)+1
-	for r := 0; r < rows; r++ {
-		for c := 0; c < cols; c++ {
-			color := tcell.ColorWhite
-			if c < 1 || r < 1 {
-				if c < 1 && r > 0 {
-					color = tcell.ColorGreen
-					table.SetCell(r, c, tview.NewTableCell(fmt.Sprintf("[%d] %s", r-1, l[r-1].name)).
-						SetTextColor(color).
-						SetAlign(tview.AlignCenter))
-				} else if r == 0 && c > 0 {
-					color = tcell.ColorBlue
-					table.SetCell(r, c, tview.NewTableCell(fmt.Sprintf("example [%d]", c-1)).
-						SetTextColor(color).
-						SetAlign(tview.AlignCenter))
-				} else {
-					table.SetCell(r, c,
-						tview.NewTableCell("").
-							SetTextColor(color).
-							SetAlign(tview.AlignCenter))
-				}
+func findSharedRootSelector(locPropsSel []*locationProps) path {
+	for i := 0; ; i++ {
+		// slog.Debug("i: %d", i)
+		var n node
+		for j, e := range locPropsSel {
+			// slog.Debug("  j: %d", j)
+			// slog.Debug("  len(e.path): %d", len(e.path))
+			// slog.Debug("  e.path[:i].string(): %#v", e.path[:i].string())
+			// slog.Debug("  n: %#v", n)
+			if i >= len(e.path) {
+				return e.path[:i]
+			}
+			// slog.Debug("  e.path[i]: %#v", e.path[i])
+			if j == 0 {
+				n = e.path[i]
 			} else {
-				var ss string
-				if len(l[r-1].examples) >= c {
-					ss = utils.ShortenString(l[r-1].examples[c-1], 40)
+				// Look for divergence and if found, return what we have so far.
+				if !n.equals(e.path[i]) {
+					return e.path[:i]
 				}
-				table.SetCell(r, c,
-					tview.NewTableCell(ss).
-						SetTextColor(l[r-1].color).
-						SetAlign(tview.AlignCenter))
 			}
 		}
 	}
-	table.SetSelectable(true, false)
-	table.Select(1, 1).SetFixed(1, 1).SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEscape {
-			app.Stop()
-		}
-		if key == tcell.KeyEnter {
-			table.SetSelectable(true, false)
-		}
-	}).SetSelectedFunc(func(row int, column int) {
-		l[row-1].selected = !l[row-1].selected
-		if l[row-1].selected {
-			table.GetCell(row, 0).SetTextColor(tcell.ColorRed)
-			for i := 1; i < 5; i++ {
-				table.GetCell(row, i).SetTextColor(tcell.ColorOrange)
-			}
-		} else {
-			table.GetCell(row, 0).SetTextColor(tcell.ColorGreen)
-			for i := 1; i < 5; i++ {
-				table.GetCell(row, i).SetTextColor(l[row-1].color)
-			}
-		}
-	})
-	button := tview.NewButton("Hit Enter to generate config").SetSelectedFunc(func() {
-		app.Stop()
-	})
+	return []node{}
+}
 
-	grid := tview.NewGrid().SetRows(-11, -1).SetColumns(-1, -1, -1).SetBorders(false).
-		AddItem(table, 0, 0, 1, 3, 0, 0, true).
-		AddItem(button, 1, 1, 1, 1, 0, 0, false)
-	grid.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
-			if button.HasFocus() {
-				app.SetFocus(table)
-			} else {
-				app.SetFocus(button)
-			}
-			return nil
+func shortenRootSelector(p path) path {
+	// the following algorithm is a bit arbitrary. Let's
+	// see if it works.
+	nrTotalClasses := 0
+	thresholdTotalClasses := 3
+	for i := len(p) - 1; i >= 0; i-- {
+		nrTotalClasses += len(p[i].classes)
+		if nrTotalClasses >= thresholdTotalClasses {
+			return p[i:]
 		}
-		return event
-	})
-
-	if err := app.SetRoot(grid, true).SetFocus(grid).Run(); err != nil {
-		panic(err)
 	}
+	return p
 }
 
 // for now we assume that there will only be one date field
-func (l locationManager) processFields(locPropsSel []*locationProps, rootSelector path) []scraper.Field {
+func processFields(locPropsSel []*locationProps, rootSelector path) []scraper.Field {
 	zone, _ := time.Now().Zone()
 	zone = strings.Replace(zone, "CEST", "CET", 1) // quick hack for issue #209
 	dateField := scraper.Field{
@@ -281,46 +169,6 @@ func (l locationManager) processFields(locPropsSel []*locationProps, rootSelecto
 		fields = append(fields, dateField)
 	}
 	return fields
-}
-
-func findSharedRootSelector(locPropsSel []*locationProps) path {
-	for i := 0; ; i++ {
-		// slog.Debug("i: %d", i)
-		var n node
-		for j, e := range locPropsSel {
-			// slog.Debug("  j: %d", j)
-			// slog.Debug("  len(e.path): %d", len(e.path))
-			// slog.Debug("  e.path[:i].string(): %#v", e.path[:i].string())
-			// slog.Debug("  n: %#v", n)
-			if i >= len(e.path) {
-				return e.path[:i]
-			}
-			// slog.Debug("  e.path[i]: %#v", e.path[i])
-			if j == 0 {
-				n = e.path[i]
-			} else {
-				// Look for divergence and if found, return what we have so far.
-				if !n.equals(e.path[i]) {
-					return e.path[:i]
-				}
-			}
-		}
-	}
-	return []node{}
-}
-
-func shortenRootSelector(p path) path {
-	// the following algorithm is a bit arbitrary. Let's
-	// see if it works.
-	nrTotalClasses := 0
-	thresholdTotalClasses := 3
-	for i := len(p) - 1; i >= 0; i-- {
-		nrTotalClasses += len(p[i].classes)
-		if nrTotalClasses >= thresholdTotalClasses {
-			return p[i:]
-		}
-	}
-	return p
 }
 
 // squashLocationManager merges different locationProps into one
@@ -551,30 +399,30 @@ func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bo
 	slog.Debug("wrote html to file", "fpath", fpath)
 
 	a := &Analyzer{
-		Z:          html.NewTokenizer(strings.NewReader(htmlStr)),
-		NrChildren: map[string]int{},
-		ChildNodes: map[string][]node{},
+		Tokenizer:   html.NewTokenizer(strings.NewReader(htmlStr)),
+		NumChildren: map[string]int{},
+		ChildNodes:  map[string][]node{},
 	}
 
 	slog.Debug("in NewDynamicFieldsConfigs(): parsing")
 	a.Parse()
-	// for i, lp := range a.LocMan {
-	// 	slog.Debug("raw", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
-	// }
+	for i, lp := range a.LocMan {
+		slog.Debug("raw", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	}
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
-	// for i, lp := range a.LocMan {
-	// 	slog.Debug("squashed", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
-	// }
+	for i, lp := range a.LocMan {
+		slog.Debug("squashed", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	}
 	a.LocMan = filterBelowMinCount(a.LocMan, minOcc)
-	// for i, lp := range a.LocMan {
-	// 	slog.Debug("filtered min count", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
-	// }
+	for i, lp := range a.LocMan {
+		slog.Debug("filtered min count", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	}
 	if onlyVarying {
 		a.LocMan = filterStaticFields(a.LocMan)
 	}
-	// for i, lp := range a.LocMan {
-	// 	slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
-	// }
+	for i, lp := range a.LocMan {
+		slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	}
 
 	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
 		return nil, nil, err
@@ -609,7 +457,7 @@ func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bo
 		s.Item = shortenRootSelector(rootSelector).string()
 		s.Item = rootSelector.string()
 		slog.Debug("in locationManager.GetDynamicFieldsConfig()", "s.Item", s.Item)
-		s.Fields = a.LocMan.processFields(locPropsSel, rootSelector)
+		s.Fields = processFields(locPropsSel, rootSelector)
 
 		c := &scraper.Config{Scrapers: []scraper.Scraper{s}}
 		items, err := s.GetItems(&c.Global, true)
@@ -629,143 +477,10 @@ func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bo
 		rootSelector = newRootSelector
 	}
 
-	// for i, lp := range a.LocMan {
-	// 	slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
-	// }
+	for i, lp := range a.LocMan {
+		slog.Debug("final", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	}
 	return cs, ims, nil
-}
-
-// Analyzer contains all the necessary config parameters and structs needed
-// to analyze the webpage.
-type Analyzer struct {
-	Z          *html.Tokenizer
-	LocMan     locationManager
-	NrChildren map[string]int    // the nr of children a node (represented by a path) has, including non-html-tag nodes (ie text)
-	ChildNodes map[string][]node // the children of the node at the specified nodePath; used for :nth-child() logic
-	NodePath   path
-	Depth      int
-	InBody     bool
-}
-
-func (a *Analyzer) Parse() {
-	// start analyzing the html
-	for keepGoing := true; keepGoing; keepGoing = a.ParseToken(a.Z.Next()) {
-	}
-}
-
-func (a *Analyzer) ParseToken(tt html.TokenType) bool {
-	switch tt {
-	case html.ErrorToken:
-		return false
-
-	case html.TextToken:
-		if !a.InBody {
-			return true
-		}
-
-		p := a.NodePath.string()
-		text := string(a.Z.Text())
-		// fmt.Printf("in Analyzer.ParseToken(tt: %s), text: %q\n", tt, text)
-		textTrimmed := strings.TrimSpace(text)
-		if len(textTrimmed) > 0 {
-			lp := makeLocationProps(a.NodePath, textTrimmed)
-			lp.textIndex = a.NrChildren[p]
-			a.LocMan = append(a.LocMan, &lp)
-		}
-		a.NrChildren[p] += 1
-
-	case html.StartTagToken, html.EndTagToken:
-		tn, _ := a.Z.TagName()
-		tagNameStr := string(tn)
-		if tagNameStr == "body" {
-			a.InBody = !a.InBody
-		}
-		if !a.InBody {
-			return true
-		}
-
-		// fmt.Printf("in Analyzer.ParseToken(tt: %s), tag name: %q\n", tt, tagNameStr)
-		// br can also be self closing tag, see later case statement
-		if tagNameStr == "br" || tagNameStr == "input" {
-			a.NrChildren[a.NodePath.string()] += 1
-			a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr})
-			return true
-		}
-
-		if tt != html.StartTagToken {
-			n := true
-			for n && a.Depth > 0 {
-				if a.NodePath[len(a.NodePath)-1].tagName == tagNameStr {
-					if tagNameStr == "body" {
-						return false
-					}
-					n = false
-				}
-				delete(a.NrChildren, a.NodePath.string())
-				delete(a.ChildNodes, a.NodePath.string())
-				a.NodePath = a.NodePath[:len(a.NodePath)-1]
-				a.Depth--
-			}
-			return true
-		}
-
-		attrs, cls, pCls := getTagMetadata(tagNameStr, a.Z, a.ChildNodes[a.NodePath.string()])
-		a.NrChildren[a.NodePath.string()] += 1
-		a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr, classes: cls})
-
-		newNode := node{
-			tagName:       tagNameStr,
-			classes:       cls,
-			pseudoClasses: pCls,
-		}
-		// fmt.Printf("newNode: %#v\n", newNode)
-		a.NodePath = append(a.NodePath, newNode)
-		a.Depth++
-		a.ChildNodes[a.NodePath.string()] = []node{}
-
-		for attrKey, attrValue := range attrs {
-			lp := makeLocationProps(a.NodePath, attrValue)
-			lp.attr = attrKey
-			// fmt.Printf("lp: %#v\n", lp)
-			a.LocMan = append(a.LocMan, &lp)
-		}
-
-	case html.SelfClosingTagToken:
-		if !a.InBody {
-			return true
-		}
-
-		tn, _ := a.Z.TagName()
-		tagNameStr := string(tn)
-		// fmt.Printf("in Analyzer.ParseToken(tt: %s), tag name: %q\n", tt, tagNameStr)
-
-		if tagNameStr != "br" && tagNameStr != "input" && tagNameStr != "img" && tagNameStr != "link" {
-			return true
-		}
-
-		attrs, cls, pCls := getTagMetadata(tagNameStr, a.Z, a.ChildNodes[a.NodePath.string()])
-		a.NrChildren[a.NodePath.string()] += 1
-		a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr, classes: cls})
-		if len(attrs) == 0 {
-			return true
-		}
-
-		tmpNodePath := make([]node, len(a.NodePath))
-		copy(tmpNodePath, a.NodePath)
-		newNode := node{
-			tagName:       tagNameStr,
-			classes:       cls,
-			pseudoClasses: pCls,
-		}
-		tmpNodePath = append(tmpNodePath, newNode)
-
-		for attrKey, attrValue := range attrs {
-			lp := makeLocationProps(tmpNodePath, attrValue)
-			lp.attr = attrKey
-			a.LocMan = append(a.LocMan, &lp)
-		}
-	}
-	return true
 }
 
 // getTagMetadata, for a given node returns a map of key value pairs (only for the attriutes we're interested in) and

@@ -476,6 +476,18 @@ def go_dependencies():
         version = "v0.0.0-20181017120253-0766667cb4d1",
     )
     go_repository(
+        name = "com_github_gosimple_slug",
+        importpath = "github.com/gosimple/slug",
+        sum = "h1:RtTL/71mJNDfpUbCOmnf/XFkzKRtD6wL6Uy+3akm4Es=",
+        version = "v1.14.0",
+    )
+    go_repository(
+        name = "com_github_gosimple_unidecode",
+        importpath = "github.com/gosimple/unidecode",
+        sum = "h1:hZzFTMMqSswvf0LBJZCZgThIZrpDHFXux9KeGmn6T/o=",
+        version = "v1.0.1",
+    )
+    go_repository(
         name = "com_github_gotestyourself_gotestyourself",
         importpath = "github.com/gotestyourself/gotestyourself",
         sum = "h1:AQwinXlbQR2HvPjQZOmDhRqsv5mZf+Jb1RnSLxcqZcI=",
