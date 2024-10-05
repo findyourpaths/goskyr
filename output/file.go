@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
-
-	"golang.org/x/exp/slog"
 )
 
 type FileWriter struct {

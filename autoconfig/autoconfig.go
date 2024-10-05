@@ -505,6 +505,7 @@ func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*loc
 }
 
 func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, batch bool) ([]*scraper.Config, []output.ItemMaps, error) {
+	slog.Debug("NewDynamicFieldsConfigs()")
 	if len(myurl) == 0 {
 		return nil, nil, errors.New("URL field cannot be empty")
 	}
@@ -547,37 +548,25 @@ func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVaryin
 		ChildNodes: map[string][]node{},
 	}
 
+	slog.Debug("in NewDynamicFieldsConfigs(): parsing")
 	a.Parse()
-	for i, lp := range a.LocMan {
-		slog.Debug("raw", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
-	}
+	// for i, lp := range a.LocMan {
+	// 	slog.Debug("raw", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	// }
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range a.LocMan {
-			fmt.Printf("squashed %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
-		}
-	}
+	// for i, lp := range a.LocMan {
+	// 	slog.Debug("squashed", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	// }
 	a.LocMan = filterBelowMinCount(a.LocMan, minOcc)
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range a.LocMan {
-			fmt.Printf("filtered min count %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
-		}
-	}
+	// for i, lp := range a.LocMan {
+	// 	slog.Debug("filtered min count", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	// }
 	if onlyVarying {
 		a.LocMan = filterStaticFields(a.LocMan)
 	}
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range a.LocMan {
-			fmt.Printf("filtered static %3d: %2d of lp.path.string(): %q\n", i, lp.count, lp.path.string())
-		}
-		for _, lm := range a.LocMan {
-			// fmt.Printf("lm: %#v\n", lm)
-			fmt.Printf("lm.path.string(): %#v\n", lm.path.string())
-			for i, ex := range lm.examples {
-				fmt.Printf("lm.example %d: %q\n", i, ex)
-			}
-		}
-	}
+	// for i, lp := range a.LocMan {
+	// 	slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	// }
 
 	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
 		return nil, nil, err
@@ -632,10 +621,9 @@ func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVaryin
 		rootSelector = newRootSelector
 	}
 
-	for i, lp := range a.LocMan {
-		slog.Debug("filtered static of lp.path.string()", "i", i, "lp.count", lp.count, "lp.path", lp.path)
-	}
-
+	// for i, lp := range a.LocMan {
+	// 	slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	// }
 	return cs, ims, nil
 }
 

@@ -4,8 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 type StdoutWriter struct{}

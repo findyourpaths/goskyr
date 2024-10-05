@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,7 +19,6 @@ import (
 	"github.com/findyourpaths/goskyr/config"
 	"github.com/findyourpaths/goskyr/types"
 	"github.com/findyourpaths/goskyr/utils"
-	"golang.org/x/exp/slog"
 )
 
 type FetchOpts struct {

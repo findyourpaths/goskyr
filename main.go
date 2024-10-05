@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"os"
 	"runtime/debug"
@@ -14,7 +15,6 @@ import (
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/jessevdk/go-flags"
-	"golang.org/x/exp/slog"
 )
 
 type mainOpts struct {

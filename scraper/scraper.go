@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -24,7 +25,6 @@ import (
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/goodsign/monday"
 	"github.com/ilyakaznacheev/cleanenv"
-	"golang.org/x/exp/slog"
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
 )

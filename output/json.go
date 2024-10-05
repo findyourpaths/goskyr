@@ -3,8 +3,7 @@ package output
 import (
 	"encoding/json"
 	"fmt"
-
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 type JSONWriter struct{}

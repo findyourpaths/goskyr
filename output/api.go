@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
-
-	"golang.org/x/exp/slog"
 )
 
 // The APIWriter is meant to write to a custom API and assumes many things.
