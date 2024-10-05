@@ -14,6 +14,7 @@ import (
 	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scraper"
+	"github.com/findyourpaths/goskyr/utils"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -198,10 +199,10 @@ func GenerateConfigs(opts mainOpts) ([]*scraper.Config, error) {
 			fmt.Println(c.String())
 		}
 		if opts.ConfigFile != "" {
-			if err := c.Write(opts.ConfigFile + "_" + strconv.Itoa(i)); err != nil {
+			if err := utils.WriteStringFile(opts.ConfigFile+"_"+strconv.Itoa(i), c.String()); err != nil {
 				return nil, err
 			}
-			if err := ims[i].Write(opts.ConfigFile + "_items-" + strconv.Itoa(i)); err != nil {
+			if err := utils.WriteStringFile(opts.ConfigFile+"_items-"+strconv.Itoa(i), ims[i].String()); err != nil {
 				return nil, err
 			}
 		}

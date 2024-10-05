@@ -185,15 +185,15 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 	if config.Debug {
 		u, _ := url.Parse(urlStr)
 		var buf []byte
-		r, err := utils.RandomString(u.Host)
-		if err != nil {
-			return "", err
-		}
-		filename := fmt.Sprintf("%s.png", r)
 		actions = append(actions, chromedp.CaptureScreenshot(&buf))
 		actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
-			logger.Debug(fmt.Sprintf("writing screenshot to file %s", filename))
-			return os.WriteFile(filename, buf, 0644)
+			logger.Debug(fmt.Sprintf("writing screenshot to file"))
+			fpath, err := utils.WriteTempStringFile("/tmp/goskyr/"+u.Host+".png", string(buf))
+			if err != nil {
+				return err
+			}
+			logger.Debug(fmt.Sprintf("wrote screenshot to file %s", fpath))
+			return nil
 		}))
 		logger.Debug("appended chrome actions: CaptureScreenshot, ActionFunc (save screenshot)")
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/gdamore/tcell/v2"
+	"github.com/gosimple/slug"
 	"github.com/rivo/tview"
 	"golang.org/x/net/html"
 )
@@ -504,14 +505,14 @@ func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*loc
 	return filtered, maxPath
 }
 
-func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, batch bool) ([]*scraper.Config, []output.ItemMaps, error) {
+func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, batch bool) ([]*scraper.Config, []output.ItemMaps, error) {
 	slog.Debug("NewDynamicFieldsConfigs()")
-	if len(myurl) == 0 {
+	if len(u) == 0 {
 		return nil, nil, errors.New("URL field cannot be empty")
 	}
 	s := scraper.Scraper{
-		URL:      myurl,
-		Name:     myurl,
+		URL:      u,
+		Name:     u,
 		RenderJs: renderJs,
 	}
 
@@ -541,6 +542,13 @@ func NewDynamicFieldsConfigs(myurl string, renderJs bool, minOcc int, onlyVaryin
 	if err != nil {
 		return nil, nil, err
 	}
+
+	slog.Debug("writing html to file", "u", u)
+	fpath, err := utils.WriteTempStringFile("/tmp/goskyr/autoconfig/NewDynamicFieldsConfigsDoc/"+slug.Make(u)+".html", htmlStr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to write html file: %v", err)
+	}
+	slog.Debug("wrote html to file", "fpath", fpath)
 
 	a := &Analyzer{
 		Z:          html.NewTokenizer(strings.NewReader(htmlStr)),

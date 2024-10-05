@@ -24,6 +24,7 @@ import (
 	"github.com/findyourpaths/goskyr/types"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/goodsign/monday"
+	"github.com/gosimple/slug"
 	"github.com/ilyakaznacheev/cleanenv"
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
@@ -50,21 +51,6 @@ func (c Config) String() string {
 		log.Fatalf("error while marshaling config. %v", err)
 	}
 	return string(yamlData)
-}
-
-func (c Config) Write(fpath string) error {
-	f, err := os.Create(fpath)
-	if err != nil {
-		return fmt.Errorf("error opening file at %q: %v", fpath, err)
-	}
-	defer f.Close()
-
-	if _, err = f.WriteString(c.String()); err != nil {
-		return fmt.Errorf("error writing file at %q: %v", fpath, err)
-	}
-
-	slog.Info(fmt.Sprintf("successfully wrote config to file %q", fpath))
-	return nil
 }
 
 func NewConfig(configPath string) (*Config, error) {
@@ -622,27 +608,17 @@ func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Docu
 	}
 
 	// In debug mode we want to write all the htmls to files.
-	u, _ := url.Parse(urlStr)
-	r, err := utils.RandomString(u.Host)
-	if err != nil {
-		return nil, err
-	}
-	filename := fmt.Sprintf("/tmp/%s.html", r)
-	slog.Debug(fmt.Sprintf("writing html to file %s", filename), slog.String("url", urlStr))
 	htmlStr, err := goquery.OuterHtml(doc.Children())
 	if err != nil {
 		return nil, fmt.Errorf("failed to write html file: %v", err)
 	}
 
-	f, err := os.Create(filename)
+	slog.Debug("writing html to file", "url", urlStr)
+	fpath, err := utils.WriteTempStringFile("/tmp/goskyr/scraper/fetchToDoc/"+slug.Make(urlStr)+".html", htmlStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write html file: %v", err)
 	}
-	defer f.Close()
-	_, err = f.WriteString(htmlStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write html file: %v", err)
-	}
+	slog.Debug("wrote html to file", "fpath", fpath)
 
 	return doc, nil
 }

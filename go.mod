@@ -31,6 +31,8 @@ require (
 	github.com/gonum/lapack v0.0.0-20181123203213-e4cdc5a0bff9 // indirect
 	github.com/gonum/matrix v0.0.0-20181209220409-c518dec07be9 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/gosimple/slug v1.14.0 // indirect
+	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/guptarohit/asciigraph v0.5.6 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/rocketlaunchr/dataframe-go v0.0.0-20211025052708-a1030444159b // indirect

@@ -3,8 +3,6 @@ package output
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"os"
 )
 
 type ItemMap map[string]interface{}
@@ -17,21 +15,6 @@ func (ims ItemMaps) String() string {
 		return ""
 	}
 	return string(content)
-}
-
-func (ims ItemMaps) Write(fpath string) error {
-	f, err := os.Create(fpath)
-	if err != nil {
-		return fmt.Errorf("error opening file at %q: %v", fpath, err)
-	}
-	defer f.Close()
-
-	if _, err = f.WriteString(ims.String()); err != nil {
-		return fmt.Errorf("error writing file at %q: %v", fpath, err)
-	}
-
-	slog.Info(fmt.Sprintf("successfully wrote itemmaps to file %q", fpath))
-	return nil
 }
 
 func (ims ItemMaps) TotalFields() int {
