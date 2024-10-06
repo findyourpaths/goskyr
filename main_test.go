@@ -8,7 +8,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,8 +25,9 @@ var configSuffix = "_config.yml"
 var jsonSuffix = ".json"
 
 var writeActualTestOutputs = true
-
 var testOutputDir = "/tmp/goskyr/testdata/"
+
+var printDiffs = false
 
 func TestAutoconfig(t *testing.T) {
 	allPaths := []string{}
@@ -50,18 +50,6 @@ func TestAutoconfig(t *testing.T) {
 		// extension.
 		t.Run(testname, func(t *testing.T) {
 
-			opts := mainOpts{
-				GenerateForURL: "file://" + path,
-				ConfigFile:     filepath.Join(testOutputDir, testname+configSuffix),
-				Batch:          true,
-				Min:            5,
-				FieldsVary:     true,
-			}
-			cs, err := GenerateConfigs(opts)
-			if err != nil {
-				t.Fatal("error generating config file:", err)
-			}
-
 			glob := filepath.Join(dir, testname+"_*"+configSuffix)
 			expPathGlob, err := filepath.Glob(glob)
 			if err != nil {
@@ -74,23 +62,33 @@ func TestAutoconfig(t *testing.T) {
 			expPath := expPathGlob[0]
 			starIdx := strings.Index(glob, "*")
 			id := expPath[starIdx : starIdx+(len(expPath)-(starIdx+len(configSuffix)))]
-			fmt.Printf("looking at id: %q\n", id)
-			fmt.Printf("looking at expPath: %q\n", expPath)
+			// fmt.Printf("looking at id: %q\n", id)
+			// fmt.Printf("looking at expPath: %q\n", expPath)
 			// fmt.Printf("looking at cs[id]: %v\n", cs[id])
-			if cs[id] == nil {
-				keys := []string{}
-				for key := range cs {
-					keys = append(keys, key)
-				}
-				t.Errorf("can't find config with id: %q in keys: %#v", id, keys)
-				return
-			}
 
 			exp, err := utils.ReadStringFile(expPath)
 			if err != nil {
 				t.Fatal(err)
 			}
 
+			opts := mainOpts{
+				GenerateForURL: "file://" + path,
+				ConfigFile:     filepath.Join(testOutputDir, testname+configSuffix),
+				Batch:          true,
+				Min:            5,
+				FieldsVary:     true,
+			}
+			cs, err := GenerateConfigs(opts)
+			if err != nil {
+				t.Fatalf("error generating config file: %v", err)
+			}
+			if cs[id] == nil {
+				keys := []string{}
+				for key := range cs {
+					keys = append(keys, key)
+				}
+				t.Fatalf("can't find config with id: %q in keys: %#v", id, keys)
+			}
 			act := cs[id].String()
 			// if writeActualTestOutputs {
 			// 	actPath := filepath.Join(testOutputDir, fmt.Sprintf("%s_%s%s", testname, id, configSuffix))
@@ -102,7 +100,10 @@ func TestAutoconfig(t *testing.T) {
 			dmp := diffmatchpatch.New()
 			diffs := dmp.DiffMain(string(exp), act, false)
 			if len(diffs) != 0 && diffs[0].Type != diffmatchpatch.DiffEqual {
-				t.Errorf("actual output (%d) does not match expected output (%d):\n%v", len(act), len(exp), diffs)
+				if !printDiffs {
+					diffs = nil
+				}
+				t.Fatalf("actual output (%d) does not match expected output (%d):\n%v", len(act), len(exp), diffs)
 			}
 		})
 	}
@@ -160,7 +161,7 @@ func TestScraper(t *testing.T) {
 			jsonfile := path[:len(path)-len(configSuffix)] + jsonSuffix
 			exp, err := os.ReadFile(jsonfile)
 			if err != nil {
-				t.Fatal("error reading golden file:", err)
+				t.Fatalf("error reading golden file: %v", err)
 			}
 
 			// Compare the JSON outputs
@@ -169,7 +170,10 @@ func TestScraper(t *testing.T) {
 
 			// Check if there are any differences
 			if diff != jsondiff.FullMatch {
-				t.Errorf("JSON output does not match expected output:\n%s", diffStr)
+				if !printDiffs {
+					diffStr = ""
+				}
+				t.Fatalf("JSON output does not match expected output:\n%s", diffStr)
 			}
 		})
 	}
