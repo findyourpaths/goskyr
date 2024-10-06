@@ -6,7 +6,7 @@ import (
 	"math"
 	"os"
 	"runtime/debug"
-	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/findyourpaths/goskyr/autoconfig"
@@ -186,23 +186,26 @@ func main() {
 	writerWg.Wait()
 }
 
-func GenerateConfigs(opts mainOpts) ([]*scraper.Config, error) {
+func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 	slog.Debug("starting to generate config")
 	slog.Debug("analyzing", "url", opts.GenerateForURL)
-	cs, ims, err := autoconfig.NewDynamicFieldsConfigs(opts.GenerateForURL, opts.RenderJs, opts.Min, opts.FieldsVary, opts.PretrainedModelPath, opts.WordsDir, opts.Batch)
+	cims, err := autoconfig.NewDynamicFieldsConfigs(opts.GenerateForURL, opts.RenderJs, opts.Min, opts.FieldsVary, opts.PretrainedModelPath, opts.WordsDir, opts.Batch)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, c := range cs {
+	cs := map[string]*scraper.Config{}
+	for id, cim := range cims {
+		cs[id] = cim.Config
 		if opts.ToStdout {
-			fmt.Println(c.String())
+			fmt.Println(cim.Config.String())
 		}
 		if opts.ConfigFile != "" {
-			if err := utils.WriteStringFile(opts.ConfigFile+"_"+strconv.Itoa(i), c.String()); err != nil {
+			base := strings.TrimSuffix(opts.ConfigFile, "_config.yml")
+			if err := utils.WriteStringFile(fmt.Sprintf("%s_%s_config.yml", base, id), cim.Config.String()); err != nil {
 				return nil, err
 			}
-			if err := utils.WriteStringFile(opts.ConfigFile+"_items-"+strconv.Itoa(i), ims[i].String()); err != nil {
+			if err := utils.WriteStringFile(fmt.Sprintf("%s_%s.json", base, id), cim.ItemMaps.String()); err != nil {
 				return nil, err
 			}
 		}

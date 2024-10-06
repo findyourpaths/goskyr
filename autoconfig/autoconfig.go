@@ -232,70 +232,84 @@ func stripNthChild(lp *locationProps, minOcc int) {
 }
 
 func checkAndUpdateLocProps(old, new *locationProps) bool {
+	// slog.Debug("checkAndUpdateLocProps", "old.path.string()", old.path.string(), "new.path.string()", new.path.string())
 	// returns true if the paths overlap and the rest of the
 	// element location is identical. If true is returned
 	// the Selector of old will be updated if necessary.
-	if old.textIndex == new.textIndex && old.attr == new.attr {
-		if len(old.path) != len(new.path) {
-			return false
-		}
-		newPath := path{}
-		for i, on := range old.path {
-			if on.tagName == new.path[i].tagName {
-				pseudoClassesTmp := []string{}
-				if i > old.iStrip {
-					pseudoClassesTmp = new.path[i].pseudoClasses
-				}
-				// the following checks are not complete yet but suffice for now
-				// with nth-child being our only pseudo class
-				if len(on.pseudoClasses) == len(pseudoClassesTmp) {
-					if len(on.pseudoClasses) == 1 {
-						if on.pseudoClasses[0] != pseudoClassesTmp[0] {
-							return false
-						}
-					}
-					newNode := node{
-						tagName:       on.tagName,
-						pseudoClasses: on.pseudoClasses,
-					}
-					if len(on.classes) == 0 && len(new.path[i].classes) == 0 {
-						newPath = append(newPath, newNode)
-						continue
-					}
-					ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
-					// if nodes have more than 0 classes there has to be at least 1 overlapping class
-					// does this make sense?
-					if len(ovClasses) > 0 {
-						newNode.classes = ovClasses
-						newPath = append(newPath, newNode)
-						continue
-					}
-				}
-			}
-			return false
-
-		}
-		// if we get until here there is an overlapping path
-		old.path = newPath
-		old.count++
-		old.examples = append(old.examples, new.examples...)
-		return true
-
+	if old.textIndex != new.textIndex {
+		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.textIndex", old.textIndex, "new.textIndex", new.textIndex)
+		return false
 	}
-	return false
+	if old.attr != new.attr {
+		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.attr", old.attr, "new.attr", new.attr)
+		return false
+	}
+	if len(old.path) != len(new.path) {
+		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.path", old.path, "new.path", new.path)
+		return false
+	}
+
+	newPath := path{}
+	for i, on := range old.path {
+		if on.tagName != new.path[i].tagName {
+			// slog.Debug("in checkAndUpdateLocProps, returning false", "on.tagName", on.tagName, "new.path[i].tagName", new.path[i].tagName)
+			return false
+		}
+		pseudoClassesTmp := []string{}
+		if i > old.iStrip {
+			pseudoClassesTmp = new.path[i].pseudoClasses
+		}
+		// the following checks are not complete yet but suffice for now
+		// with nth-child being our only pseudo class
+		if len(on.pseudoClasses) != len(pseudoClassesTmp) {
+			continue
+		}
+
+		if len(on.pseudoClasses) == 1 {
+			if on.pseudoClasses[0] != pseudoClassesTmp[0] {
+				// slog.Debug("in checkAndUpdateLocProps, returning false", "on.pseudoClasses[0]", on.pseudoClasses[0], "pseudoClassesTmp[0]", pseudoClassesTmp[0])
+				return false
+			}
+		}
+		newNode := node{
+			tagName:       on.tagName,
+			pseudoClasses: on.pseudoClasses,
+		}
+		if len(on.classes) == 0 && len(new.path[i].classes) == 0 {
+			newPath = append(newPath, newNode)
+			continue
+		}
+		ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
+		// if nodes have more than 0 classes there has to be at least 1 overlapping class
+		// does this make sense?
+		if len(ovClasses) > 0 {
+			newNode.classes = ovClasses
+			newPath = append(newPath, newNode)
+			continue
+		}
+	}
+	// if we get until here there is an overlapping path
+	old.path = newPath
+	old.count++
+	old.examples = append(old.examples, new.examples...)
+	// slog.Debug("checkAndUpdateLocProps")
+	// slog.Debug("", "old.path.string()", old.path.string())
+	// slog.Debug("", "new.path.string()", new.path.string())
+	// slog.Debug("in checkAndUpdateLocProps, returning true")
+	return true
 }
 
 // remove if count is smaller than minCount
 func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
-	var filtered []*locationProps
+	var kept []*locationProps
 	for _, lp := range lps {
 		if lp.count < minCount {
 			// if p.count != minCount {
 			continue
 		}
-		filtered = append(filtered, lp)
+		kept = append(kept, lp)
 	}
-	return filtered
+	return kept
 }
 
 // remove if the examples are all the same (if onlyVarying is true)
@@ -318,83 +332,94 @@ func filterStaticFields(lps []*locationProps) locationManager {
 
 // Go one element beyond the root selector length and find the cluster with the largest number of fields.
 // Filter out all of the other fields.
-func filterAllButLargestCluster(lps []*locationProps, rootSelector path) ([]*locationProps, path) {
+func findClusters(lps []*locationProps, rootSelector path) map[string][]*locationProps {
 	// slog.Debug("filterAllButLargestCluster(lps (%d), rootSelector.string(): %q)", len(lps), rootSelector.string())
-	clusterCounts := map[string]int{}
+	locationPropsByPath := map[string][]*locationProps{}
+	// clusterCounts := map[path]int{}
 	newLen := len(rootSelector) + 1
-	maxCount := 0
-	var maxPath path
+	// maxCount := 0
+	// var maxPath path
 	for _, lp := range lps {
-		// slog.Debug("looking at lp with count: %d and path: %q", lp.count, lp.path.string())
+		slog.Debug("in filterAllButLargestCluster(), looking at lp", "lp.count", lp.count, "lp.path.string()", lp.path.string())
 		// check whether we reached the end.
 		if newLen > len(lp.path) {
-			return lps, rootSelector
+			return locationPropsByPath
 		}
 		p := lp.path[0:newLen]
 		pStr := p.string()
-		clusterCounts[pStr] += lp.count
-		if clusterCounts[pStr] > maxCount {
-			maxCount = clusterCounts[pStr]
-			maxPath = p
-		}
+		locationPropsByPath[pStr] = append(locationPropsByPath[pStr], lp)
+		//
+		// clusterCounts[p] += lp.count
+		// if clusterCounts[pStr] > maxCount {
+		// 	maxCount = clusterCounts[pStr]
+		// 	maxPath = p
+		// }
 	}
-
-	maxPathStr := maxPath.string()
-	// slog.Debug("maxCount: %d", maxCount)
-	// slog.Debug("maxPathStr: %q", maxPathStr)
-	var filtered []*locationProps
-	for _, lp := range lps {
-		if lp.path[0:newLen].string() != maxPathStr {
-			continue
-		}
-		filtered = append(filtered, lp)
-	}
-	// slog.Debug("filterAllButLargestCluster() returning filtered (%d), maxPath.string(): %q)", len(filtered), maxPath.string())
-	return filtered, maxPath
+	return locationPropsByPath
 }
 
-func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, batch bool) ([]*scraper.Config, []output.ItemMaps, error) {
+// rs := [][]*locationProps{}
+// 	for _, locProps := range {
+// 		rs = append(
+// 	}
+// }
+
+// 	maxPathStr := maxPath.string()
+// 	// slog.Debug("maxCount: %d", maxCount)
+// 	// slog.Debug("maxPathStr: %q", maxPathStr)
+// 	var filtered []*locationProps
+// 	for _, lp := range lps {
+// 		if lp.path[0:newLen].string() != maxPathStr {
+// 			continue
+// 		}
+// 		filtered = append(filtered, lp)
+// 	}
+// 	// slog.Debug("filterAllButLargestCluster() returning filtered (%d), maxPath.string(): %q)", len(filtered), maxPath.string())
+// 	return filtered, maxPath
+// }
+
+type ConfigAndItemMaps struct {
+	Config   *scraper.Config
+	ItemMaps output.ItemMaps
+}
+
+func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, batch bool) (map[string]*ConfigAndItemMaps, error) {
 	slog.Debug("NewDynamicFieldsConfigs()")
 	if len(u) == 0 {
-		return nil, nil, errors.New("URL field cannot be empty")
-	}
-	s := scraper.Scraper{
-		URL:      u,
-		Name:     u,
-		RenderJs: renderJs,
+		return nil, errors.New("URL field cannot be empty")
 	}
 
 	// slog.Debug("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
 	var fetcher fetch.Fetcher
-	if s.RenderJs {
+	if renderJs {
 		fetcher = fetch.NewDynamicFetcher("", 0)
-	} else if strings.HasPrefix(s.URL, "file://") {
+	} else if strings.HasPrefix(u, "file://") {
 		fetcher = &fetch.FileFetcher{}
 	} else {
 		fetcher = &fetch.StaticFetcher{}
 	}
-	res, err := fetcher.Fetch(s.URL, fetch.FetchOpts{})
+	res, err := fetcher.Fetch(u, fetch.FetchOpts{})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// A bit hacky. But goquery seems to manipulate the html (I only know of goquery adding tbody tags if missing)
 	// so we rely on goquery to read the html for both scraping AND figuring out the scraping config.
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Now we have to translate the goquery doc back into a string
 	htmlStr, err := goquery.OuterHtml(doc.Children())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	slog.Debug("writing html to file", "u", u)
 	fpath, err := utils.WriteTempStringFile("/tmp/goskyr/autoconfig/NewDynamicFieldsConfigsDoc/"+slug.Make(u)+".html", htmlStr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to write html file: %v", err)
+		return nil, fmt.Errorf("failed to write html file: %v", err)
 	}
 	slog.Debug("wrote html to file", "fpath", fpath)
 
@@ -425,10 +450,10 @@ func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bo
 	}
 
 	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if len(a.LocMan) == 0 {
-		return nil, nil, fmt.Errorf("no fields found")
+		return nil, fmt.Errorf("no fields found")
 	}
 
 	var locPropsSel []*locationProps
@@ -444,43 +469,56 @@ func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bo
 		locPropsSel = a.LocMan
 	}
 	if len(locPropsSel) == 0 {
-		return nil, nil, fmt.Errorf("no fields selected")
+		return nil, fmt.Errorf("no fields selected")
+	}
+
+	results := map[string]*ConfigAndItemMaps{}
+	return results, expandAllPossibleConfigs("a", u, renderJs, locPropsSel, results)
+}
+
+func expandAllPossibleConfigs(id string, u string, renderJs bool, locPropsSel []*locationProps, results map[string]*ConfigAndItemMaps) error {
+	slog.Debug("generating Config and itemMaps", "id", id)
+	for i, lp := range locPropsSel {
+		slog.Debug("expecting counts", "i", i, "lp.count", lp.count)
+	}
+
+	s := scraper.Scraper{
+		URL:      u,
+		Name:     u,
+		RenderJs: renderJs,
 	}
 
 	rootSelector := findSharedRootSelector(locPropsSel)
-	var newRootSelector path
-	var cs []*scraper.Config
-	var ims []output.ItemMaps
+	slog.Debug("in locationManager.GetDynamicFieldsConfig()", "root selector", rootSelector)
+	// s.Item = shortenRootSelector(rootSelector).string()
+	s.Item = rootSelector.string()
+	slog.Debug("in locationManager.GetDynamicFieldsConfig()", "s.Item", s.Item)
+	s.Fields = processFields(locPropsSel, rootSelector)
 
-	for {
-		slog.Debug("in locationManager.GetDynamicFieldsConfig()", "root selector", rootSelector)
-		s.Item = shortenRootSelector(rootSelector).string()
-		s.Item = rootSelector.string()
-		slog.Debug("in locationManager.GetDynamicFieldsConfig()", "s.Item", s.Item)
-		s.Fields = processFields(locPropsSel, rootSelector)
-
-		c := &scraper.Config{Scrapers: []scraper.Scraper{s}}
-		items, err := s.GetItems(&c.Global, true)
-		if err != nil {
-			return nil, nil, err
-		}
-		slog.Debug("autoconfig produced scraper returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
-		if slog.Default().Enabled(nil, slog.LevelDebug) {
-			fmt.Printf(items.String())
-		}
-		cs = append(cs, c)
-		ims = append(ims, items)
-		locPropsSel, newRootSelector = filterAllButLargestCluster(locPropsSel, rootSelector)
-		if newRootSelector.string() == rootSelector.string() {
-			break
-		}
-		rootSelector = newRootSelector
+	c := &scraper.Config{Scrapers: []scraper.Scraper{s}}
+	items, err := s.GetItems(&c.Global, true)
+	if err != nil {
+		return err
+	}
+	slog.Debug("autoconfig produced scraper returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		fmt.Println(items.String())
 	}
 
-	for i, lp := range a.LocMan {
-		slog.Debug("final", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	results[id] = &ConfigAndItemMaps{
+		Config:   c,
+		ItemMaps: items,
 	}
-	return cs, ims, nil
+
+	lastID := 'a'
+	for _, newLocPropsSel := range findClusters(locPropsSel, rootSelector) {
+		if err := expandAllPossibleConfigs(id+string(lastID), u, renderJs, newLocPropsSel, results); err != nil {
+			return err
+		}
+		lastID++
+	}
+
+	return nil
 }
 
 // getTagMetadata, for a given node returns a map of key value pairs (only for the attriutes we're interested in) and

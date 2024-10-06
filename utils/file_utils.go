@@ -17,6 +17,7 @@ func WriteTempStringFile(path string, content string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to generate random bytes: %v", err)
 	}
+
 	if idx := strings.LastIndex(path, "."); idx > 0 {
 		path = fmt.Sprintf("%s_%x.%s", path[0:idx], bs[:8], path[idx+1:])
 	} else {

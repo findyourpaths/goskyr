@@ -352,13 +352,13 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 // the main page (not subpages). This is used by the ML feature generation.
 func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
 	// for i, node := range s.Nodes {
-	// 	slog.Debug("%d: %#v", i, node)
+	// 	slog.Debug("in Scraper.GetItems()", "i", i, "node", node)
 	// }
-	// slog.Debug("in Scraper.GetItems(), c.Item match %d", i)
-	// slog.Debug("in Scraper.GetItems(), c.Item matched, and c.Fields: %#v", c.Fields)
+	// slog.Debug("in Scraper.GetItems(), c.Item match", "i", i)
+	// slog.Debug("in Scraper.GetItems(), c.Item matched", "c.Fields", c.Fields)
 	currentItem := output.ItemMap{}
 	for _, f := range c.Fields {
-		// slog.Debug("in Scraper.GetItems(), looking at field: %#v", f)
+		// slog.Debug("in Scraper.GetItems(), looking at field", "f", f)
 		if f.Value != "" {
 			if !rawDyn {
 				// add static fields
@@ -400,7 +400,7 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (out
 
 			// check whether we fetched the page already
 			subpageURL := fmt.Sprint(currentItem[f.OnSubpage])
-			slog.Debug("looking at subpageURL: %q", subpageURL)
+			slog.Debug("looking at", "subpageURL", subpageURL)
 			_, found := subDocs[subpageURL]
 			if !found {
 				subRes, err := c.fetcher.Fetch(subpageURL, fetch.FetchOpts{})

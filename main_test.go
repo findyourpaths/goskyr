@@ -8,9 +8,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -26,6 +26,8 @@ var configSuffix = "_config.yml"
 var jsonSuffix = ".json"
 
 var writeActualTestOutputs = true
+
+var testOutputDir = "/tmp/goskyr/testdata/"
 
 func TestAutoconfig(t *testing.T) {
 	allPaths := []string{}
@@ -50,10 +52,10 @@ func TestAutoconfig(t *testing.T) {
 
 			opts := mainOpts{
 				GenerateForURL: "file://" + path,
-				// ConfigLoc:      filepath.Join("/tmp", "test", testname+configSuffix),
-				Batch:      true,
-				Min:        5,
-				FieldsVary: true,
+				ConfigFile:     filepath.Join(testOutputDir, testname+configSuffix),
+				Batch:          true,
+				Min:            5,
+				FieldsVary:     true,
 			}
 			cs, err := GenerateConfigs(opts)
 			if err != nil {
@@ -71,23 +73,31 @@ func TestAutoconfig(t *testing.T) {
 
 			expPath := expPathGlob[0]
 			starIdx := strings.Index(glob, "*")
-			idStr := expPath[starIdx : starIdx+(len(expPath)-(starIdx+len(configSuffix)))]
-			id, err := strconv.Atoi(idStr)
-			if err != nil {
-				t.Fatalf("couldn't get config id from substring %q in config file path: %q", idStr, expPath)
+			id := expPath[starIdx : starIdx+(len(expPath)-(starIdx+len(configSuffix)))]
+			fmt.Printf("looking at id: %q\n", id)
+			fmt.Printf("looking at expPath: %q\n", expPath)
+			// fmt.Printf("looking at cs[id]: %v\n", cs[id])
+			if cs[id] == nil {
+				keys := []string{}
+				for key := range cs {
+					keys = append(keys, key)
+				}
+				t.Errorf("can't find config with id: %q in keys: %#v", id, keys)
+				return
 			}
+
 			exp, err := utils.ReadStringFile(expPath)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			act := cs[id].String()
-			if writeActualTestOutputs {
-				actPath := "/tmp/" + testname + "_" + idStr + configSuffix
-				if err := utils.WriteStringFile(actPath, act); err != nil {
-					t.Fatalf("failed to write actual test output to %q: %v", actPath, err)
-				}
-			}
+			// if writeActualTestOutputs {
+			// 	actPath := filepath.Join(testOutputDir, fmt.Sprintf("%s_%s%s", testname, id, configSuffix))
+			// 	if err := utils.WriteStringFile(actPath, act); err != nil {
+			// 		t.Fatalf("failed to write actual test output to %q: %v", actPath, err)
+			// 	}
+			// }
 
 			dmp := diffmatchpatch.New()
 			diffs := dmp.DiffMain(string(exp), act, false)
@@ -133,29 +143,29 @@ func TestScraper(t *testing.T) {
 				allItems = append(allItems, items...)
 			}
 
-			actual, err := json.MarshalIndent(allItems, "", "  ")
+			act, err := json.MarshalIndent(allItems, "", "  ")
 			if err != nil {
 				t.Fatalf("failed to marshal json: %v", err)
 			}
 
 			if writeActualTestOutputs {
-				actualPath := "/tmp/" + testname + jsonSuffix
-				if err := utils.WriteStringFile(actualPath, string(actual)); err != nil {
-					t.Fatalf("failed to write actual test output to %q: %v", actualPath, err)
+				actPath := filepath.Join(testOutputDir, testname+jsonSuffix)
+				if err := utils.WriteStringFile(actPath, string(act)); err != nil {
+					t.Fatalf("failed to write actual test output to %q: %v", actPath, err)
 				}
 			}
 
 			// Each input file is expected to have a "golden output" file, with the
 			// same path except the .input extension is replaced by the golden suffix.
 			jsonfile := path[:len(path)-len(configSuffix)] + jsonSuffix
-			expected, err := os.ReadFile(jsonfile)
+			exp, err := os.ReadFile(jsonfile)
 			if err != nil {
 				t.Fatal("error reading golden file:", err)
 			}
 
 			// Compare the JSON outputs
 			opts := jsondiff.DefaultConsoleOptions()
-			diff, diffStr := jsondiff.Compare(actual, expected, &opts)
+			diff, diffStr := jsondiff.Compare(act, exp, &opts)
 
 			// Check if there are any differences
 			if diff != jsondiff.FullMatch {
