@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -232,79 +234,198 @@ func stripNthChild(lp *locationProps, minOcc int) {
 }
 
 func checkAndUpdateLocProps(old, new *locationProps) bool {
-	// slog.Debug("checkAndUpdateLocProps", "old.path.string()", old.path.string(), "new.path.string()", new.path.string())
-	// returns true if the paths overlap and the rest of the
-	// element location is identical. If true is returned
+	// Returns true if the paths overlap and the rest of the
+	// element location is identical. If true is returned,
 	// the Selector of old will be updated if necessary.
+
 	if old.textIndex != new.textIndex {
-		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.textIndex", old.textIndex, "new.textIndex", new.textIndex)
 		return false
 	}
 	if old.attr != new.attr {
-		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.attr", old.attr, "new.attr", new.attr)
 		return false
 	}
 	if len(old.path) != len(new.path) {
-		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.path", old.path, "new.path", new.path)
 		return false
 	}
 
-	newPath := path{}
+	newPath := make(path, 0, len(old.path)) // Pre-allocate with capacity
 	for i, on := range old.path {
 		if on.tagName != new.path[i].tagName {
-			// slog.Debug("in checkAndUpdateLocProps, returning false", "on.tagName", on.tagName, "new.path[i].tagName", new.path[i].tagName)
 			return false
 		}
+
 		pseudoClassesTmp := []string{}
 		if i > old.iStrip {
 			pseudoClassesTmp = new.path[i].pseudoClasses
 		}
-		// the following checks are not complete yet but suffice for now
-		// with nth-child being our only pseudo class
+
+		// The following checks are not complete yet but suffice for now
+		// with nth-child being our only pseudo class.
 		if len(on.pseudoClasses) != len(pseudoClassesTmp) {
-			continue
+			return false // Mismatched pseudo-classes, no overlap
+		}
+		if len(on.pseudoClasses) == 1 && on.pseudoClasses[0] != pseudoClassesTmp[0] {
+			return false // Mismatched pseudo-class values, no overlap
 		}
 
-		if len(on.pseudoClasses) == 1 {
-			if on.pseudoClasses[0] != pseudoClassesTmp[0] {
-				// slog.Debug("in checkAndUpdateLocProps, returning false", "on.pseudoClasses[0]", on.pseudoClasses[0], "pseudoClassesTmp[0]", pseudoClassesTmp[0])
-				return false
-			}
-		}
 		newNode := node{
 			tagName:       on.tagName,
 			pseudoClasses: on.pseudoClasses,
 		}
+
 		if len(on.classes) == 0 && len(new.path[i].classes) == 0 {
 			newPath = append(newPath, newNode)
 			continue
 		}
+
 		ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
-		// if nodes have more than 0 classes there has to be at least 1 overlapping class
-		// does this make sense?
+		// If nodes have more than 0 classes, there has to be at least 1 overlapping class.
 		if len(ovClasses) > 0 {
 			newNode.classes = ovClasses
 			newPath = append(newPath, newNode)
-			continue
+		} else {
+			return false // No overlapping classes, no overlap
 		}
 	}
-	// if we get until here there is an overlapping path
+
+	// If we get until here, there is an overlapping path.
 	old.path = newPath
 	old.count++
 	old.examples = append(old.examples, new.examples...)
-	// slog.Debug("checkAndUpdateLocProps")
-	// slog.Debug("", "old.path.string()", old.path.string())
-	// slog.Debug("", "new.path.string()", new.path.string())
-	// slog.Debug("in checkAndUpdateLocProps, returning true")
 	return true
 }
+
+// func checkAndUpdateLocProps(old, new *locationProps) bool {
+// 	// returns true if the paths overlap and the rest of the
+// 	// element location is identical. If true is returned
+// 	// the Selector of old will be updated if necessary.
+// 	if old.textIndex != new.textIndex {
+// 		return false
+// 	}
+// 	if old.attr != new.attr {
+// 		return false
+// 	}
+// 	if len(old.path) != len(new.path) {
+// 		return false
+// 	}
+
+// 	newPath := path{}
+// 	for i, on := range old.path {
+// 		if on.tagName == new.path[i].tagName {
+// 			pseudoClassesTmp := []string{}
+// 			if i > old.iStrip {
+// 				pseudoClassesTmp = new.path[i].pseudoClasses
+// 			}
+// 			// the following checks are not complete yet but suffice for now
+// 			// with nth-child being our only pseudo class
+// 			if len(on.pseudoClasses) == len(pseudoClassesTmp) {
+// 				if len(on.pseudoClasses) == 1 {
+// 					if on.pseudoClasses[0] != pseudoClassesTmp[0] {
+// 						return false
+// 					}
+// 				}
+// 				newNode := node{
+// 					tagName:       on.tagName,
+// 					pseudoClasses: on.pseudoClasses,
+// 				}
+// 				if len(on.classes) == 0 && len(new.path[i].classes) == 0 {
+// 					newPath = append(newPath, newNode)
+// 					continue
+// 				}
+// 				ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
+// 				// if nodes have more than 0 classes there has to be at least 1 overlapping class
+// 				// does this make sense?
+// 				if len(ovClasses) > 0 {
+// 					newNode.classes = ovClasses
+// 					newPath = append(newPath, newNode)
+// 					continue
+// 				}
+// 			}
+// 		}
+// 		return false
+
+// 	}
+// 	// if we get until here there is an overlapping path
+// 	old.path = newPath
+// 	old.count++
+// 	old.examples = append(old.examples, new.examples...)
+// 	return true
+// }
+
+// func checkAndUpdateLocProps(old, new *locationProps) bool {
+// 	// slog.Debug("checkAndUpdateLocProps", "old.path.string()", old.path.string(), "new.path.string()", new.path.string())
+// 	// returns true if the paths overlap and the rest of the
+// 	// element location is identical. If true is returned
+// 	// the Selector of old will be updated if necessary.
+// 	if old.textIndex != new.textIndex {
+// 		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.textIndex", old.textIndex, "new.textIndex", new.textIndex)
+// 		return false
+// 	}
+// 	if old.attr != new.attr {
+// 		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.attr", old.attr, "new.attr", new.attr)
+// 		return false
+// 	}
+// 	if len(old.path) != len(new.path) {
+// 		// slog.Debug("in checkAndUpdateLocProps, returning false", "old.path", old.path, "new.path", new.path)
+// 		return false
+// 	}
+
+// 	newPath := path{}
+// 	for i, on := range old.path {
+// 		if on.tagName != new.path[i].tagName {
+// 			// slog.Debug("in checkAndUpdateLocProps, returning false", "on.tagName", on.tagName, "new.path[i].tagName", new.path[i].tagName)
+// 			return false
+// 		}
+// 		pseudoClassesTmp := []string{}
+// 		if i > old.iStrip {
+// 			pseudoClassesTmp = new.path[i].pseudoClasses
+// 		}
+// 		// the following checks are not complete yet but suffice for now
+// 		// with nth-child being our only pseudo class
+// 		if len(on.pseudoClasses) != len(pseudoClassesTmp) {
+// 			continue
+// 		}
+
+// 		if len(on.pseudoClasses) == 1 {
+// 			if on.pseudoClasses[0] != pseudoClassesTmp[0] {
+// 				// slog.Debug("in checkAndUpdateLocProps, returning false", "on.pseudoClasses[0]", on.pseudoClasses[0], "pseudoClassesTmp[0]", pseudoClassesTmp[0])
+// 				return false
+// 			}
+// 		}
+// 		newNode := node{
+// 			tagName:       on.tagName,
+// 			pseudoClasses: on.pseudoClasses,
+// 		}
+// 		if len(on.classes) == 0 && len(new.path[i].classes) == 0 {
+// 			newPath = append(newPath, newNode)
+// 			continue
+// 		}
+// 		ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
+// 		// if nodes have more than 0 classes there has to be at least 1 overlapping class
+// 		// does this make sense?
+// 		if len(ovClasses) > 0 {
+// 			newNode.classes = ovClasses
+// 			newPath = append(newPath, newNode)
+// 			continue
+// 		}
+// 	}
+// 	// if we get until here there is an overlapping path
+// 	old.path = newPath
+// 	old.count++
+// 	old.examples = append(old.examples, new.examples...)
+// 	// slog.Debug("checkAndUpdateLocProps")
+// 	// slog.Debug("", "old.path.string()", old.path.string())
+// 	// slog.Debug("", "new.path.string()", new.path.string())
+// 	// slog.Debug("in checkAndUpdateLocProps, returning true")
+// 	return true
+// }
 
 // remove if count is smaller than minCount
 func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
 	var kept []*locationProps
 	for _, lp := range lps {
 		if lp.count < minCount {
-			// if p.count != minCount {
+			slog.Debug("in filterBelowMinCount dropping", "minCount", minCount, "lp.count", lp.count, "lp.path.string()", lp.path.string())
 			continue
 		}
 		kept = append(kept, lp)
@@ -383,22 +504,33 @@ type ConfigAndItemMaps struct {
 	ItemMaps output.ItemMaps
 }
 
-func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bool, modelName, wordsDir string, batch bool) (map[string]*ConfigAndItemMaps, error) {
-	slog.Debug("NewDynamicFieldsConfigs()")
-	if len(u) == 0 {
+type ConfigOptions struct {
+	URL         string
+	RenderJS    bool
+	OnlyVarying bool
+	ModelName   string
+	WordsDir    string
+	Batch       bool
+}
+
+var htmlOutputDir = "/tmp/goskyr/autoconfig/NewDynamicFieldsConfigsDoc/"
+
+func NewDynamicFieldsConfigsForURL(opts ConfigOptions, minOccs []int) (map[string]*ConfigAndItemMaps, error) {
+	slog.Debug("NewDynamicFieldsConfigs()", "opts", opts, "minOccs", minOccs)
+	if len(opts.URL) == 0 {
 		return nil, errors.New("URL field cannot be empty")
 	}
 
 	// slog.Debug("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
 	var fetcher fetch.Fetcher
-	if renderJs {
+	if opts.RenderJS {
 		fetcher = fetch.NewDynamicFetcher("", 0)
-	} else if strings.HasPrefix(u, "file://") {
+	} else if strings.HasPrefix(opts.URL, "file://") {
 		fetcher = &fetch.FileFetcher{}
 	} else {
 		fetcher = &fetch.StaticFetcher{}
 	}
-	res, err := fetcher.Fetch(u, fetch.FetchOpts{})
+	res, err := fetcher.Fetch(opts.URL, fetch.FetchOpts{})
 	if err != nil {
 		return nil, err
 	}
@@ -416,13 +548,23 @@ func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bo
 		return nil, err
 	}
 
-	slog.Debug("writing html to file", "u", u)
-	fpath, err := utils.WriteTempStringFile("/tmp/goskyr/autoconfig/NewDynamicFieldsConfigsDoc/"+slug.Make(u)+".html", htmlStr)
+	slog.Debug("writing html to file", "u", opts.URL)
+	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(opts.URL)+".html"), htmlStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write html file: %v", err)
 	}
 	slog.Debug("wrote html to file", "fpath", fpath)
 
+	results := map[string]*ConfigAndItemMaps{}
+	for _, minOcc := range minOccs {
+		if err := NewDynamicFieldsConfigsForHTML(opts, htmlStr, minOcc, results); err != nil {
+			return nil, err
+		}
+	}
+	return results, nil
+}
+
+func NewDynamicFieldsConfigsForHTML(opts ConfigOptions, htmlStr string, minOcc int, results map[string]*ConfigAndItemMaps) error {
 	a := &Analyzer{
 		Tokenizer:   html.NewTokenizer(strings.NewReader(htmlStr)),
 		NumChildren: map[string]int{},
@@ -442,22 +584,23 @@ func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bo
 	for i, lp := range a.LocMan {
 		slog.Debug("filtered min count", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
 	}
-	if onlyVarying {
+	if opts.OnlyVarying {
 		a.LocMan = filterStaticFields(a.LocMan)
 	}
 	for i, lp := range a.LocMan {
 		slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
 	}
 
-	if err := a.LocMan.findFieldNames(modelName, wordsDir); err != nil {
-		return nil, err
+	if err := a.LocMan.findFieldNames(opts.ModelName, opts.WordsDir); err != nil {
+		return err
 	}
 	if len(a.LocMan) == 0 {
-		return nil, fmt.Errorf("no fields found")
+		slog.Warn("no fields found", "opts", opts, "minOcc", minOcc)
+		return nil
 	}
 
 	var locPropsSel []*locationProps
-	if !batch {
+	if !opts.Batch {
 		a.LocMan.setColors()
 		a.LocMan.selectFieldsTable()
 		for _, lm := range a.LocMan {
@@ -469,23 +612,22 @@ func NewDynamicFieldsConfigs(u string, renderJs bool, minOcc int, onlyVarying bo
 		locPropsSel = a.LocMan
 	}
 	if len(locPropsSel) == 0 {
-		return nil, fmt.Errorf("no fields selected")
+		return fmt.Errorf("no fields selected")
 	}
 
-	results := map[string]*ConfigAndItemMaps{}
-	return results, expandAllPossibleConfigs("a", u, renderJs, locPropsSel, results)
+	return expandAllPossibleConfigs(fmt.Sprintf("%02d-a", minOcc), opts, locPropsSel, nil, results)
 }
 
-func expandAllPossibleConfigs(id string, u string, renderJs bool, locPropsSel []*locationProps, results map[string]*ConfigAndItemMaps) error {
+func expandAllPossibleConfigs(id string, opts ConfigOptions, locPropsSel []*locationProps, parentRootSelector path, results map[string]*ConfigAndItemMaps) error {
 	slog.Debug("generating Config and itemMaps", "id", id)
 	for i, lp := range locPropsSel {
 		slog.Debug("expecting counts", "i", i, "lp.count", lp.count)
 	}
 
 	s := scraper.Scraper{
-		URL:      u,
-		Name:     u,
-		RenderJs: renderJs,
+		URL:      opts.URL,
+		Name:     opts.URL,
+		RenderJs: opts.RenderJS,
 	}
 
 	rootSelector := findSharedRootSelector(locPropsSel)
@@ -509,10 +651,18 @@ func expandAllPossibleConfigs(id string, u string, renderJs bool, locPropsSel []
 		Config:   c,
 		ItemMaps: items,
 	}
+	// slog.Info("created scraper", "id", id, "rootSelector diff", strings.TrimPrefix(rootSelector.string(), parentRootSelector.string()))
+
+	clusters := findClusters(locPropsSel, rootSelector)
+	clusterIDs := []string{}
+	for clusterID := range clusters {
+		clusterIDs = append(clusterIDs, clusterID)
+	}
+	sort.Strings(clusterIDs)
 
 	lastID := 'a'
-	for _, newLocPropsSel := range findClusters(locPropsSel, rootSelector) {
-		if err := expandAllPossibleConfigs(id+string(lastID), u, renderJs, newLocPropsSel, results); err != nil {
+	for _, clusterID := range clusterIDs {
+		if err := expandAllPossibleConfigs(id+string(lastID), opts, clusters[clusterID], rootSelector, results); err != nil {
 			return err
 		}
 		lastID++

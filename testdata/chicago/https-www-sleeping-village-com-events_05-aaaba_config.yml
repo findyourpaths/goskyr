@@ -1,0 +1,31 @@
+scrapers:
+    - name: file://testdata/chicago/https-www-sleeping-village-com-events.html
+      url: file://testdata/chicago/https-www-sleeping-village-com-events.html
+      item: body > div.body.page.page-events.page-id-4920.page-template.page-template-.page-template-listings.page-template-pages.page-template-templates.page-template-templatespageslistings-php > div > div.siteWrap > div > div.maxWidth > div.listings-block > div.listings-block__inner > div.listings-block-list.listings-block-list--row > div.listings-block-list__wrapper > div.listings-block-list__listing > div.listing__details
+      fields:
+        - name: field-3
+          type: text
+          location:
+            - selector: div.listing__description > p
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: p.listing-date-time.listingMeta.meta > span.listing-date-time__date > span
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: p.listing-date-time.listingMeta.meta > span
+          can_be_empty: true
+        - name: field-6
+          type: text
+          location:
+            - selector: a.listing__title-link > div.listing__title > h3
+          can_be_empty: true
+        - name: field-7
+          type: url
+          location:
+            - selector: a.listing__title-link
+              attr: href
+          can_be_empty: true

@@ -8,8 +8,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -25,7 +27,7 @@ var configSuffix = "_config.yml"
 var jsonSuffix = ".json"
 
 var writeActualTestOutputs = true
-var testOutputDir = "/tmp/goskyr/testdata/"
+var testOutputDir = "/tmp/goskyr/main_test/"
 
 var printDiffs = false
 
@@ -49,8 +51,18 @@ func TestAutoconfig(t *testing.T) {
 		// Each path turns into a test: the test name is the filename without the
 		// extension.
 		t.Run(testname, func(t *testing.T) {
+			opts := mainOpts{
+				URL:        "file://" + path,
+				ConfigFile: filepath.Join(testOutputDir, testname+configSuffix),
+				Batch:      true,
+				FieldsVary: true,
+			}
+			cs, err := GenerateConfigs(opts)
+			if err != nil {
+				t.Fatalf("error generating config: %v", err)
+			}
 
-			glob := filepath.Join(dir, testname+"_*"+configSuffix)
+			glob := filepath.Join(dir, testname+"_*-*"+configSuffix)
 			expPathGlob, err := filepath.Glob(glob)
 			if err != nil {
 				t.Fatal(err)
@@ -61,7 +73,16 @@ func TestAutoconfig(t *testing.T) {
 
 			expPath := expPathGlob[0]
 			starIdx := strings.Index(glob, "*")
+			// hyphenIdx := starIdx + strings.Index(expPath[starIdx:], "-")
+			// minOccStr := expPath[starIdx:hyphenIdx]
+			// fmt.Printf("minStr: %v\n", minOccStr)
+			// minOcc, err := strconv.Atoi(minOccStr)
+			// if err != nil {
+			// 	t.Fatalf("couldn't get min from substring %q in config file path: %q", minOccStr, expPath)
+			// }
+			// id := expPath[hyphenIdx : hyphenIdx+(len(expPath)-(hyphenIdx+len(configSuffix)))]
 			id := expPath[starIdx : starIdx+(len(expPath)-(starIdx+len(configSuffix)))]
+			fmt.Printf("id: %v\n", id)
 			// fmt.Printf("looking at id: %q\n", id)
 			// fmt.Printf("looking at expPath: %q\n", expPath)
 			// fmt.Printf("looking at cs[id]: %v\n", cs[id])
@@ -71,22 +92,12 @@ func TestAutoconfig(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			opts := mainOpts{
-				GenerateForURL: "file://" + path,
-				ConfigFile:     filepath.Join(testOutputDir, testname+configSuffix),
-				Batch:          true,
-				Min:            5,
-				FieldsVary:     true,
-			}
-			cs, err := GenerateConfigs(opts)
-			if err != nil {
-				t.Fatalf("error generating config file: %v", err)
-			}
 			if cs[id] == nil {
 				keys := []string{}
 				for key := range cs {
 					keys = append(keys, key)
 				}
+				sort.Strings(keys)
 				t.Fatalf("can't find config with id: %q in keys: %#v", id, keys)
 			}
 			act := cs[id].String()

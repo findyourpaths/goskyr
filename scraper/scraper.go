@@ -536,6 +536,8 @@ func (c *Scraper) removeHiddenFields(item output.ItemMap) output.ItemMap {
 	return item
 }
 
+var htmlOutputDir = "/tmp/goskyr/scraper/fetchToDoc/"
+
 func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl, userAgent string, i []*types.Interaction) (bool, string, *goquery.Document, error) {
 
 	if nextPageI == 0 {
@@ -614,7 +616,7 @@ func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Docu
 	}
 
 	slog.Debug("writing html to file", "url", urlStr)
-	fpath, err := utils.WriteTempStringFile("/tmp/goskyr/scraper/fetchToDoc/"+slug.Make(urlStr)+".html", htmlStr)
+	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(urlStr)+".html"), htmlStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write html file: %v", err)
 	}

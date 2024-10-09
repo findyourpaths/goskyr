@@ -1,0 +1,68 @@
+scrapers:
+    - name: file://testdata/https-www-scrapethissite-com-pages-simple.html
+      url: file://testdata/https-www-scrapethissite-com-pages-simple.html
+      item: body > div > section > div.container > div.row
+      fields:
+        - name: field-0
+          type: text
+          location:
+            - selector: div.col-md-4.country > div.country-info > span.country-area
+          can_be_empty: true
+        - name: field-1
+          type: text
+          location:
+            - selector: div.col-md-4.country > div.country-info > span.country-population
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - selector: div.col-md-4.country > div.country-info > span.country-capital
+          can_be_empty: true
+        - name: field-3
+          type: text
+          location:
+            - selector: div.col-md-4.country > h3.country-name
+              child_index: 2
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: div.col-md-4.country:nth-child(3) > div.country-info > span.country-area
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: div.col-md-4.country:nth-child(3) > div.country-info > span.country-population
+          can_be_empty: true
+        - name: field-6
+          type: text
+          location:
+            - selector: div.col-md-4.country:nth-child(3) > div.country-info > span.country-capital
+          can_be_empty: true
+        - name: field-7
+          type: text
+          location:
+            - selector: div.col-md-4.country:nth-child(3) > h3.country-name
+              child_index: 2
+          can_be_empty: true
+        - name: field-8
+          type: text
+          location:
+            - selector: div.col-md-4.country:nth-child(2) > div.country-info > span.country-area
+          can_be_empty: true
+        - name: field-9
+          type: text
+          location:
+            - selector: div.col-md-4.country:nth-child(2) > div.country-info > span.country-population
+          can_be_empty: true
+        - name: field-10
+          type: text
+          location:
+            - selector: div.col-md-4.country:nth-child(2) > div.country-info > span.country-capital
+          can_be_empty: true
+        - name: field-11
+          type: text
+          location:
+            - selector: div.col-md-4.country:nth-child(2) > h3.country-name
+              child_index: 2
+          can_be_empty: true

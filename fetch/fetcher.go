@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -112,6 +113,8 @@ func (d *DynamicFetcher) Cancel() {
 	d.cancelAlloc()
 }
 
+var pngOutputDir = "/tmp/goskyr/fetch/Fetch/"
+
 func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 	// log.Printf("DynamicFetcher.Fetch(urlStr: %q, opts: %#v)", urlStr, opts)
 	logger := slog.With(slog.String("fetcher", "dynamic"), slog.String("url", urlStr))
@@ -188,7 +191,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 		actions = append(actions, chromedp.CaptureScreenshot(&buf))
 		actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
 			logger.Debug(fmt.Sprintf("writing screenshot to file"))
-			fpath, err := utils.WriteTempStringFile("/tmp/goskyr/"+u.Host+".png", string(buf))
+			fpath, err := utils.WriteTempStringFile(filepath.Join(pngOutputDir, u.Host+".png"), string(buf))
 			if err != nil {
 				return err
 			}

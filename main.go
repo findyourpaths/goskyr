@@ -24,8 +24,8 @@ type mainOpts struct {
 	DebugFlag           bool   `short:"d" long:"debug" description:"Prints debug logs and writes scraped html's to files."`
 	ExtractFeatures     string `short:"e" long:"extract" description:"Extract ML features based on the given configuration file (-c) and write them to the given file in csv format."`
 	FieldsVary          bool   `short:"f" long:"fieldsvary" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
-	GenerateForURL      string `short:"g" long:"generate" description:"Automatically generate a config file for the given url."`
-	Min                 int    `short:"m" long:"min" default:"20" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	URL                 string `short:"u" long:"url" description:"Automatically generate a config file for the given url."`
+	MinOcc              int    `short:"m" long:"min" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
 	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
 	RenderJs            bool   `short:"r" long:"renderjs" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
 	SingleScraper       string `short:"s" description:"The name of the scraper to be run."`
@@ -89,7 +89,7 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
-	if opts.GenerateForURL != "" {
+	if opts.URL != "" {
 		if _, err := GenerateConfigs(opts); err != nil {
 			slog.Error(err.Error())
 			os.Exit(1)
@@ -188,8 +188,23 @@ func main() {
 
 func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 	slog.Debug("starting to generate config")
-	slog.Debug("analyzing", "url", opts.GenerateForURL)
-	cims, err := autoconfig.NewDynamicFieldsConfigs(opts.GenerateForURL, opts.RenderJs, opts.Min, opts.FieldsVary, opts.PretrainedModelPath, opts.WordsDir, opts.Batch)
+	slog.Debug("analyzing", "url", opts.URL)
+
+	minOccs := []int{5, 10, 20}
+	if opts.MinOcc != 0 {
+		minOccs = []int{opts.MinOcc}
+	}
+
+	autoOpts := autoconfig.ConfigOptions{
+		URL:         opts.URL,
+		RenderJS:    opts.RenderJs,
+		OnlyVarying: opts.FieldsVary,
+		ModelName:   opts.PretrainedModelPath,
+		WordsDir:    opts.WordsDir,
+		Batch:       opts.Batch,
+	}
+
+	cims, err := autoconfig.NewDynamicFieldsConfigsForURL(autoOpts, minOccs)
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +225,5 @@ func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 			}
 		}
 	}
-
 	return cs, nil
 }
