@@ -8,7 +8,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -36,6 +35,7 @@ func TestAutoconfig(t *testing.T) {
 	for _, glob := range []string{
 		filepath.Join("testdata", "*"+htmlSuffix),
 		filepath.Join("testdata/chicago", "*"+htmlSuffix),
+		// filepath.Join("testdata/enneagram", "*"+htmlSuffix),
 	} {
 		paths, err := filepath.Glob(glob)
 		if err != nil {
@@ -52,10 +52,11 @@ func TestAutoconfig(t *testing.T) {
 		// extension.
 		t.Run(testname, func(t *testing.T) {
 			opts := mainOpts{
-				URL:        "file://" + path,
-				ConfigFile: filepath.Join(testOutputDir, testname+configSuffix),
 				Batch:      true,
+				ConfigFile: filepath.Join(testOutputDir, testname+configSuffix),
 				FieldsVary: true,
+				InputURL:   "file://" + path,
+				// URLRequired: true,
 			}
 			cs, err := GenerateConfigs(opts)
 			if err != nil {
@@ -82,7 +83,7 @@ func TestAutoconfig(t *testing.T) {
 			// }
 			// id := expPath[hyphenIdx : hyphenIdx+(len(expPath)-(hyphenIdx+len(configSuffix)))]
 			id := expPath[starIdx : starIdx+(len(expPath)-(starIdx+len(configSuffix)))]
-			fmt.Printf("id: %v\n", id)
+			// fmt.Printf("id: %v\n", id)
 			// fmt.Printf("looking at id: %q\n", id)
 			// fmt.Printf("looking at expPath: %q\n", expPath)
 			// fmt.Printf("looking at cs[id]: %v\n", cs[id])

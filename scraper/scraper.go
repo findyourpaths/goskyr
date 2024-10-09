@@ -536,6 +536,22 @@ func (c *Scraper) removeHiddenFields(item output.ItemMap) output.ItemMap {
 	return item
 }
 
+func (c *Scraper) GetSubpageURLs() []string {
+	rs := []string{}
+	for _, f := range c.Fields {
+		if f.Type != "url" {
+			continue
+		}
+		if strings.HasSuffix(f.Value, ".gif") ||
+			strings.HasSuffix(f.Value, ".jpg") ||
+			strings.HasSuffix(f.Value, ".png") {
+			continue
+		}
+		rs = append(rs, f.Value)
+	}
+	return rs
+}
+
 var htmlOutputDir = "/tmp/goskyr/scraper/fetchToDoc/"
 
 func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl, userAgent string, i []*types.Interaction) (bool, string, *goquery.Document, error) {

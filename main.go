@@ -24,13 +24,14 @@ type mainOpts struct {
 	DebugFlag           bool   `short:"d" long:"debug" description:"Prints debug logs and writes scraped html's to files."`
 	ExtractFeatures     string `short:"e" long:"extract" description:"Extract ML features based on the given configuration file (-c) and write them to the given file in csv format."`
 	FieldsVary          bool   `short:"f" long:"fieldsvary" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
-	URL                 string `short:"u" long:"url" description:"Automatically generate a config file for the given url."`
+	InputURL            string `short:"i" long:"inputurl" description:"Automatically generate a config file for the given input url."`
 	MinOcc              int    `short:"m" long:"min" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
 	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
 	RenderJs            bool   `short:"r" long:"renderjs" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
 	SingleScraper       string `short:"s" description:"The name of the scraper to be run."`
 	TrainModel          string `short:"t" long:"train" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
-	PrintVersion        bool   `short:"v" description:"The version of goskyr."`
+	URLRequired         bool   `short:"u" long:"urlrequired" description:"Whether a URL (e.g. for a subpage) is required in the generated config. If true, configs will not be produced if they don't have a page URL field. URLs ending in .jpg, .gif, or .png are not considered page URLs."`
+	PrintVersion        bool
 	WordsDir            string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
 	ToJSON              bool   `long:"json" description:"If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout."`
 	ToStdout            bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
@@ -89,7 +90,7 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
-	if opts.URL != "" {
+	if opts.InputURL != "" {
 		if _, err := GenerateConfigs(opts); err != nil {
 			slog.Error(err.Error())
 			os.Exit(1)
@@ -188,7 +189,7 @@ func main() {
 
 func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 	slog.Debug("starting to generate config")
-	slog.Debug("analyzing", "url", opts.URL)
+	slog.Debug("analyzing", "url", opts.InputURL)
 
 	minOccs := []int{5, 10, 20}
 	if opts.MinOcc != 0 {
@@ -196,12 +197,13 @@ func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 	}
 
 	autoOpts := autoconfig.ConfigOptions{
-		URL:         opts.URL,
-		RenderJS:    opts.RenderJs,
-		OnlyVarying: opts.FieldsVary,
-		ModelName:   opts.PretrainedModelPath,
-		WordsDir:    opts.WordsDir,
 		Batch:       opts.Batch,
+		InputURL:    opts.InputURL,
+		ModelName:   opts.PretrainedModelPath,
+		OnlyVarying: opts.FieldsVary,
+		RenderJS:    opts.RenderJs,
+		URLRequired: opts.URLRequired,
+		WordsDir:    opts.WordsDir,
 	}
 
 	cims, err := autoconfig.NewDynamicFieldsConfigsForURL(autoOpts, minOccs)
