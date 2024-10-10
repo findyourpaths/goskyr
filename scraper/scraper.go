@@ -536,18 +536,19 @@ func (c *Scraper) removeHiddenFields(item output.ItemMap) output.ItemMap {
 	return item
 }
 
-func (c *Scraper) GetSubpageURLs() []string {
-	rs := []string{}
+func (c *Scraper) GetSubpageURLFields() []Field {
+	rs := []Field{}
 	for _, f := range c.Fields {
 		if f.Type != "url" {
 			continue
 		}
 		if strings.HasSuffix(f.Value, ".gif") ||
+			strings.HasSuffix(f.Value, ".jfif") ||
 			strings.HasSuffix(f.Value, ".jpg") ||
 			strings.HasSuffix(f.Value, ".png") {
 			continue
 		}
-		rs = append(rs, f.Value)
+		rs = append(rs, f)
 	}
 	return rs
 }

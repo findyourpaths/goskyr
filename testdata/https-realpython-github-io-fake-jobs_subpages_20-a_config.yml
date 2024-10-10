@@ -1,0 +1,26 @@
+scrapers:
+    - name: file://testdata/https-realpython-github-io-fake-jobs_subpages/https-realpython-github-io-fake-jobs_subpages_all.html
+      url: file://testdata/https-realpython-github-io-fake-jobs_subpages/https-realpython-github-io-fake-jobs_subpages_all.html
+      item: body > htmls > section.section > div.container > div.columns.is-multiline > div.box
+      fields:
+        - name: field-0
+          type: text
+          location:
+            - selector: div.content > p:nth-child(2)
+              child_index: 1
+          can_be_empty: true
+        - name: field-1
+          type: text
+          location:
+            - selector: div.content > p
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - selector: h2.company.is-4.subtitle
+          can_be_empty: true
+        - name: field-3
+          type: text
+          location:
+            - selector: h1.is-2.title
+          can_be_empty: true

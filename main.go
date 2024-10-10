@@ -6,15 +6,18 @@ import (
 	"math"
 	"os"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
 
 	"github.com/findyourpaths/goskyr/autoconfig"
 	"github.com/findyourpaths/goskyr/config"
+	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scraper"
 	"github.com/findyourpaths/goskyr/utils"
+	"github.com/gosimple/slug"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -187,6 +190,8 @@ func main() {
 	writerWg.Wait()
 }
 
+var doWriteSubpages = false
+
 func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 	slog.Debug("starting to generate config")
 	slog.Debug("analyzing", "url", opts.InputURL)
@@ -211,6 +216,8 @@ func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 		return nil, err
 	}
 
+	subpageURLsBySlug := map[string]string{}
+
 	cs := map[string]*scraper.Config{}
 	for id, cim := range cims {
 		cs[id] = cim.Config
@@ -226,6 +233,48 @@ func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 				return nil, err
 			}
 		}
+
+		for _, s := range cim.Config.Scrapers {
+			// fmt.Printf("found %d subpage URL fields\n", len(s.GetSubpageURLFields()))
+			for _, f := range s.GetSubpageURLFields() {
+				for _, im := range cim.ItemMaps {
+					u := fmt.Sprintf("%v", im[f.Name])
+					if len(u) > 0 {
+						subpageURLsBySlug[slug.Make(u)+".html"] = u
+					}
+				}
+			}
+		}
+	}
+
+	if doWriteSubpages {
+		base := strings.TrimSuffix(opts.ConfigFile, "_config.yml")
+		if err := writeSubpages(subpageURLsBySlug, base); err != nil {
+			return nil, err
+		}
 	}
 	return cs, nil
+}
+
+func writeSubpages(subpageURLsBySlug map[string]string, base string) error {
+	subpageURLs := []string{}
+	for _, u := range subpageURLsBySlug {
+		subpageURLs = append(subpageURLs, u)
+	}
+	sort.Strings(subpageURLs)
+	if err := utils.WriteStringFile(fmt.Sprintf("%s_subpage-urls.txt", base), strings.Join(subpageURLs, "\n")); err != nil {
+		return err
+	}
+
+	fetcher := fetch.NewDynamicFetcher("", 0)
+	for _, u := range subpageURLs {
+		body, err := fetcher.Fetch(u, fetch.FetchOpts{})
+		if err != nil {
+			slog.Debug("failed to fetch", "url", u, "err", err)
+		}
+		if err := utils.WriteStringFile("/tmp/goskyr/main/"+slug.Make(u)+".html", body); err != nil {
+			return err
+		}
+	}
+	return nil
 }

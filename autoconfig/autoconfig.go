@@ -504,7 +504,7 @@ func expandAllPossibleConfigs(id string, opts ConfigOptions, locPropsSel []*loca
 	}
 
 	addResult := true
-	if opts.URLRequired && len(s.GetSubpageURLs()) == 0 {
+	if opts.URLRequired && len(s.GetSubpageURLFields()) == 0 {
 		slog.Warn("a subpage URL field is required but none were found", "id", id, "opts", opts)
 		// We don't add this result, but we may add an expanded config.
 		addResult = false
