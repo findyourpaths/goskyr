@@ -1,5 +1,41 @@
 [
   {
+    "comment": "FREE // 21+",
+    "date-component-day-month": "Fri October 4",
+    "date-component-time": "5:30PM",
+    "title": "Hard Country Honky Tonk with The Hoyle Brothers"
+  },
+  {
+    "comment": "Doors: 9PM / Show: 10PM / 21+STRAPPED featuring Po Chop / Rippin Shwarzoff / Spirit Apotheosis. Hosted by Irregular Girl and Siichele. Music by Pepper Jelly and Stasney",
+    "date-component-day-month": "Fri October 4",
+    "date-component-time": "10:00PM",
+    "title": "Strapped featuring Po' Chop / Rippin Shwarzoff / Spirit Apotheosis"
+  },
+  {
+    "comment": "12PM / 21+ / Free Weird books for weird people! Empty Bottle is delighted to team up with Myopic for an expertly curated book club. Stop in to Myopic for 20% off of the selected book.",
+    "date-component-day-month": "Sun October 6",
+    "date-component-time": "12:00PM",
+    "title": "Myopic Books X Empty Bottle Book Club: “Red Dragon” by Thomas Harris"
+  },
+  {
+    "comment": "Doors: 8PM / Show: 9PM / 21+2 brothers: one a dork and the other a hot shot, but which is which?! Rockin that primo emo w/ their eccentric virtuoso friends since 89. s relatively got his shit together!",
+    "date-component-day-month": "Sun October 6",
+    "date-component-time": "9:00PM",
+    "title": "*SOLD OUT* ONE NIGHT ONLY / loCAl PuNk JAmmers / some likely buZZed"
+  },
+  {
+    "comment": "Doors: 8PM / Show: 9PM / 21+",
+    "date-component-day-month": "Mon October 7",
+    "date-component-time": "9:00PM",
+    "title": "A. Savage / Sarah Weddle"
+  },
+  {
+    "comment": "Doors: 8PM / Show: 9PM / 21+",
+    "date-component-day-month": "Tue October 8",
+    "date-component-time": "9:00PM",
+    "title": "A. Savage / Greg Freeman"
+  },
+  {
     "comment": "Doors: 8PM / Show: 9PM / 21+ALESSANDRO CORTINIItalian musician, producer, composer and instrument builder Alessandro Cortini is one of the foremost figures of contemporary electronic music. A longstanding member of Nine Inch Nails, Cortini has been releasing a steady stream of his own heady music on luminary labels including Mute and Important Records for the past decade. Balancing dark ambience with smokey, pulsing rhythms, his compositions are perfectly restrained, textured and mesmeric. In 2021, in collaboration with boutique synth builders Make Noise, Cortini released his own, custom designed, semi-modular synth, Strega (Italian for witch). That same year, he used Strega to build his latest full length, Scuro Chiaro (Mute), which Pitchfork described as pitched somewhere between purgatory and the planetarium [...] consistently managing to thrill and surprise. Throughout his shadowy rise to fame, Cortini has collaborated with the likes of Lawrence English, Daniel Avery and Merzbow (to name a few).",
     "date-component-day-month": "Wed October 9",
     "date-component-time": "9:00PM",
@@ -22,12 +58,6 @@
     "date-component-day-month": "Fri October 11",
     "date-component-time": "9:30PM",
     "title": "Hotline TNT / Disq / Interlay"
-  },
-  {
-    "comment": "Doors 12PM / All Ages / Free / OUTSIDE OF THE EMPTY BOTTLEGRILLING \u0026 CHILLING! VENDORS! MECHANICAL BULL! GOOD TIMES!",
-    "date-component-day-month": "Sat October 12",
-    "date-component-time": "12:00PM",
-    "title": "Thee Best Western"
   },
   {
     "comment": "Doors: 8PM / Show: 9PM / 21+",
@@ -99,7 +129,7 @@
     "comment": "Doors: 8PM / Show: 9PM / 21+POISON RUNPOISON RUN reach through the dark once again with the new EP, Confrere! Confrere- an ode to the sacred bonds of friendship; a strength which holds true through the endless twisting and straining of space and time. Confrere sees POISON RUN elevate their sound with more atmosphere and palpable urgency.Following the title track, Confrere continues to hurtle through songs of struggle, death, despair, injustice and revenge. In a dark age where the very foundations of humanity threaten to crumble, POISON RUN believe that perhaps the only thing left to hang on to is the hand of a friend.",
     "date-component-day-month": "Sun October 20",
     "date-component-time": "9:00PM",
-    "title": "Poison Ruïn / Double Over / Scare Tactics"
+    "title": "Poison Ruïn"
   },
   {
     "comment": "Doors: 8PM / Show: 9PM / 21+RSVP DOES NOT GUARANTEE ENTRY",
@@ -220,12 +250,6 @@
     "date-component-day-month": "Sat November 9",
     "date-component-time": "9:00PM",
     "title": "Cursive / Gladie"
-  },
-  {
-    "comment": "Doors: 8PM / Show: 9PM / 21+",
-    "date-component-day-month": "Tue November 12",
-    "date-component-time": "9:00PM",
-    "title": "The Flying Luttenbachers"
   },
   {
     "comment": "Doors: 8PM / Show: 9PM / 21+",
@@ -352,11 +376,5 @@
     "date-component-day-month": "Mon March 17",
     "date-component-time": "9:00PM",
     "title": "Cari Cari"
-  },
-  {
-    "comment": "Doors: 8PM / Show: 9PM / 21+",
-    "date-component-day-month": "Tue March 18",
-    "date-component-time": "9:00PM",
-    "title": "Maruja"
   }
 ]

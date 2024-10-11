@@ -3,12 +3,10 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"math"
 	"os"
 	"runtime/debug"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/findyourpaths/goskyr/autoconfig"
 	"github.com/findyourpaths/goskyr/config"
@@ -28,15 +26,14 @@ type mainOpts struct {
 	ExtractFeatures     string `short:"e" long:"extract" description:"Extract ML features based on the given configuration file (-c) and write them to the given file in csv format."`
 	FieldsVary          bool   `short:"f" long:"fieldsvary" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
 	InputURL            string `short:"i" long:"inputurl" description:"Automatically generate a config file for the given input url."`
+	JSONFile            string `long:"json" description:"Writes scraped data as JSON to the given file path."`
 	MinOcc              int    `short:"m" long:"min" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
 	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
 	RenderJs            bool   `short:"r" long:"renderjs" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
-	SingleScraper       string `short:"s" description:"The name of the scraper to be run."`
 	TrainModel          string `short:"t" long:"train" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
 	URLRequired         bool   `short:"u" long:"urlrequired" description:"Whether a URL (e.g. for a subpage) is required in the generated config. If true, configs will not be produced if they don't have a page URL field. URLs ending in .jpg, .gif, or .png are not considered page URLs."`
 	PrintVersion        bool
 	WordsDir            string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
-	ToJSON              bool   `long:"json" description:"If --stdout is true and this is set to true, the scraped data will be written as JSON to stdout."`
 	ToStdout            bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
 	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
 }
@@ -44,24 +41,6 @@ type mainOpts struct {
 var opts mainOpts
 
 var version = "dev"
-
-func worker(sc chan scraper.Scraper, ic chan output.ItemMap, gc *scraper.GlobalConfig, threadNr int) {
-	workerLogger := slog.With(slog.Int("thread", threadNr))
-	for s := range sc {
-		scraperLogger := workerLogger.With(slog.String("name", s.Name))
-		scraperLogger.Info("starting scraping task")
-		items, err := s.GetItems(gc, false)
-		if err != nil {
-			scraperLogger.Error(fmt.Sprintf("%s: %s", s.Name, err))
-			continue
-		}
-		scraperLogger.Info(fmt.Sprintf("fetched %d items", len(items)))
-		for _, item := range items {
-			ic <- item
-		}
-	}
-	workerLogger.Info("done working")
-}
 
 func main() {
 	_, err := flags.Parse(&opts)
@@ -95,7 +74,7 @@ func main() {
 
 	if opts.InputURL != "" {
 		if _, err := GenerateConfigs(opts); err != nil {
-			slog.Error(err.Error())
+			slog.Error("error generating configs", "err", err)
 			os.Exit(1)
 		}
 		return
@@ -103,7 +82,7 @@ func main() {
 
 	if opts.TrainModel != "" {
 		if err := ml.TrainModel(opts.TrainModel); err != nil {
-			slog.Error(fmt.Sprintf("%v", err))
+			slog.Error("error training model", "err", err)
 			os.Exit(1)
 		}
 		return
@@ -111,83 +90,37 @@ func main() {
 
 	conf, err := scraper.NewConfig(opts.ConfigFile)
 	if err != nil {
-		slog.Error(fmt.Sprintf("%v", err))
+		slog.Error("error making new config", "err", err)
 		os.Exit(1)
 	}
 
 	if opts.ExtractFeatures != "" {
 		if err := ml.ExtractFeatures(conf, opts.ExtractFeatures, opts.WordsDir); err != nil {
-			slog.Error(fmt.Sprintf("%v", err))
+			slog.Error("error extracting features", "err", err)
 			os.Exit(1)
 		}
 		return
-	}
-
-	var workerWg sync.WaitGroup
-	var writerWg sync.WaitGroup
-	ic := make(chan output.ItemMap)
-
-	var writer output.Writer
-	if opts.ToStdout {
-		writer = &output.StdoutWriter{}
-	} else if opts.ToJSON {
-		writer = &output.JSONWriter{}
-	} else {
-		switch conf.Writer.Type {
-		case output.STDOUT_WRITER_TYPE:
-			writer = &output.StdoutWriter{}
-		case output.API_WRITER_TYPE:
-			writer = output.NewAPIWriter(&conf.Writer)
-		case output.FILE_WRITER_TYPE:
-			writer = output.NewFileWriter(&conf.Writer)
-		default:
-			slog.Error(fmt.Sprintf("writer of type %s not implemented", conf.Writer.Type))
-			os.Exit(1)
-		}
 	}
 
 	if conf.Global.UserAgent == "" {
 		conf.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
 	}
 
-	sc := make(chan scraper.Scraper)
-
-	// fill worker queue
-	go func() {
-		for _, s := range conf.Scrapers {
-			if opts.SingleScraper == "" || opts.SingleScraper == s.Name {
-				// s.Debug = opts.DebugFlag
-				sc <- s
-			}
+	allItems := output.ItemMaps{}
+	for _, s := range conf.Scrapers {
+		items, err := s.GetItems(&conf.Global, false)
+		if err != nil {
+			slog.Error("error scraping", "err", err)
+			continue
 		}
-		close(sc)
-	}()
-
-	// start workers
-	nrWorkers := 1
-	if opts.SingleScraper == "" {
-		nrWorkers = int(math.Min(20, float64(len(conf.Scrapers))))
-	}
-	slog.Info(fmt.Sprintf("running with %d threads", nrWorkers))
-	workerWg.Add(nrWorkers)
-	slog.Debug("starting workers")
-	for i := 0; i < nrWorkers; i++ {
-		go func(j int) {
-			defer workerWg.Done()
-			worker(sc, ic, &conf.Global, j)
-		}(i)
+		allItems = append(allItems, items...)
 	}
 
-	// start writer
-	writerWg.Add(1)
-	slog.Debug("starting writer")
-	go func() {
-		defer writerWg.Done()
-		writer.Write(ic)
-	}()
-	workerWg.Wait()
-	close(ic)
-	writerWg.Wait()
+	if opts.JSONFile != "" {
+		if err := utils.WriteJSONFile(opts.JSONFile, allItems); err != nil {
+			slog.Error("error writing json file", "path", opts.JSONFile)
+		}
+	}
 }
 
 var doWriteSubpages = false

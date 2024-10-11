@@ -2,11 +2,62 @@ package utils
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// ReadStringFile returns a string with the data at the given path declared in a
+// "data" attribute of a BUILD.bazel rule.
+func ReadStringFile(path string) (string, error) {
+	bs, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(bs), nil
+}
+
+// WriteBytesFile writes the given file contents to the given path.
+func WriteBytesFile(path string, content []byte) error {
+	// fmt.Printf("Writing bytes to: %s\n", path)
+	if err := os.MkdirAll(filepath.Dir(path), 0770); err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(content)
+	return err
+}
+
+// WriteJSONFile writes the given file contents to the given path.
+func WriteJSONFile(path string, data any) error {
+	content, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+	return WriteBytesFile(path, content)
+}
+
+// WriteStringFile writes the given file contents to the given path.
+func WriteStringFile(path string, content string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0770); err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(content)
+	return err
+}
 
 // WriteTempStringFile writes the given file contents to the given path with a
 // random id before the file type suffix (separared by a ".") if one is
@@ -25,29 +76,4 @@ func WriteTempStringFile(path string, content string) (string, error) {
 	}
 
 	return path, WriteStringFile(path, content)
-}
-
-// WriteStringFile writes the given file contents to the given path.
-func WriteStringFile(path string, content string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0770); err != nil {
-		return err
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.WriteString(content)
-	return err
-}
-
-// ReadStringFile returns a string with the data at the given path declared in a
-// "data" attribute of a BUILD.bazel rule.
-func ReadStringFile(path string) (string, error) {
-	bs, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	return string(bs), nil
 }
