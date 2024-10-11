@@ -1,6 +1,6 @@
 scrapers:
-    - name: file://testdata/https-realpython-github-io-fake-jobs_subpages/https-realpython-github-io-fake-jobs_subpages_all.html
-      url: file://testdata/https-realpython-github-io-fake-jobs_subpages/https-realpython-github-io-fake-jobs_subpages_all.html
+    - name: file://testdata/https-realpython-github-io-fake-jobs_subpages.html
+      url: file://testdata/https-realpython-github-io-fake-jobs_subpages.html
       item: body > htmls > section.section > div.container > div.columns.is-multiline > div.box
       fields:
         - name: field-0

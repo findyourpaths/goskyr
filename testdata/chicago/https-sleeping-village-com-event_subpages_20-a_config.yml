@@ -1,6 +1,6 @@
 scrapers:
-    - name: file://testdata/chicago/https-sleeping-village-com-event_subpages/https-sleeping-village-com-event_subpages_all.html
-      url: file://testdata/chicago/https-sleeping-village-com-event_subpages/https-sleeping-village-com-event_subpages_all.html
+    - name: file://testdata/chicago/https-sleeping-village-com-event_subpages.html
+      url: file://testdata/chicago/https-sleeping-village-com-event_subpages.html
       item: body > htmls
       fields:
         - name: field-0

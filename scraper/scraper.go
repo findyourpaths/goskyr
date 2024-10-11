@@ -351,11 +351,11 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not subpages). This is used by the ML feature generation.
 func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
-	// for i, node := range s.Nodes {
-	// 	slog.Debug("in Scraper.GetItems()", "i", i, "node", node)
-	// }
-	// slog.Debug("in Scraper.GetItems(), c.Item match", "i", i)
-	// slog.Debug("in Scraper.GetItems(), c.Item matched", "c.Fields", c.Fields)
+	for i, node := range s.Nodes {
+		slog.Debug("in Scraper.GetItems()", "i", i, "node", node)
+		// slog.Debug("in Scraper.GetItems(), c.Item match", "i", i)
+		// slog.Debug("in Scraper.GetItems(), c.Item matched", "c.Fields", c.Fields)
+	}
 	currentItem := output.ItemMap{}
 	for _, f := range c.Fields {
 		// slog.Debug("in Scraper.GetItems(), looking at field", "f", f)
@@ -385,10 +385,11 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (out
 		// we want to filter out a certain item. Especially, if
 		// certain elements would need to be fetched from subpages.
 		// filter fast!
-		if !c.filterItem(currentItem) {
+		if !c.keepItem(currentItem) {
 			return nil, nil
 		}
 	}
+	slog.Debug("in Scraper.GetItem(), after field check", "currentItem", currentItem)
 
 	// handle all fields on subpages
 	if !rawDyn {
@@ -420,19 +421,21 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (out
 				return nil, fmt.Errorf("error while parsing subpage field %s: %v. Skipping item %v.", f.Name, err, currentItem)
 			}
 			// filter fast!
-			if !c.filterItem(currentItem) {
+			if !c.keepItem(currentItem) {
 				return nil, nil
 			}
 		}
 	}
+	slog.Debug("in Scraper.GetItem(), after rawDyn", "currentItem", currentItem)
 
 	// check if item should be filtered
-	filter := c.filterItem(currentItem)
-	if filter {
-		currentItem = c.removeHiddenFields(currentItem)
-		return currentItem, nil
+	if !c.keepItem(currentItem) {
+		return nil, nil
 	}
-	return nil, nil
+
+	currentItem = c.removeHiddenFields(currentItem)
+	slog.Debug("in Scraper.GetItem(), after checks", "currentItem", currentItem)
+	return currentItem, nil
 }
 
 func (c *Scraper) guessYear(items output.ItemMaps, ref time.Time) {
@@ -503,7 +506,7 @@ func (c *Scraper) initializeFilters() error {
 	return nil
 }
 
-func (c *Scraper) filterItem(item output.ItemMap) bool {
+func (c *Scraper) keepItem(item output.ItemMap) bool {
 	nrMatchTrue := 0
 	filterMatchTrue := false
 	filterMatchFalse := true

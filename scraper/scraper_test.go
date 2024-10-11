@@ -114,7 +114,7 @@ func TestFilterItemMatchTrue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.filterItem(item)
+	f := s.keepItem(item)
 	if !f {
 		t.Fatalf("expected 'true' but got 'false'")
 	}
@@ -140,7 +140,7 @@ func TestFilterItemMatchFalse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.filterItem(item)
+	f := s.keepItem(item)
 	if f {
 		t.Fatalf("expected 'false' but got 'true'")
 	}
@@ -168,7 +168,7 @@ func TestFilterItemByDateMatchTrue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.filterItem(item)
+	f := s.keepItem(item)
 	if !f {
 		t.Fatalf("expected 'true' but got 'false'")
 	}
@@ -196,7 +196,7 @@ func TestFilterItemByDateMatchTrue2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.filterItem(item)
+	f := s.keepItem(item)
 	if f {
 		t.Fatalf("expected 'false' but got 'true'")
 	}
@@ -224,7 +224,7 @@ func TestFilterItemByDateMatchFalse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.filterItem(item)
+	f := s.keepItem(item)
 	if f {
 		t.Fatalf("expected 'false' but got 'true'")
 	}
