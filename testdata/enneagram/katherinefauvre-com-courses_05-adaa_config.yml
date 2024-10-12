@@ -1,0 +1,72 @@
+scrapers:
+    - name: file://testdata/enneagram/katherinefauvre-com-courses.html
+      url: file://testdata/enneagram/katherinefauvre-com-courses.html
+      item: body > div > section.clear > div.sqs-events-collection-list > div.eventlist > article.eventlist-event
+      fields:
+        - name: field-1
+          type: url
+          location:
+            - selector: div.eventlist-column-info > a.eventlist-button.sqs-button-element--primary
+              attr: href
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-excerpt > p:nth-child(2) > a
+          can_be_empty: true
+        - name: field-3
+          type: url
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-excerpt > p:nth-child(2) > a
+              attr: href
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-excerpt > p
+          can_be_empty: true
+        - name: field-5
+          type: url
+          location:
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-ical
+              attr: href
+          can_be_empty: true
+        - name: field-6
+          type: url
+          location:
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-google
+              attr: href
+          can_be_empty: true
+        - name: field-10
+          type: text
+          location:
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-date.eventlist-meta-item > time.event-date
+          can_be_empty: true
+        - name: field-11
+          type: text
+          location:
+            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
+          can_be_empty: true
+        - name: field-12
+          type: url
+          location:
+            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
+              attr: href
+          can_be_empty: true
+        - name: field-16
+          type: text
+          location:
+            - selector: a.eventlist-column-date > div.eventlist-datetag > div.eventlist-datetag-inner > div.eventlist-datetag-startdate
+          can_be_empty: true
+        - name: field-17
+          type: url
+          location:
+            - selector: a.eventlist-column-date
+              attr: href
+          can_be_empty: true
+        - name: field-18
+          type: url
+          location:
+            - selector: a.content-fill.eventlist-column-thumbnail
+              attr: href
+          can_be_empty: true

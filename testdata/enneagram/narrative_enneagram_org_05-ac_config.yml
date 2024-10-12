@@ -1,0 +1,49 @@
+scrapers:
+    - name: file://testdata/enneagram/narrative_enneagram_org.html
+      url: file://testdata/enneagram/narrative_enneagram_org.html
+      item: body > main.main > div.events-content > div.wrapper > div.wrapper__inner > div.events-content__grid > div.tne-events > div.box-shadow.event
+      fields:
+        - name: field-1
+          type: url
+          location:
+            - selector: div.event__footer > div.event__status > a.button.button--small
+              attr: href
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - selector: div.event__footer > p.event__location.label--small
+              child_index: 2
+          can_be_empty: true
+        - name: field-3
+          type: text
+          location:
+            - selector: div.event__grid > div.event__tags > span.tag
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: div.event__grid > div.event__description > div.event-dates.label--small
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: div.event__grid > div.event__description > h4.event__title > a
+          can_be_empty: true
+        - name: field-6
+          type: url
+          location:
+            - selector: div.event__grid > div.event__description > h4.event__title > a
+              attr: href
+          can_be_empty: true
+        - name: field-7
+          type: url
+          location:
+            - selector: div.event__grid > div.event__image > img
+              attr: src
+          can_be_empty: true
+        - name: field-8
+          type: text
+          location:
+            - selector: div.event__grid > div.event__description > p
+          can_be_empty: true

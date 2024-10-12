@@ -1,0 +1,39 @@
+scrapers:
+    - name: file://testdata/enneagram/enneagram-ohio-com-all-workshops.html
+      url: file://testdata/enneagram/enneagram-ohio-com-all-workshops.html
+      item: body > div.hfeed.site > div.clearfix > div.inner-wrap > div.clearfix > div.tg-one-half.tg-one-half-last > section.clearfix.shortcode_widget.widget > div.textwidget > ul.display-posts-listing > li.listing-item
+      fields:
+        - name: field-6
+          type: url
+          location:
+            - selector: span.excerpt > a.excerpt-more
+              attr: href
+          can_be_empty: true
+        - name: field-7
+          type: text
+          location:
+            - selector: span.excerpt
+          can_be_empty: true
+        - name: field-8
+          type: text
+          location:
+            - selector: a.title
+          can_be_empty: true
+        - name: field-9
+          type: url
+          location:
+            - selector: a.title
+              attr: href
+          can_be_empty: true
+        - name: field-10
+          type: url
+          location:
+            - selector: a.image > img.attachment-medium.size-medium.wp-post-image
+              attr: src
+          can_be_empty: true
+        - name: field-11
+          type: url
+          location:
+            - selector: a.image
+              attr: href
+          can_be_empty: true
