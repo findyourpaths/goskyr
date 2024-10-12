@@ -1,0 +1,412 @@
+scrapers:
+    - name: file://testdata/chicago/https-metrochicago-com-events_subpages.html
+      url: file://testdata/chicago/https-metrochicago-com-events_subpages.html
+      item: body > htmls
+      fields:
+        - name: field-0
+          type: text
+          location:
+            - selector: script:nth-child(121)
+          can_be_empty: true
+        - name: field-1
+          type: text
+          location:
+            - selector: script:nth-child(118)
+          can_be_empty: true
+        - name: field-2
+          type: text
+          location:
+            - selector: script:nth-child(117)
+          can_be_empty: true
+        - name: field-3
+          type: text
+          location:
+            - selector: script:nth-child(106)
+          can_be_empty: true
+        - name: field-4
+          type: text
+          location:
+            - selector: script:nth-child(104)
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: div.elementor.elementor-45.elementor-location-footer > section.elementor-element.elementor-element-06651d3.elementor-section.elementor-section-boxed.elementor-section-content-middle.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-06496e7.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-widget.elementor-widget-heading > div.elementor-widget-container > p.elementor-heading-title.elementor-size-default > a
+          can_be_empty: true
+        - name: field-6
+          type: url
+          location:
+            - selector: div.elementor.elementor-45.elementor-location-footer > section.elementor-element.elementor-element-06651d3.elementor-section.elementor-section-boxed.elementor-section-content-middle.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-06496e7.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-widget.elementor-widget-heading > div.elementor-widget-container > p.elementor-heading-title.elementor-size-default > a
+              attr: href
+          can_be_empty: true
+        - name: field-7
+          type: text
+          location:
+            - selector: div.elementor > section.elementor-element.elementor-section.elementor-section-boxed.elementor-section-content-middle.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-column.elementor-element.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-grid-0.elementor-shape-circle.elementor-widget.elementor-widget-social-icons > div.elementor-widget-container > div.elementor-grid.elementor-social-icons-wrapper > span.elementor-grid-item > a.elementor-icon.elementor-social-icon > span.elementor-screen-only
+          can_be_empty: true
+        - name: field-8
+          type: url
+          location:
+            - selector: div.elementor > section.elementor-element.elementor-section.elementor-section-boxed.elementor-section-content-middle.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-column.elementor-element.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-grid-0.elementor-shape-circle.elementor-widget.elementor-widget-social-icons > div.elementor-widget-container > div.elementor-grid.elementor-social-icons-wrapper > span.elementor-grid-item > a.elementor-icon.elementor-social-icon
+              attr: href
+          can_be_empty: true
+        - name: field-9
+          type: text
+          location:
+            - selector: div.elementor.elementor-45.elementor-location-footer > section.elementor-element.elementor-element-ff54530.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-50b5fcd.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > section.elementor-element.elementor-element-47e65e3.elementor-inner-section.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default > div.elementor-column-gap-default.elementor-container > div.elementor-col-50.elementor-column.elementor-element.elementor-inner-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-widget > div.elementor-widget-container > style
+          can_be_empty: true
+        - name: field-10
+          type: url
+          location:
+            - selector: div.color4D4D4D > div.g-0.row:nth-child(2) > div.col-12.col-lg-6 > div.p-md-4 > div.col-12.p-0 > div.rhp-events-event-image > img
+              attr: src
+          can_be_empty: true
+        - name: field-11
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p.p1 > span.s1
+          can_be_empty: true
+        - name: field-12
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row:nth-child(2) > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p > strong
+          can_be_empty: true
+        - name: field-13
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row:nth-child(2) > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p
+          can_be_empty: true
+        - name: field-14
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row:nth-child(2) > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.align-items-center.d-flex.eventCost.eventsColor.pt-2 > span
+          can_be_empty: true
+        - name: field-15
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row:nth-child(2) > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.align-items-center.d-flex.eventDoorStartDate.eventsColor > span.font0Med75
+          can_be_empty: true
+        - name: field-16
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row:nth-child(2) > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.EventsDateBox.d-block > span.eventStDate.text-uppercase
+          can_be_empty: true
+        - name: field-17
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row:nth-child(2) > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.col-12.headerBox.p-0.pb-2.pt-4.pt-md-0.px-4.px-md-0 > div.col-12.eventAgeRestriction.px-0
+          can_be_empty: true
+        - name: field-18
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row:nth-child(2) > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.col-12.headerBox.p-0.pb-2.pt-4.pt-md-0.px-4.px-md-0 > div.col-12.p-0.rhp-event-header > span.url > h1.mb-1
+          can_be_empty: true
+        - name: field-19
+          type: text
+          location:
+            - selector: div.elementor.elementor-42.elementor-location-header > section.elementor-element.elementor-element-ee924ab.elementor-section.elementor-section-boxed.elementor-section-content-middle.elementor-section-height-default.elementor-section-height-default.elementor-sticky.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-50.elementor-column.elementor-element.elementor-element-f2345ee.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-8cd15f4.elementor-nav-menu--burger.elementor-nav-menu--dropdown-tablet.elementor-nav-menu--stretch.elementor-nav-menu--toggle.elementor-nav-menu__align-end.elementor-nav-menu__text-align-aside.elementor-widget.elementor-widget-nav-menu > div.elementor-widget-container > nav.elementor-nav-menu__container > ul.elementor-nav-menu > li.menu-item > a.elementor-item
+          can_be_empty: true
+        - name: field-20
+          type: url
+          location:
+            - selector: div.elementor.elementor-42.elementor-location-header > section.elementor-element.elementor-element-ee924ab.elementor-section.elementor-section-boxed.elementor-section-content-middle.elementor-section-height-default.elementor-section-height-default.elementor-sticky.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-50.elementor-column.elementor-element.elementor-element-f2345ee.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-8cd15f4.elementor-nav-menu--burger.elementor-nav-menu--dropdown-tablet.elementor-nav-menu--stretch.elementor-nav-menu--toggle.elementor-nav-menu__align-end.elementor-nav-menu__text-align-aside.elementor-widget.elementor-widget-nav-menu > div.elementor-widget-container > nav.elementor-nav-menu__container > ul.elementor-nav-menu > li.menu-item > a.elementor-item
+              attr: href
+          can_be_empty: true
+        - name: field-21
+          type: text
+          location:
+            - selector: div.elementor > section.elementor-element.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-column.elementor-element.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-widget > div.elementor-widget-container > style
+          can_be_empty: true
+        - name: field-22
+          type: text
+          location:
+            - selector: nav.pojo-a11y-.pojo-a11y-toolbar-left > div.pojo-a11y-toolbar-overlay > div.pojo-a11y-toolbar-inner > ul.pojo-a11y-toolbar-items.pojo-a11y-tools > li.pojo-a11y-toolbar-item > a.pojo-a11y-toolbar-link > span.pojo-a11y-toolbar-text
+          can_be_empty: true
+        - name: field-23
+          type: text
+          location:
+            - selector: nav.pojo-a11y-.pojo-a11y-toolbar-left > div.pojo-a11y-toolbar-overlay > div.pojo-a11y-toolbar-inner > ul.pojo-a11y-toolbar-items.pojo-a11y-tools > li.pojo-a11y-toolbar-item > a.pojo-a11y-toolbar-link > span.pojo-a11y-toolbar-icon > svg > title
+          can_be_empty: true
+        - name: field-24
+          type: text
+          location:
+            - selector: script:nth-child(87)
+          can_be_empty: true
+        - name: field-25
+          type: text
+          location:
+            - selector: style:nth-child(85)
+          can_be_empty: true
+        - name: field-26
+          type: text
+          location:
+            - selector: script:nth-child(84)
+          can_be_empty: true
+        - name: field-27
+          type: text
+          location:
+            - selector: script:nth-child(82)
+          can_be_empty: true
+        - name: field-28
+          type: text
+          location:
+            - selector: script:nth-child(79)
+          can_be_empty: true
+        - name: field-29
+          type: text
+          location:
+            - selector: script:nth-child(78)
+          can_be_empty: true
+        - name: field-30
+          type: text
+          location:
+            - selector: script:nth-child(77)
+          can_be_empty: true
+        - name: field-31
+          type: text
+          location:
+            - selector: style:nth-child(72)
+          can_be_empty: true
+        - name: field-32
+          type: text
+          location:
+            - selector: script:nth-child(65)
+          can_be_empty: true
+        - name: field-33
+          type: text
+          location:
+            - selector: script:nth-child(57)
+          can_be_empty: true
+        - name: field-34
+          type: text
+          location:
+            - selector: style:nth-child(10)
+          can_be_empty: true
+        - name: field-35
+          type: text
+          location:
+            - selector: style:nth-child(9)
+          can_be_empty: true
+        - name: field-36
+          type: text
+          location:
+            - selector: title
+          can_be_empty: true
+        - name: field-37
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.col-12.col-lg-6 > div.p-md-4 > div.col-12.ctaBox.p-0 > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
+          can_be_empty: true
+        - name: field-38
+          type: url
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.col-12.col-lg-6 > div.p-md-4 > div.col-12.ctaBox.p-0 > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
+              attr: href
+          can_be_empty: true
+        - name: field-39
+          type: url
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.col-12.col-lg-6 > div.p-md-4 > div.col-12.p-0 > div.rhp-events-event-image > img
+              attr: src
+          can_be_empty: true
+        - name: field-40
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p
+              child_index: 4
+          can_be_empty: true
+        - name: field-41
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p > em
+          can_be_empty: true
+        - name: field-42
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p
+          can_be_empty: true
+        - name: field-43
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.p-0 > div.align-items-center.d-flex.eventVenue > div.rhpVenueContent > a.venueLink
+          can_be_empty: true
+        - name: field-44
+          type: url
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.p-0 > div.align-items-center.d-flex.eventVenue > div.rhpVenueContent > a.venueLink
+              attr: href
+          can_be_empty: true
+        - name: field-45
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.align-items-center.d-flex.eventCost.eventsColor.pt-2 > span
+          can_be_empty: true
+        - name: field-46
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.align-items-center.d-flex.eventDoorStartDate.eventsColor > span.font0Med75
+          can_be_empty: true
+        - name: field-47
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.EventsDateBox.d-block > span.eventStDate.text-uppercase
+          can_be_empty: true
+        - name: field-48
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.col-12.headerBox.p-0.pb-2.pt-4.pt-md-0.px-4.px-md-0 > div.col-12.eventAgeRestriction.px-0
+          can_be_empty: true
+        - name: field-49
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.col-12.headerBox.p-0.pb-2.pt-4.pt-md-0.px-4.px-md-0 > div.col-12.p-0.rhp-event-header > span.url > h1.mb-1
+          can_be_empty: true
+        - name: field-50
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.col-12.headerBox.p-0.pb-2.pt-4.pt-md-0.px-4.px-md-0 > div.col-12.eventTagLine.p-0 > h4
+          can_be_empty: true
+        - name: field-51
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p
+              child_index: 3
+          can_be_empty: true
+        - name: field-52
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p > strong
+          can_be_empty: true
+        - name: field-53
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.col-12.headerBox.p-0.pb-2.pt-4.pt-md-0.px-4.px-md-0 > div.col-12.p-0 > h4.eventSubHeader.mb-0
+          can_be_empty: true
+        - name: field-54
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p:nth-child(3)
+          can_be_empty: true
+        - name: field-55
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p:nth-child(2)
+          can_be_empty: true
+        - name: field-56
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p > strong:nth-child(4)
+          can_be_empty: true
+        - name: field-57
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p
+              child_index: 5
+          can_be_empty: true
+        - name: field-58
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p
+              child_index: 6
+          can_be_empty: true
+        - name: field-59
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p > strong:nth-child(5)
+          can_be_empty: true
+        - name: field-60
+          type: text
+          location:
+            - selector: script:nth-child(76)
+          can_be_empty: true
+        - name: field-61
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p > strong:nth-child(3)
+          can_be_empty: true
+        - name: field-62
+          type: url
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.eventMoreInfo.mt-2.text-center > a.btn.btn-md.d-block.w-100
+              attr: href
+          can_be_empty: true
+        - name: field-63
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.mt-md-0.rhp-event-list-cta > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
+          can_be_empty: true
+        - name: field-64
+          type: url
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.mt-md-0.rhp-event-list-cta > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
+              attr: href
+          can_be_empty: true
+        - name: field-65
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0.rhpEventDetails > div.g-0.row > div.col-12.eventsVenueDiv > div.align-items-center.d-flex.eventVenue > div.rhpVenueContent > a.venueLink
+          can_be_empty: true
+        - name: field-66
+          type: url
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0.rhpEventDetails > div.g-0.row > div.col-12.eventsVenueDiv > div.align-items-center.d-flex.eventVenue > div.rhpVenueContent > a.venueLink
+              attr: href
+          can_be_empty: true
+        - name: field-67
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0.rhpEventDetails > div.g-0.row > div.align-items-center.col-12.d-flex.eventCost.eventsColor.mb-md-2.mt-md-0.pt-md-0 > span
+          can_be_empty: true
+        - name: field-68
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0.rhpEventDetails > div.g-0.row > div.col-12 > div.eventDateDetails.mb-md-2.mt-md-0 > div.align-items-center.d-flex.eventDoorStartDate.eventsColor > span.font0by75.fontWeight500.lineHeight15
+          can_be_empty: true
+        - name: field-69
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0
+          can_be_empty: true
+        - name: field-70
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.eventTitleDiv.px-0 > a.url > h2.font1By5RemXS.font1By5remMD.font1By75RemSM.font1by25.lineHeight12.marginBottom3PX.mb-md-2.mt-md-0
+          can_be_empty: true
+        - name: field-71
+          type: url
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.eventTitleDiv.px-0 > a.url
+              attr: href
+          can_be_empty: true
+        - name: field-72
+          type: url
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url > div.rhp-events-event-image > img.eventListImage
+              attr: src
+          can_be_empty: true
+        - name: field-73
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url > div.eventDateListTop > div.eventMonth.mb-0.singleEventDate.text-uppercase
+          can_be_empty: true
+        - name: field-74
+          type: url
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url
+              attr: href
+          can_be_empty: true
+        - name: field-75
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > span.d-flex.rhp-events-list-separator-month > span
+          can_be_empty: true
+        - name: field-76
+          type: text
+          location:
+            - selector: div.elementor.elementor-54.elementor-location-single > section.elementor-element.elementor-element-5e2c504.elementor-section.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-top-section > div.elementor-column-gap-default.elementor-container > div.elementor-col-100.elementor-column.elementor-element.elementor-element-59dd26f.elementor-top-column > div.elementor-element-populated.elementor-widget-wrap > div.elementor-element.elementor-element-7c136a0.elementor-widget.elementor-widget-wp-widget-rockhouseeventslistwidget > div.elementor-widget-container > div.list.upcomingWidget.widgetGeneralView > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row > div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0 > h4.eventSubHeader.font0By9375remMD.font0by875.font1remSM.lineHeight12.mb-md-2.mt-md-0
+          can_be_empty: true
+        - name: field-77
+          type: text
+          location:
+            - selector: div.color4D4D4D > div.g-0.row > div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > p > strong > em
+          can_be_empty: true

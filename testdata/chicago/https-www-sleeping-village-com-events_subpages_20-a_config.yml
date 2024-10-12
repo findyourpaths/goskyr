@@ -1,0 +1,180 @@
+scrapers:
+    - name: file://testdata/chicago/https-www-sleeping-village-com-events_subpages.html
+      url: file://testdata/chicago/https-www-sleeping-village-com-events_subpages.html
+      item: body > htmls
+      fields:
+        - name: field-0
+          type: text
+          location:
+            - selector: script
+          can_be_empty: true
+        - name: field-1
+          type: text
+          location:
+            - selector: div.body > section.JS--burgerMenu.withBg > div.burgerMenu__scrollWrap > div.burgerMenu__menuWrap.maxWidth > div.menu-popup-menu-container > ul.burgerMenu > li.menu-item.menu-item-object-page.menu-item-type-post_type > a
+          can_be_empty: true
+        - name: field-2
+          type: url
+          location:
+            - selector: div.body > section.JS--burgerMenu.withBg > div.burgerMenu__scrollWrap > div.burgerMenu__menuWrap.maxWidth > div.menu-popup-menu-container > ul.burgerMenu > li.menu-item.menu-item-object-page.menu-item-type-post_type > a
+              attr: href
+          can_be_empty: true
+        - name: field-3
+          type: text
+          location:
+            - selector: div.body > div > div.siteWrap > div.postFooter.smallerFont > div.maxWidth > div.postFooterGrid > div.footer__legalMenu > div.menu-post-footer-container > ul.footer__legalMenuInner > li.menu-item.menu-item-object-page.menu-item-type-post_type > a
+          can_be_empty: true
+        - name: field-4
+          type: url
+          location:
+            - selector: div.body > div > div.siteWrap > div.postFooter.smallerFont > div.maxWidth > div.postFooterGrid > div.footer__legalMenu > div.menu-post-footer-container > ul.footer__legalMenuInner > li.menu-item.menu-item-object-page.menu-item-type-post_type > a
+              attr: href
+          can_be_empty: true
+        - name: field-5
+          type: text
+          location:
+            - selector: div.body > div > div.siteWrap > footer.mainSiteFooter--three-col.smallerFont > div.maxWidth > div.footerGrid > div.footer__contactWrap > div.footer__newsletterSignup > div.wpforms-container > form.condensedForm.wpforms-ajax-form.wpforms-form.wpforms-validate > div.wpforms-field.wpforms-field-hp > label.wpforms-field-label
+          can_be_empty: true
+        - name: field-6
+          type: text
+          location:
+            - selector: div.body > div > div.siteWrap > footer.mainSiteFooter--three-col.smallerFont > div.maxWidth > div.footerGrid > div.footer__menuWrap > div.menu-footer-container > ul.footer__menu > li.menu-item.menu-item-object-page.menu-item-type-post_type > a
+          can_be_empty: true
+        - name: field-7
+          type: url
+          location:
+            - selector: div.body > div > div.siteWrap > footer.mainSiteFooter--three-col.smallerFont > div.maxWidth > div.footerGrid > div.footer__menuWrap > div.menu-footer-container > ul.footer__menu > li.menu-item.menu-item-object-page.menu-item-type-post_type > a
+              attr: href
+          can_be_empty: true
+        - name: field-8
+          type: url
+          location:
+            - selector: div.body > div > div.siteWrap > section.altColourScheme.footer__partners.lastLayout.lastLayoutWasNormal.plotLayout > div.maxWidth > div.JS--partnersGrid--grid.partnersGrid > div.partnersGrid__partner:nth-child(2) > div.plotLazyLoadFrame > div.opacityWrap > img.JS--lazyLoad.partnersGrid__partnerLogo
+              attr: src
+          can_be_empty: true
+        - name: field-9
+          type: url
+          location:
+            - selector: div.body > div > div.siteWrap > section.altColourScheme.footer__partners.lastLayout.lastLayoutWasNormal.plotLayout > div.maxWidth > div.JS--partnersGrid--grid.partnersGrid > div.partnersGrid__partner > div.plotLazyLoadFrame > div.opacityWrap > img.JS--lazyLoad.partnersGrid__partnerLogo
+              attr: src
+          can_be_empty: true
+        - name: field-10
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > script
+          can_be_empty: true
+        - name: field-11
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > a.plotFixedButton.plotFixedButton--hideMedium
+          can_be_empty: true
+        - name: field-12
+          type: url
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > a.plotFixedButton.plotFixedButton--hideMedium
+              attr: href
+          can_be_empty: true
+        - name: field-13
+          type: url
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__panel:nth-child(5) > div.ticketsTable > div.ticketsTable__row > div.ticketsTable__buttonCol > a.plotButton.ticketsTable__button
+              attr: href
+          can_be_empty: true
+        - name: field-14
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__panel:nth-child(5) > div.ticketsTable > div.ticketsTable__row > div > span.plotDisplayBlock
+          can_be_empty: true
+        - name: field-15
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__lineup.singleListing__panel:nth-child(4) > div.singleListing__lineupListItem:nth-child(2)
+          can_be_empty: true
+        - name: field-16
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__lineup.singleListing__panel:nth-child(4) > div.singleListing__lineupListItem
+          can_be_empty: true
+        - name: field-17
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__lineup.singleListing__panel > div.singleListing__lineupList.singleListing__lineupList--vertical > div.singleListing__lineupListItem
+          can_be_empty: true
+        - name: field-18
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__lineup.singleListing__panel > div.singleListing__lineupList.singleListing__lineupList--vertical > span.meta.singleListing__lineupTitle
+          can_be_empty: true
+        - name: field-19
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.plotContentArea.singleListing__content.singleListing__panel > p:nth-child(3)
+          can_be_empty: true
+        - name: field-20
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.plotContentArea.singleListing__content.singleListing__panel > p:nth-child(2)
+          can_be_empty: true
+        - name: field-21
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.plotContentArea.singleListing__content.singleListing__panel > p
+          can_be_empty: true
+        - name: field-22
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__panel > div.singleListing__infoGrid > div.singleListingGrid__row:nth-child(3) > div.singleListingGrid__date.singleListingGrid__info > span
+          can_be_empty: true
+        - name: field-23
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__panel > div.singleListing__infoGrid > div.singleListingGrid__row > div
+          can_be_empty: true
+        - name: field-24
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.singleListing__panel > div.singleListing__infoGrid > h1.singleListing__title
+          can_be_empty: true
+        - name: field-25
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.singleListing__imageColumn > div.singleListing__stickyWrap > div.singleListing__buttonWrap > a.plotButton.singleListing__button
+          can_be_empty: true
+        - name: field-26
+          type: url
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.singleListing__imageColumn > div.singleListing__stickyWrap > div.singleListing__buttonWrap > a.plotButton.singleListing__button
+              attr: href
+          can_be_empty: true
+        - name: field-27
+          type: url
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.singleListing__imageColumn > div.singleListing__stickyWrap > div.singleListing__imageFrame > div.plotLazyLoadFrame > div.opacityWrap > img.JS--lazyLoad.loaded
+              attr: src
+          can_be_empty: true
+        - name: field-28
+          type: text
+          location:
+            - selector: div.body > div > header > div.maxWidth > div.siteMainHeader__wrap > div.siteMainHeader__desktop-menu > div.menu-desktop-navigation-container > ul.mainMenu > li.menu-item.menu-item-object-page.menu-item-type-post_type > a
+          can_be_empty: true
+        - name: field-29
+          type: url
+          location:
+            - selector: div.body > div > header > div.maxWidth > div.siteMainHeader__wrap > div.siteMainHeader__desktop-menu > div.menu-desktop-navigation-container > ul.mainMenu > li.menu-item.menu-item-object-page.menu-item-type-post_type > a
+              attr: href
+          can_be_empty: true
+        - name: field-30
+          type: text
+          location:
+            - selector: style
+          can_be_empty: true
+        - name: field-31
+          type: text
+          location:
+            - selector: title
+          can_be_empty: true
+        - name: field-32
+          type: text
+          location:
+            - selector: div.body.listing-template-default.single.single-listing > div > div.siteWrap > section.singleListing > div.maxWidth > div.singleListing__grid > div.lastLayoutWasNormal.plotLayout.singleListing__contentColumn > div.singleListing__inner > div.plotContentArea.singleListing__content.singleListing__panel > p:nth-child(4)
+          can_be_empty: true
