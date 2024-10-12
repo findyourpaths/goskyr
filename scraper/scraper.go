@@ -351,6 +351,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not subpages). This is used by the ML feature generation.
 func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
+	slog.Debug("Scraper.GetItems()", "s", s, "baseUrl", baseUrl, "rawDyn", rawDyn)
 	for i, node := range s.Nodes {
 		slog.Debug("in Scraper.GetItems()", "i", i, "node", node)
 		// slog.Debug("in Scraper.GetItems(), c.Item match", "i", i)
@@ -358,7 +359,7 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (out
 	}
 	currentItem := output.ItemMap{}
 	for _, f := range c.Fields {
-		// slog.Debug("in Scraper.GetItems(), looking at field", "f", f)
+		slog.Debug("in Scraper.GetItems(), looking at field", "f", f)
 		if f.Value != "" {
 			if !rawDyn {
 				// add static fields
@@ -646,6 +647,7 @@ func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Docu
 }
 
 func extractField(field *Field, event output.ItemMap, s *goquery.Selection, baseURL string) error {
+	slog.Debug("Scraper.extractField()", "field", field, "event", event, "s", s, "baseURL", baseURL)
 	switch field.Type {
 	case "text", "": // the default, ie when type is not configured, is 'text'
 		parts := []string{}
@@ -706,6 +708,7 @@ func extractField(field *Field, event output.ItemMap, s *goquery.Selection, base
 }
 
 func extractRawField(field *Field, event output.ItemMap, s *goquery.Selection) error {
+	slog.Debug("Scraper.extractRawField()", "field", field, "event", event, "s", s)
 	switch field.Type {
 	case "text", "":
 		parts := []string{}
@@ -941,7 +944,14 @@ func getURLString(e *ElementLocation, s *goquery.Selection, baseURL string) (str
 	return urlRes, nil
 }
 
+var skipTextOfTag = map[string]bool{
+	"noscript": true,
+	"script":   true,
+	"style":    true,
+}
+
 func getTextString(e *ElementLocation, s *goquery.Selection) (string, error) {
+	slog.Debug("getTextString()", "e", e, "s", s)
 	var fieldStrings []string
 	var fieldSelection *goquery.Selection
 	if e.Selector == "" {
@@ -949,6 +959,7 @@ func getTextString(e *ElementLocation, s *goquery.Selection) (string, error) {
 	} else {
 		fieldSelection = s.Find(e.Selector)
 	}
+	slog.Debug("in getTextString()", "e.Selector", e.Selector)
 	if len(fieldSelection.Nodes) > 0 {
 		if e.Attr == "" {
 			if e.EntireSubtree {
@@ -956,6 +967,10 @@ func getTextString(e *ElementLocation, s *goquery.Selection) (string, error) {
 				var buf bytes.Buffer
 				var f func(*html.Node)
 				f = func(n *html.Node) {
+					// Skip the text in-between <style></style> tags.
+					if n.Type == html.ElementNode && skipTextOfTag[n.Data] {
+						return
+					}
 					if n.Type == html.TextNode {
 						// Keep newlines and spaces, like jQuery
 						buf.WriteString(n.Data)
