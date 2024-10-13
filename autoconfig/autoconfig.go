@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -535,6 +536,8 @@ func expandAllPossibleConfigs(id string, opts ConfigOptions, locPropsSel []*loca
 	return nil
 }
 
+var spacesRE = regexp.MustCompile(`\s+`)
+
 // getTagMetadata, for a given node returns a map of key value pairs (only for the attriutes we're interested in) and
 // a list of this node's classes and a list of this node's pseudo classes (currently only nth-child).
 func getTagMetadata(tagName string, z *html.Tokenizer, siblingNodes []node) (map[string]string, []string, []string) {
@@ -551,7 +554,7 @@ func getTagMetadata(tagName string, z *html.Tokenizer, siblingNodes []node) (map
 			vString := strings.TrimSpace(string(v))
 			kString := string(k)
 			if kString == "class" && vString != "" {
-				cls = strings.Split(vString, " ")
+				cls = spacesRE.Split(vString, -1)
 				j := 0
 				for _, cl := range cls {
 					// for now we ignore classes that contain dots
