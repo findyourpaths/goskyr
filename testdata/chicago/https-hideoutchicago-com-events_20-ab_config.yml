@@ -3,47 +3,53 @@ scrapers:
       url: file://testdata/chicago/https-hideoutchicago-com-events.html
       item: body > div.col-full.px-1.px-md-2.py-2 > div.flex-column-reverse.flex-lg-row.g-0.my-5.row > div.wEv > div.generalView.rhp-desktop-list > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row
       fields:
-        - name: field-1
+        - name: field-09d590d8c284e2a617742c4261282576-href-0
           type: url
           location:
-            - selector: div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.eventMoreInfo.mt-2.text-center > a.btn.btn-md.d-block.w-100
+            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.eventTitleDiv.px-0 > a.url
               attr: href
           can_be_empty: true
-        - name: field-2
+        - name: field-0a2e3d206a7ba84257490d966263e75e--0
           type: text
           location:
             - selector: div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.mt-md-0.rhp-event-list-cta > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
           can_be_empty: true
-        - name: field-3
+        - name: field-0a2e3d206a7ba84257490d966263e75e-href-0
           type: url
           location:
             - selector: div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.mt-md-0.rhp-event-list-cta > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
               attr: href
           can_be_empty: true
-        - name: field-4
-          type: text
-          location:
-            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0.rhpEventDetails > div.g-0.row > div.col-12 > div.eventDateDetails.mb-md-2.mt-md-0 > div.align-items-center.d-flex.eventDoorStartDate.eventsColor > span.font0by75.fontWeight500.lineHeight15
-          can_be_empty: true
-        - name: field-5
-          type: text
-          location:
-            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.eventTitleDiv.px-0 > a.url > h2.font1By5RemXS.font1By5remMD.font1By75RemSM.font1by25.lineHeight12.marginBottom3PX.mb-md-2.mt-md-0
-          can_be_empty: true
-        - name: field-6
-          type: text
-          location:
-            - selector: div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url > div.BelowImage.eventDateList > div.eventMonth.mb-0.singleEventDate.text-uppercase
-          can_be_empty: true
-        - name: field-7
+        - name: field-24d763270bd0cff927435609b552f8e3-src-0
           type: url
           location:
             - selector: div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url > div.rhp-events-event-image > img.eventListImage
               attr: src
           can_be_empty: true
-        - name: field-8
+        - name: field-421acc0397413f9c2113b6ea692be75a-href-0
           type: url
           location:
             - selector: div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url
+              attr: href
+          can_be_empty: true
+        - name: field-44a0b32a85cdf902a22f514270c4f879--0
+          type: text
+          location:
+            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0.rhpEventDetails > div.g-0.row > div.col-12 > div.eventDateDetails.mb-md-2.mt-md-0 > div.align-items-center.d-flex.eventDoorStartDate.eventsColor > span.font0by75.fontWeight500.lineHeight15
+          can_be_empty: true
+        - name: field-72cd16d1a5d1140b04fd371d528cf814--0
+          type: text
+          location:
+            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.eventTitleDiv.px-0 > a.url > h2.font1By5RemXS.font1By5remMD.font1By75RemSM.font1by25.lineHeight12.marginBottom3PX.mb-md-2.mt-md-0
+          can_be_empty: true
+        - name: field-91ce3fd1c094b9081ee8c0854b305e6a--0
+          type: text
+          location:
+            - selector: div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url > div.BelowImage.eventDateList > div.eventMonth.mb-0.singleEventDate.text-uppercase
+          can_be_empty: true
+        - name: field-9bcd536e18af2ce8ac22fc3d4e1f5b84-href-0
+          type: url
+          location:
+            - selector: div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.eventMoreInfo.mt-2.text-center > a.btn.btn-md.d-block.w-100
               attr: href
           can_be_empty: true

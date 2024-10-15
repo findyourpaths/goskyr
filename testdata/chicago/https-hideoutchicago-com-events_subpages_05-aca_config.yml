@@ -1,0 +1,94 @@
+scrapers:
+    - name: file://testdata/chicago/https-hideoutchicago-com-events_subpages.html
+      url: file://testdata/chicago/https-hideoutchicago-com-events_subpages.html
+      item: body > htmls > div.color4D4D4D > div.g-0.row
+      fields:
+        - name: field-1434488ea0bca22cec39510b2a35e8cc-href-0
+          type: url
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div > p > a
+              attr: href
+          can_be_empty: true
+        - name: field-3f2442ceb950851f4487395ac2e32f72-src-0
+          type: url
+          location:
+            - selector: div.col-12.col-lg-6 > div.p-md-4 > div.col-12.p-0 > div.rhp-events-event-image > img
+              attr: src
+          can_be_empty: true
+        - name: field-459872bc2d599b903b32856e4a451471--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div:nth-child(3) > strong
+          can_be_empty: true
+        - name: field-46be6a24ef5d4f208bc2379ca688cbc5--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div > strong
+          can_be_empty: true
+        - name: field-80a7f530aac2ea2cedd7d95899719ef7--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div > p > strong
+          can_be_empty: true
+        - name: field-8f6d1617e21c7a85b2eeba92c6c3f465--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div.page > div.section > div.layoutArea > div.column > p > strong
+          can_be_empty: true
+        - name: field-bc90fafdf27322deeed212825736bac4-href-0
+          type: url
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div.page > div.section > div.layoutArea > div.column > p > a
+              attr: href
+          can_be_empty: true
+        - name: field-bc9bf1854cf48cf47f3b88ceb93307ff--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div > ul > li > p
+          can_be_empty: true
+        - name: field-c93b7d397b253d2c65eddc1e44f02997--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div > div > div > div > div > strong
+          can_be_empty: true
+        - name: field-dc7e23a8a47d66afde303882ca699a04--0
+          type: text
+          location:
+            - selector: div.col-12.col-lg-6 > div.p-md-4 > div.col-12.ctaBox.p-0 > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
+          can_be_empty: true
+        - name: field-dc7e23a8a47d66afde303882ca699a04-href-0
+          type: url
+          location:
+            - selector: div.col-12.col-lg-6 > div.p-md-4 > div.col-12.ctaBox.p-0 > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
+              attr: href
+          can_be_empty: true
+        - name: field-e70fef3853fa3146b74128b4d7fbe208--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div:nth-child(2) > strong
+          can_be_empty: true
+        - name: field-eb78c62f7e1c0009434b914822d8be39--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.EventsDateBox.d-block > span.eventStDate.text-uppercase
+          can_be_empty: true
+        - name: field-ed981409436b30ebedcfb16c24eb9c6d--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12 > div.g-0.row > div.col-sm-12.emptyDesc.px-0.singleEventDescription > div > p > em
+          can_be_empty: true
+        - name: field-f45c48f9b2a7ee369d08f28a892a940f--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.align-items-center.d-flex.eventCost.eventsColor.pt-2 > span
+          can_be_empty: true
+        - name: field-f7cec924ec5c7ab9f4bff76fc93b6ff4--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.col-12.headerBox.p-0.pb-2.pt-4.pt-md-0.px-4.px-md-0 > div.col-12.p-0.rhp-event-header > span.url > h1.mb-1
+          can_be_empty: true
+        - name: field-fca50c263dfb9a5f91e9f7250a7b1169--0
+          type: text
+          location:
+            - selector: div.borderRsingle.col-12.col-lg-6.pb-1.pb-md-3 > div.p-md-4.singleEventDetails > div.contentBox.pb-4.pt-1.px-4.px-md-0 > div.col-12.p-0 > div.g-0.row > div.col-sm-12 > div.align-items-center.d-flex.eventDoorStartDate.eventsColor > span.font0Med75
+          can_be_empty: true
