@@ -1,4 +1,4 @@
-package autoconfig
+package generate
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ import (
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/output"
-	"github.com/findyourpaths/goskyr/scraper"
+	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/gosimple/slug"
 	"golang.org/x/net/html"
@@ -118,18 +118,18 @@ func shortenRootSelector(p path) path {
 }
 
 // for now we assume that there will only be one date field
-func processFields(locPropsSel []*locationProps, rootSelector path) []scraper.Field {
+func processFields(locPropsSel []*locationProps, rootSelector path) []scrape.Field {
 	zone, _ := time.Now().Zone()
 	zone = strings.Replace(zone, "CEST", "CET", 1) // quick hack for issue #209
-	dateField := scraper.Field{
+	dateField := scrape.Field{
 		Name:         "date",
 		Type:         "date",
 		DateLocation: zone,
 	}
-	fields := []scraper.Field{}
+	fields := []scrape.Field{}
 
 	for _, e := range locPropsSel {
-		loc := scraper.ElementLocation{
+		loc := scrape.ElementLocation{
 			Selector:   e.path[len(rootSelector):].string(),
 			ChildIndex: e.textIndex,
 			Attr:       e.attr,
@@ -144,7 +144,7 @@ func processFields(locPropsSel []*locationProps, rootSelector path) []scraper.Fi
 				Time:  strings.Contains(e.name, "time"),
 			}
 			format, lang := date.GetDateFormatMulti(e.examples, cd)
-			dateField.Components = append(dateField.Components, scraper.DateComponent{
+			dateField.Components = append(dateField.Components, scrape.DateComponent{
 				ElementLocation: loc,
 				Covers:          cd,
 				Layout:          []string{format},
@@ -159,10 +159,10 @@ func processFields(locPropsSel []*locationProps, rootSelector path) []scraper.Fi
 		if loc.Attr == "href" || loc.Attr == "src" {
 			fieldType = "url"
 		}
-		d := scraper.Field{
+		d := scrape.Field{
 			Name:             e.name,
 			Type:             fieldType,
-			ElementLocations: []scraper.ElementLocation{loc},
+			ElementLocations: []scrape.ElementLocation{loc},
 			CanBeEmpty:       true,
 		}
 		fields = append(fields, d)
@@ -356,7 +356,7 @@ func findClusters(lps []*locationProps, rootSelector path) map[string][]*locatio
 }
 
 type ConfigAndItemMaps struct {
-	Config   *scraper.Config
+	Config   *scrape.Config
 	ItemMaps output.ItemMaps
 }
 
@@ -370,10 +370,8 @@ type ConfigOptions struct {
 	WordsDir    string
 }
 
-var htmlOutputDir = "/tmp/goskyr/autoconfig/NewDynamicFieldsConfigsDoc/"
-
-func NewDynamicFieldsConfigsForURL(opts ConfigOptions, minOccs []int) (map[string]*ConfigAndItemMaps, error) {
-	slog.Debug("NewDynamicFieldsConfigs()", "opts", opts, "minOccs", minOccs)
+func ConfigurationsForURL(opts ConfigOptions, minOccs []int) (map[string]*ConfigAndItemMaps, error) {
+	slog.Debug("ConfigurationsForURL()", "opts", opts, "minOccs", minOccs)
 	if len(opts.InputURL) == 0 {
 		return nil, errors.New("URL field cannot be empty")
 	}
@@ -394,66 +392,78 @@ func NewDynamicFieldsConfigsForURL(opts ConfigOptions, minOccs []int) (map[strin
 
 	// A bit hacky. But goquery seems to manipulate the html (I only know of goquery adding tbody tags if missing)
 	// so we rely on goquery to read the html for both scraping AND figuring out the scraping config.
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	gqdoc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
 	if err != nil {
 		return nil, err
 	}
-
-	// Now we have to translate the goquery doc back into a string
-	htmlStr, err := goquery.OuterHtml(doc.Children())
-	if err != nil {
-		return nil, err
-	}
-
-	slog.Debug("writing html to file", "u", opts.InputURL)
-	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(opts.InputURL)+".html"), htmlStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write html file: %v", err)
-	}
-	slog.Debug("wrote html to file", "fpath", fpath)
 
 	results := map[string]*ConfigAndItemMaps{}
+	// Generate configs for each of the minimum occs.
 	for _, minOcc := range minOccs {
-		if err := NewDynamicFieldsConfigsForHTML(opts, htmlStr, minOcc, results); err != nil {
+		slog.Debug("calling ConfigurationsForGQDocument()", "minOcc", minOcc, "opts.InputURL", opts.InputURL)
+		if err := ConfigurationsForGQDocument(gqdoc, opts, minOcc, results); err != nil {
 			return nil, err
 		}
 	}
 	return results, nil
 }
 
-func NewDynamicFieldsConfigsForHTML(opts ConfigOptions, htmlStr string, minOcc int, results map[string]*ConfigAndItemMaps) error {
+var htmlOutputDir = "/tmp/goskyr/generate/ConfigurationsForGQDocument/"
+
+func ConfigurationsForGQDocument(gqdoc *goquery.Document, opts ConfigOptions, minOcc int, results map[string]*ConfigAndItemMaps) error {
+	// Now we have to translate the goquery doc back into a string
+	htmlStr, err := goquery.OuterHtml(gqdoc.Children())
+	if err != nil {
+		return err
+	}
+
+	slog.Debug("writing html to file", "u", opts.InputURL)
+	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(opts.InputURL)+".html"), htmlStr)
+	if err != nil {
+		return fmt.Errorf("failed to write html file: %v", err)
+	}
+	slog.Debug("wrote html to file", "fpath", fpath)
+
 	a := &Analyzer{
 		Tokenizer:   html.NewTokenizer(strings.NewReader(htmlStr)),
 		NumChildren: map[string]int{},
 		ChildNodes:  map[string][]node{},
 	}
 
-	slog.Debug("in NewDynamicFieldsConfigs(): parsing")
+	slog.Debug("in ConfigurationsForGQDocument(): parsing")
 	a.Parse()
-	for i, lp := range a.LocMan {
-		slog.Debug("raw", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		for i, lp := range a.LocMan {
+			slog.Debug("raw", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+		}
 	}
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
-	for i, lp := range a.LocMan {
-		slog.Debug("squashed", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		for i, lp := range a.LocMan {
+			slog.Debug("squashed", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+		}
 	}
 	a.LocMan = filterBelowMinCount(a.LocMan, minOcc)
-	for i, lp := range a.LocMan {
-		slog.Debug("filtered min count", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		for i, lp := range a.LocMan {
+			slog.Debug("filtered min count", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+		}
 	}
 	if opts.OnlyVarying {
 		a.LocMan = filterStaticFields(a.LocMan)
 	}
-	for i, lp := range a.LocMan {
-		slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		for i, lp := range a.LocMan {
+			slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+		}
 	}
 
-	if err := a.LocMan.findFieldNames(opts.ModelName, opts.WordsDir); err != nil {
-		return err
-	}
 	if len(a.LocMan) == 0 {
 		slog.Warn("no fields found", "opts", opts, "minOcc", minOcc)
 		return nil
+	}
+	if err := a.LocMan.setFieldNames(opts.ModelName, opts.WordsDir); err != nil {
+		return err
 	}
 
 	var locPropsSel []*locationProps
@@ -472,35 +482,37 @@ func NewDynamicFieldsConfigsForHTML(opts ConfigOptions, htmlStr string, minOcc i
 		return fmt.Errorf("no fields selected")
 	}
 
-	return expandAllPossibleConfigs(fmt.Sprintf("%02d-a", minOcc), opts, locPropsSel, nil, results)
+	return expandAllPossibleConfigs(gqdoc, fmt.Sprintf("%02d-a", minOcc), opts, locPropsSel, nil, results)
 }
 
-func expandAllPossibleConfigs(id string, opts ConfigOptions, locPropsSel []*locationProps, parentRootSelector path, results map[string]*ConfigAndItemMaps) error {
-	slog.Debug("generating Config and itemMaps", "id", id)
-	for i, lp := range locPropsSel {
-		slog.Debug("expecting counts", "i", i, "lp.count", lp.count)
+func expandAllPossibleConfigs(gqdoc *goquery.Document, id string, opts ConfigOptions, locPropsSel []*locationProps, parentRootSelector path, results map[string]*ConfigAndItemMaps) error {
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		slog.Debug("generating Config and itemMaps", "id", id)
+		for i, lp := range locPropsSel {
+			slog.Debug("expecting counts", "i", i, "lp.count", lp.count)
+		}
 	}
 
-	s := scraper.Scraper{
+	s := scrape.Scraper{
 		URL:      opts.InputURL,
 		Name:     opts.InputURL,
 		RenderJs: opts.RenderJS,
 	}
 
 	rootSelector := findSharedRootSelector(locPropsSel)
-	slog.Debug("in locationManager.GetDynamicFieldsConfig()", "root selector", rootSelector)
+	slog.Debug("in expandAllPossibleConfigs()", "root selector", rootSelector)
 	// s.Item = shortenRootSelector(rootSelector).string()
 	s.Item = rootSelector.string()
-	slog.Debug("in locationManager.GetDynamicFieldsConfig()", "s.Item", s.Item)
+	slog.Debug("in expandAllPossibleConfigs()", "s.Item", s.Item)
 	s.Fields = processFields(locPropsSel, rootSelector)
 
-	c := &scraper.Config{Scrapers: []scraper.Scraper{s}}
-	items, err := s.GetItems(&c.Global, true)
+	c := &scrape.Config{Scrapers: []scrape.Scraper{s}}
+	items, err := s.GQDocumentsItems([]*goquery.Document{gqdoc}, true)
 	if err != nil {
 		return err
 	}
-	slog.Debug("autoconfig produced scraper returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		slog.Debug("generate produced scraper returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
 		fmt.Println(items.String())
 	}
 
@@ -527,7 +539,7 @@ func expandAllPossibleConfigs(id string, opts ConfigOptions, locPropsSel []*loca
 
 	lastID := 'a'
 	for _, clusterID := range clusterIDs {
-		if err := expandAllPossibleConfigs(id+string(lastID), opts, clusters[clusterID], rootSelector, results); err != nil {
+		if err := expandAllPossibleConfigs(gqdoc, id+string(lastID), opts, clusters[clusterID], rootSelector, results); err != nil {
 			return err
 		}
 		lastID++

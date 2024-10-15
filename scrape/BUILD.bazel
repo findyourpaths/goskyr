@@ -2,8 +2,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["scraper.go"],
-    importpath = "github.com/findyourpaths/goskyr/scraper",
+    srcs = ["scrape.go"],
+    importpath = "github.com/findyourpaths/goskyr/scrape",
     visibility = ["//visibility:public"],
     deps = [
         "//config:go_default_library",
@@ -24,7 +24,7 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["scraper_test.go"],
+    srcs = ["scrape_test.go"],
     data = glob(["testdata/**"]),
     embed = [":go_default_library"],
     deps = [

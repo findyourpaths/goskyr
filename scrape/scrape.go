@@ -1,4 +1,4 @@
-package scraper
+package scrape
 
 import (
 	"bytes"
@@ -322,7 +322,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 		// }
 
 		doc.Find(c.Item).Each(func(i int, s *goquery.Selection) {
-			item, err := c.GetItem(s, baseUrl, rawDyn)
+			item, err := c.GQSelectionItem(s, baseUrl, rawDyn)
 			if err != nil {
 				scrLogger.Error(err.Error())
 			}
@@ -344,22 +344,59 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 	return items, nil
 }
 
-// GetItem fetches and returns an items from a website according to the
+// GQDocumentItems fetches and returns all items from a website according to the
+// Scraper's paramaters. When rawDyn is set to true the items returned are
+// not processed according to their type but instead the raw values based
+// only on the location are returned (ignore regex_extract??). And only those
+// of dynamic fields, ie fields that don't have a predefined value and that are
+// present on the main page (not subpages). This is used by the ML feature generation.
+func (c Scraper) GQDocumentItems(gqdoc *goquery.Document, rawDyn bool) (output.ItemMaps, error) {
+	items := output.ItemMaps{}
+	baseUrl := getBaseURL(c.URL, gqdoc)
+
+	slog.Debug("in Scraper.GQDocumentItems()", "c.Item", c.Item)
+	slog.Debug("in Scraper.GQDocumentItems()", "len(doc.Find(c.Item).Nodes)", len(gqdoc.Find(c.Item).Nodes))
+	gqdoc.Find(c.Item).Each(func(i int, s *goquery.Selection) {
+		item, err := c.GQSelectionItem(s, baseUrl, rawDyn)
+		if err != nil {
+			slog.Warn("in Scraper.GQDocumentItems()", "err", err.Error())
+		}
+		if item != nil {
+			items = append(items, item)
+		}
+	})
+
+	c.guessYear(items, time.Now())
+
+	slog.Debug("Scraper.GQDocumentItems() returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
+	return items, nil
+}
+
+func (c Scraper) GQDocumentsItems(gqdocs []*goquery.Document, rawDyn bool) (output.ItemMaps, error) {
+	allItems := output.ItemMaps{}
+	for _, gqdoc := range gqdocs {
+		items, _ := c.GQDocumentItems(gqdoc, rawDyn)
+		allItems = append(allItems, items...)
+	}
+	return allItems, nil
+}
+
+// GQSelectionItem fetches and returns an items from a website according to the
 // Scraper's paramaters. When rawDyn is set to true the item returned is not
 // processed according to its type but instead the raw value based only on the
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not subpages). This is used by the ML feature generation.
-func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
-	slog.Debug("Scraper.GetItems()", "s", s, "baseUrl", baseUrl, "rawDyn", rawDyn)
+func (c Scraper) GQSelectionItem(s *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
+	slog.Debug("Scraper.GQSelectionItem()", "s", s, "baseUrl", baseUrl, "rawDyn", rawDyn)
 	for i, node := range s.Nodes {
-		slog.Debug("in Scraper.GetItems()", "i", i, "node", node)
+		slog.Debug("in Scraper.GQSelectionItem()", "i", i, "node", node)
 		// slog.Debug("in Scraper.GetItems(), c.Item match", "i", i)
 		// slog.Debug("in Scraper.GetItems(), c.Item matched", "c.Fields", c.Fields)
 	}
 	currentItem := output.ItemMap{}
 	for _, f := range c.Fields {
-		slog.Debug("in Scraper.GetItems(), looking at field", "f", f)
+		slog.Debug("in Scraper.GQSelectionItem(), looking at field", "f", f)
 		if f.Value != "" {
 			if !rawDyn {
 				// add static fields
@@ -390,7 +427,7 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (out
 			return nil, nil
 		}
 	}
-	slog.Debug("in Scraper.GetItem(), after field check", "currentItem", currentItem)
+	slog.Debug("in Scraper.GQSelectionItem(), after field check", "currentItem", currentItem)
 
 	// handle all fields on subpages
 	if !rawDyn {
@@ -427,7 +464,7 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (out
 			}
 		}
 	}
-	slog.Debug("in Scraper.GetItem(), after rawDyn", "currentItem", currentItem)
+	slog.Debug("in Scraper.GQSelectionItem(), after rawDyn", "currentItem", currentItem)
 
 	// check if item should be filtered
 	if !c.keepItem(currentItem) {
@@ -435,7 +472,7 @@ func (c Scraper) GetItem(s *goquery.Selection, baseUrl string, rawDyn bool) (out
 	}
 
 	currentItem = c.removeHiddenFields(currentItem)
-	slog.Debug("in Scraper.GetItem(), after checks", "currentItem", currentItem)
+	slog.Debug("in Scraper.GQSelectionItem(), after checks", "currentItem", currentItem)
 	return currentItem, nil
 }
 
@@ -1100,10 +1137,10 @@ func transformString(t *TransformConfig, s string) (string, error) {
 	return extractedString, nil
 }
 
-func getBaseURL(pageUrl string, doc *goquery.Document) string {
+func getBaseURL(pageUrl string, gqdoc *goquery.Document) string {
 	// relevant info: https://www.w3.org/TR/WD-html40-970917/htmlweb.html#relative-urls
 	// currently this function does not fully implement the standard
-	baseURL := doc.Find("base").AttrOr("href", "")
+	baseURL := gqdoc.Find("base").AttrOr("href", "")
 	if baseURL == "" {
 		baseURL = pageUrl
 	}

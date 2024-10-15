@@ -8,12 +8,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/findyourpaths/goskyr/autoconfig"
 	"github.com/findyourpaths/goskyr/config"
 	"github.com/findyourpaths/goskyr/fetch"
+	"github.com/findyourpaths/goskyr/generate"
 	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/output"
-	"github.com/findyourpaths/goskyr/scraper"
+	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/gosimple/slug"
 	"github.com/jessevdk/go-flags"
@@ -88,7 +88,7 @@ func main() {
 		return
 	}
 
-	conf, err := scraper.NewConfig(opts.ConfigFile)
+	conf, err := scrape.NewConfig(opts.ConfigFile)
 	if err != nil {
 		slog.Error("error making new config", "err", err)
 		os.Exit(1)
@@ -125,7 +125,7 @@ func main() {
 
 var doWriteSubpages = false
 
-func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
+func GenerateConfigs(opts mainOpts) (map[string]*scrape.Config, error) {
 	slog.Debug("starting to generate config")
 	slog.Debug("analyzing", "url", opts.InputURL)
 
@@ -134,7 +134,7 @@ func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 		minOccs = []int{opts.MinOcc}
 	}
 
-	autoOpts := autoconfig.ConfigOptions{
+	autoOpts := generate.ConfigOptions{
 		Batch:       opts.Batch,
 		InputURL:    opts.InputURL,
 		ModelName:   opts.PretrainedModelPath,
@@ -144,14 +144,14 @@ func GenerateConfigs(opts mainOpts) (map[string]*scraper.Config, error) {
 		WordsDir:    opts.WordsDir,
 	}
 
-	cims, err := autoconfig.NewDynamicFieldsConfigsForURL(autoOpts, minOccs)
+	cims, err := generate.ConfigurationsForURL(autoOpts, minOccs)
 	if err != nil {
 		return nil, err
 	}
 
 	subpageURLsBySlug := map[string]string{}
 
-	cs := map[string]*scraper.Config{}
+	cs := map[string]*scrape.Config{}
 	for id, cim := range cims {
 		cs[id] = cim.Config
 		if opts.ToStdout {

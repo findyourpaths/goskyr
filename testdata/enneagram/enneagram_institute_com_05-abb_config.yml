@@ -3,89 +3,89 @@ scrapers:
       url: file://testdata/enneagram/enneagram_institute_com.html
       item: body > div > div > div > section > div > div.sqs-events-collection-list > div.eventlist.eventlist--upcoming > article.eventlist-event.eventlist-event--multiday.eventlist-event--upcoming
       fields:
-        - name: field-2
-          type: url
-          location:
-            - selector: div.eventlist-column-info > a.eventlist-button.sqs-button-element--primary
-              attr: href
-          can_be_empty: true
-        - name: field-3
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-excerpt > p:nth-child(4) > strong
-          can_be_empty: true
-        - name: field-4
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-excerpt > p:nth-child(3) > strong
-          can_be_empty: true
-        - name: field-5
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-excerpt > p:nth-child(2) > strong
-          can_be_empty: true
-        - name: field-6
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-excerpt > p > strong > em
-          can_be_empty: true
-        - name: field-7
-          type: url
-          location:
-            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-ical
-              attr: href
-          can_be_empty: true
-        - name: field-8
-          type: url
-          location:
-            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-google
-              attr: href
-          can_be_empty: true
-        - name: field-9
-          type: text
-          location:
-            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-date.eventlist-meta-item > time.event-date:nth-child(4)
-          can_be_empty: true
-        - name: field-10
-          type: text
-          location:
-            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-date.eventlist-meta-item > time.event-date
-          can_be_empty: true
-        - name: field-11
-          type: text
-          location:
-            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
-          can_be_empty: true
-        - name: field-12
-          type: url
-          location:
-            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
-              attr: href
-          can_be_empty: true
-        - name: field-13
-          type: text
-          location:
-            - selector: a.eventlist-column-date > div.eventlist-datetag > div.eventlist-datetag-inner > div.eventlist-datetag-enddate
-          can_be_empty: true
-        - name: field-14
-          type: text
-          location:
-            - selector: a.eventlist-column-date > div.eventlist-datetag > div.eventlist-datetag-inner > div.eventlist-datetag-startdate
-          can_be_empty: true
-        - name: field-15
+        - name: field-0b6d775528359486938824f641703860-href-0
           type: url
           location:
             - selector: a.eventlist-column-date
               attr: href
           can_be_empty: true
-        - name: field-16
+        - name: field-20dce1f5edda6cb8123f94ff367c4944--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-excerpt > p > strong
+          can_be_empty: true
+        - name: field-31b4257b0e010530fc8429eeef06f7fe-href-0
+          type: url
+          location:
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-ical
+              attr: href
+          can_be_empty: true
+        - name: field-45a231b232bcb070d9b57b4d0cd1b572--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-excerpt > p:nth-child(2) > strong
+          can_be_empty: true
+        - name: field-529b0f9c5c309c4d6f0cb5b79660b072--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-excerpt > p:nth-child(4) > strong
+          can_be_empty: true
+        - name: field-6377f35f95f1fddbba2442513b3e9157-href-0
           type: url
           location:
             - selector: a.content-fill.eventlist-column-thumbnail
               attr: href
           can_be_empty: true
-        - name: field-17
+        - name: field-6bac2df99370735d7a7c70cd760132ab--0
           type: text
           location:
-            - selector: div.eventlist-column-info > div.eventlist-excerpt > p > strong
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-date.eventlist-meta-item > time.event-date:nth-child(4)
+          can_be_empty: true
+        - name: field-81496acf6eb6ace781c7c17d409a4967--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-excerpt > p > strong > em
+          can_be_empty: true
+        - name: field-9cb07e3b4981eaec43ba70f8500fb3b9--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
+          can_be_empty: true
+        - name: field-9cb07e3b4981eaec43ba70f8500fb3b9-href-0
+          type: url
+          location:
+            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
+              attr: href
+          can_be_empty: true
+        - name: field-b46357635b22595ae8bb1f104d1e0d62--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-date.eventlist-meta-item > time.event-date
+          can_be_empty: true
+        - name: field-b78e11426fb136a9ed7eb7a042b89874--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-excerpt > p:nth-child(3) > strong
+          can_be_empty: true
+        - name: field-cd32d39b742bae8e5e6182e298233f91--0
+          type: text
+          location:
+            - selector: a.eventlist-column-date > div.eventlist-datetag > div.eventlist-datetag-inner > div.eventlist-datetag-startdate
+          can_be_empty: true
+        - name: field-ea2d18185ec49d106a979a49a0df911a-href-0
+          type: url
+          location:
+            - selector: div.eventlist-column-info > a.eventlist-button.sqs-button-element--primary
+              attr: href
+          can_be_empty: true
+        - name: field-ecdfe2a9f120aa827537fe372464c5ec-href-0
+          type: url
+          location:
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-google
+              attr: href
+          can_be_empty: true
+        - name: field-fb69fdbe37a31190cff67eabf2197eda--0
+          type: text
+          location:
+            - selector: a.eventlist-column-date > div.eventlist-datetag > div.eventlist-datetag-inner > div.eventlist-datetag-enddate
           can_be_empty: true

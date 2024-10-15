@@ -6,7 +6,7 @@ go_library(
     importpath = "github.com/findyourpaths/goskyr/ml",
     visibility = ["//visibility:public"],
     deps = [
-        "//scraper:go_default_library",
+        "//scrape:go_default_library",
         "//utils:go_default_library",
         "@com_github_sjwhitworth_golearn//base:go_default_library",
         "@com_github_sjwhitworth_golearn//evaluation:go_default_library",

@@ -3,29 +3,29 @@ scrapers:
       url: file://testdata/https-webscraper-io-test-sites-e-commerce-allinone-computers-tablets.html
       item: body > div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper
       fields:
-        - name: field-0
-          type: text
-          location:
-            - selector: div.ratings > p.float-end.review-count
-          can_be_empty: true
-        - name: field-1
+        - name: field-9377b7c7d77f5ba2e60670df85aef234--0
           type: text
           location:
             - selector: div.caption > p.card-text.description
           can_be_empty: true
-        - name: field-2
+        - name: field-c482da397baa2664c950f99122a020e6--0
+          type: text
+          location:
+            - selector: div.caption > h4.card-title.float-end.price.pull-right
+          can_be_empty: true
+        - name: field-cb5ded8a801194ee9c4bc65bbe870223--0
           type: text
           location:
             - selector: div.caption > h4 > a.title
           can_be_empty: true
-        - name: field-3
+        - name: field-cb5ded8a801194ee9c4bc65bbe870223-href-0
           type: url
           location:
             - selector: div.caption > h4 > a.title
               attr: href
           can_be_empty: true
-        - name: field-4
+        - name: field-d35776a14e438f044e3d0ab77cf5fcaa--0
           type: text
           location:
-            - selector: div.caption > h4.card-title.float-end.price.pull-right
+            - selector: div.ratings > p.float-end.review-count
           can_be_empty: true

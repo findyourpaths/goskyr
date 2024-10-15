@@ -10,7 +10,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/findyourpaths/goskyr/scraper"
+	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/sjwhitworth/golearn/base"
 	"github.com/sjwhitworth/golearn/evaluation"
@@ -51,7 +51,7 @@ var NonAlphaFeatureList []string = []string{
 // ExtractFeatures extracts features based on a given configuration and a directory
 // containing words of different languages. Those features can then be used to train
 // a ML model to automatically classify scraped fields for new websites.
-func ExtractFeatures(config *scraper.Config, featureFile, wordsDir string) error {
+func ExtractFeatures(config *scrape.Config, featureFile, wordsDir string) error {
 	var calcWg sync.WaitGroup
 	var writerWg sync.WaitGroup
 	wordMap, err := loadWords(wordsDir)
@@ -135,7 +135,7 @@ func writeFeaturesToFile(filename string, featuresChan <-chan *Features, wg *syn
 	writer.Flush()
 }
 
-func calculateScraperFeatures(s scraper.Scraper, featuresChan chan<- *Features, wordMap map[string]bool, globalConfig *scraper.GlobalConfig, wg *sync.WaitGroup) {
+func calculateScraperFeatures(s scrape.Scraper, featuresChan chan<- *Features, wordMap map[string]bool, globalConfig *scrape.GlobalConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Printf("calculating features for %s\n", s.Name)
 	items, err := s.GetItems(globalConfig, true)

@@ -3,37 +3,37 @@ scrapers:
       url: file://testdata/enneagram/enneagram-ohio-com-all-workshops.html
       item: body > div.hfeed.site > div.clearfix > div.inner-wrap > div.clearfix > div.tg-one-half.tg-one-half-last > section.clearfix.shortcode_widget.widget > div.textwidget > ul.display-posts-listing > li.listing-item
       fields:
-        - name: field-6
+        - name: field-6a3138ceb9f9def0f7770496f3012827--0
+          type: text
+          location:
+            - selector: a.title
+          can_be_empty: true
+        - name: field-6a3138ceb9f9def0f7770496f3012827-href-0
           type: url
           location:
-            - selector: span.excerpt > a.excerpt-more
+            - selector: a.title
               attr: href
           can_be_empty: true
-        - name: field-7
+        - name: field-79687add31315401d277cc3177aabbcb-href-0
+          type: url
+          location:
+            - selector: a.image
+              attr: href
+          can_be_empty: true
+        - name: field-bc9f4ef9c6e1306cc1805b9f1ff893a9--0
           type: text
           location:
             - selector: span.excerpt
           can_be_empty: true
-        - name: field-8
-          type: text
-          location:
-            - selector: a.title
-          can_be_empty: true
-        - name: field-9
-          type: url
-          location:
-            - selector: a.title
-              attr: href
-          can_be_empty: true
-        - name: field-10
+        - name: field-cf43069bd87d498d6cfacafdfbeb8e8e-src-0
           type: url
           location:
             - selector: a.image > img.attachment-medium.size-medium.wp-post-image
               attr: src
           can_be_empty: true
-        - name: field-11
+        - name: field-e8eef82c8924f3eb127566d99818a4d0-href-0
           type: url
           location:
-            - selector: a.image
+            - selector: span.excerpt > a.excerpt-more
               attr: href
           can_be_empty: true

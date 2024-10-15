@@ -1,27 +1,10 @@
 scrapers:
     - name: file://testdata/chicago/https-www-thaliahallchicago-com.html
       url: file://testdata/chicago/https-www-thaliahallchicago-com.html
-      item: body > div.Site.loaded > div.Site-inner.Site-inner--index > div.Content-outer > main.Index > section.Index-page > div.Index-page-content > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-9.sqs-col-9 > div.code-block.sqs-block.sqs-block-code > div.sqs-block-content > div.thalia > div.eb-item
+      item: body > script
       fields:
-        - name: field-1
+        - name: field-2c3979325d34a1404ff1886de43f65ef--0
           type: text
           location:
-            - selector: div.content-back > div.item-description
-              child_index: 3
-          can_be_empty: true
-        - name: field-2
-          type: text
-          location:
-            - selector: div.content-back > div.item-description
-          can_be_empty: true
-        - name: field-3
-          type: url
-          location:
-            - selector: div.content-front > div.buttons-outer > a.buy-button
-              attr: href
-          can_be_empty: true
-        - name: field-4
-          type: text
-          location:
-            - selector: div.content-front > div.show-details > ul.performing > li
+            - {}
           can_be_empty: true

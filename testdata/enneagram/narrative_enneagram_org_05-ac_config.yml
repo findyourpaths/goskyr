@@ -3,47 +3,47 @@ scrapers:
       url: file://testdata/enneagram/narrative_enneagram_org.html
       item: body > main.main > div.events-content > div.wrapper > div.wrapper__inner > div.events-content__grid > div.tne-events > div.box-shadow.event
       fields:
-        - name: field-1
-          type: url
-          location:
-            - selector: div.event__footer > div.event__status > a.button.button--small
-              attr: href
-          can_be_empty: true
-        - name: field-2
-          type: text
-          location:
-            - selector: div.event__footer > p.event__location.label--small
-              child_index: 2
-          can_be_empty: true
-        - name: field-3
-          type: text
-          location:
-            - selector: div.event__grid > div.event__tags > span.tag
-          can_be_empty: true
-        - name: field-4
-          type: text
-          location:
-            - selector: div.event__grid > div.event__description > div.event-dates.label--small
-          can_be_empty: true
-        - name: field-5
-          type: text
-          location:
-            - selector: div.event__grid > div.event__description > h4.event__title > a
-          can_be_empty: true
-        - name: field-6
-          type: url
-          location:
-            - selector: div.event__grid > div.event__description > h4.event__title > a
-              attr: href
-          can_be_empty: true
-        - name: field-7
+        - name: field-4f8f5063668cd53b1f542cd6f634419b-src-0
           type: url
           location:
             - selector: div.event__grid > div.event__image > img
               attr: src
           can_be_empty: true
-        - name: field-8
+        - name: field-51f148a4ee88bd582370a370951c730d--0
+          type: text
+          location:
+            - selector: div.event__grid > div.event__description > h4.event__title > a
+          can_be_empty: true
+        - name: field-51f148a4ee88bd582370a370951c730d-href-0
+          type: url
+          location:
+            - selector: div.event__grid > div.event__description > h4.event__title > a
+              attr: href
+          can_be_empty: true
+        - name: field-682512fdbfdc8a2c0116430251c6f1fb-href-0
+          type: url
+          location:
+            - selector: div.event__footer > div.event__status > a.button.button--small
+              attr: href
+          can_be_empty: true
+        - name: field-83b21f645c1814731dcc6c635248f14d--0
           type: text
           location:
             - selector: div.event__grid > div.event__description > p
+          can_be_empty: true
+        - name: field-9e9ff61e6e715092e3954f63a7ef84ca--0
+          type: text
+          location:
+            - selector: div.event__grid > div.event__description > div.event-dates.label--small
+          can_be_empty: true
+        - name: field-b985db6b5d93b72ce92dee2926949ef2--0
+          type: text
+          location:
+            - selector: div.event__grid > div.event__tags > span.tag
+          can_be_empty: true
+        - name: field-fcaf96b3e9b5656643109afbcc582ded--2
+          type: text
+          location:
+            - selector: div.event__footer > p.event__location.label--small
+              child_index: 2
           can_be_empty: true

@@ -3,73 +3,73 @@ scrapers:
       url: file://testdata/chicago/https-lh-st-com.html
       item: body > div.container.my-5 > div.g-4.row.row-cols-1.row-cols-lg-3.row-cols-md-2.tessera-card-deck > div.col > div.card.h-100.mb-3.tessera-show-card
       fields:
-        - name: field-1
-          type: url
+        - name: field-025e09b574e79a26c3faaf73d0cf38a7--0
+          type: text
           location:
-            - selector: div.align-items-center.card-footer.text-start > a.more-info
-              attr: href
+            - selector: div.card-body.d-flex.flex-column > div.event-header
           can_be_empty: true
-        - name: field-2
+        - name: field-2089587faa6f3d9eec2a61e6a9a6485f--0
+          type: text
+          location:
+            - selector: div.card-body.d-flex.flex-column > div.align-items-end.mt-auto.row.tessera-buttons-container > div.col-md-6.p-0.show-details.text-end > div.showAges
+          can_be_empty: true
+        - name: field-2d38ed202c07675253ce4b4e19de1cab--0
+          type: text
+          location:
+            - selector: div.card-body.d-flex.flex-column > div.tessera-primaryBandAppend
+          can_be_empty: true
+        - name: field-4c022bd54bcc2c8071b3bfa54bdc5b7e--0
+          type: text
+          location:
+            - selector: div.card-body.d-flex.flex-column > div.tessera-additionalArtists
+          can_be_empty: true
+        - name: field-565d5e68b4370e0d9eeb24e160ed0b35--0
+          type: text
+          location:
+            - selector: div.card-body.d-flex.flex-column > div.tessera-date > span.date
+          can_be_empty: true
+        - name: field-581f7a2c5c97ed1bfdd3e3e72b32acf1--0
+          type: text
+          location:
+            - selector: div.card-body.d-flex.flex-column > a > h4.card-title
+          can_be_empty: true
+        - name: field-7154d90f3f3fe195a586c1d0efc1a994--1
           type: text
           location:
             - selector: div.align-items-center.card-footer.text-start > span.tessera-venue
               child_index: 1
           can_be_empty: true
-        - name: field-3
-          type: text
-          location:
-            - selector: div.card-body.d-flex.flex-column > div.align-items-end.mt-auto.row.tessera-buttons-container > div.col-md-6.p-0.show-details.text-end > div.tessera-showTime > b
-          can_be_empty: true
-        - name: field-4
-          type: text
-          location:
-            - selector: div.card-body.d-flex.flex-column > div.align-items-end.mt-auto.row.tessera-buttons-container > div.col-md-6.p-0.show-details.text-end > div.tessera-doorsTime > b
-          can_be_empty: true
-        - name: field-5
-          type: text
-          location:
-            - selector: div.card-body.d-flex.flex-column > div.align-items-end.mt-auto.row.tessera-buttons-container > div.col-md-6.p-0.show-details.text-end > div.showAges
-          can_be_empty: true
-        - name: field-6
-          type: text
-          location:
-            - selector: div.card-body.d-flex.flex-column > div.tessera-additionalArtists
-          can_be_empty: true
-        - name: field-7
-          type: text
-          location:
-            - selector: div.card-body.d-flex.flex-column > a > h4.card-title
-          can_be_empty: true
-        - name: field-8
-          type: url
-          location:
-            - selector: div.card-body.d-flex.flex-column > a
-              attr: href
-          can_be_empty: true
-        - name: field-9
-          type: text
-          location:
-            - selector: div.card-body.d-flex.flex-column > div.event-header
-          can_be_empty: true
-        - name: field-10
-          type: text
-          location:
-            - selector: div.card-body.d-flex.flex-column > div.tessera-date > span.date
-          can_be_empty: true
-        - name: field-11
-          type: url
-          location:
-            - selector: div.card-header > div.tessera-has-inventory > a > img.card-img-top
-              attr: src
-          can_be_empty: true
-        - name: field-12
+        - name: field-7afcfaf99a10db73084646a2980f2ae5-href-0
           type: url
           location:
             - selector: div.card-header > div.tessera-has-inventory > a
               attr: href
           can_be_empty: true
-        - name: field-13
+        - name: field-7ba7ed84a71807beeb43f53c6f75cf6f-href-0
+          type: url
+          location:
+            - selector: div.card-body.d-flex.flex-column > a
+              attr: href
+          can_be_empty: true
+        - name: field-8f8eb90c87190b4ede6efb807c72dae0--0
           type: text
           location:
-            - selector: div.card-body.d-flex.flex-column > div.tessera-primaryBandAppend
+            - selector: div.card-body.d-flex.flex-column > div.align-items-end.mt-auto.row.tessera-buttons-container > div.col-md-6.p-0.show-details.text-end > div.tessera-doorsTime > b
+          can_be_empty: true
+        - name: field-b377bdae3900435bedd9705a2795428d-href-0
+          type: url
+          location:
+            - selector: div.align-items-center.card-footer.text-start > a.more-info
+              attr: href
+          can_be_empty: true
+        - name: field-d5f142dc62073f81b1538ca30afdb5f9-src-0
+          type: url
+          location:
+            - selector: div.card-header > div.tessera-has-inventory > a > img.card-img-top
+              attr: src
+          can_be_empty: true
+        - name: field-d88a7b7afdf35dd512950d14439bcfa6--0
+          type: text
+          location:
+            - selector: div.card-body.d-flex.flex-column > div.align-items-end.mt-auto.row.tessera-buttons-container > div.col-md-6.p-0.show-details.text-end > div.tessera-showTime > b
           can_be_empty: true

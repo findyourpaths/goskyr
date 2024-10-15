@@ -1,7 +1,10 @@
-package autoconfig
+package generate
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"sort"
 
 	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/utils"
@@ -12,7 +15,7 @@ import (
 type locationProps struct {
 	path      path
 	attr      string
-	textIndex int // this will translate into child index within scraper.ElementLocation
+	textIndex int // this will translate into child index within scrape.ElementLocation
 	count     int
 	examples  []string
 	selected  bool
@@ -54,11 +57,13 @@ func (l locationManager) setColors() {
 	}
 }
 
-func (l locationManager) findFieldNames(modelName, wordsDir string) error {
+func (l locationManager) setFieldNames(modelName, wordsDir string) error {
 	if modelName == "" {
-		for i, e := range l {
-			e.name = fmt.Sprintf("field-%d", i)
+		for _, e := range l {
+			hash := md5.Sum([]byte(e.path.string()))
+			e.name = fmt.Sprintf("field-%s-%s-%d", hex.EncodeToString(hash[:]), e.attr, e.textIndex)
 		}
+		sort.Slice(l, func(i, j int) bool { return l[i].name < l[j].name })
 		return nil
 	}
 

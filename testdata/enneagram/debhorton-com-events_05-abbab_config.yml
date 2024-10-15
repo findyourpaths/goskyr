@@ -3,111 +3,111 @@ scrapers:
       url: file://testdata/enneagram/debhorton-com-events.html
       item: body > div.clearfix > main > div.main-content > div.sqs-events-collection-list > div.eventlist > article.eventlist-event.eventlist-event--hasimg.eventlist-hasimg
       fields:
-        - name: field-0
+        - name: field-0cd9f17e04a06887e97feebb765e742e--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p:nth-child(3)
+          can_be_empty: true
+        - name: field-0ee810a20c8cb21a0dff5e0b73fec694--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
+          can_be_empty: true
+        - name: field-0ee810a20c8cb21a0dff5e0b73fec694-href-0
           type: url
           location:
-            - selector: div.eventlist-column-info > a.eventlist-button.sqs-button-element--primary
+            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
               attr: href
           can_be_empty: true
-        - name: field-5
-          type: url
-          location:
-            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-ical
-              attr: href
-          can_be_empty: true
-        - name: field-6
-          type: url
-          location:
-            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-google
-              attr: href
-          can_be_empty: true
-        - name: field-11
+        - name: field-19deb9caae2fd956f68c97ebb34f61f8--0
           type: text
           location:
             - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-date.eventlist-meta-item > time.event-date
           can_be_empty: true
-        - name: field-12
-          type: text
-          location:
-            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
-          can_be_empty: true
-        - name: field-13
-          type: url
-          location:
-            - selector: div.eventlist-column-info > h1.eventlist-title > a.eventlist-title-link
-              attr: href
-          can_be_empty: true
-        - name: field-16
-          type: text
-          location:
-            - selector: a.eventlist-column-date > div.eventlist-datetag > div.eventlist-datetag-inner > div.eventlist-datetag-startdate
-          can_be_empty: true
-        - name: field-17
-          type: url
-          location:
-            - selector: a.eventlist-column-date
-              attr: href
-          can_be_empty: true
-        - name: field-18
+        - name: field-3fbfee7c8e1891841202f8c3d45da285-src-0
           type: url
           location:
             - selector: a.content-fill.eventlist-column-thumbnail > img.eventlist-thumbnail.loaded
               attr: src
           can_be_empty: true
-        - name: field-19
+        - name: field-4a3344a60ad1511293ee56c38704729f--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > strong:nth-child(3)
+          can_be_empty: true
+        - name: field-6c0814a180059df002e90420afbb15af-href-0
+          type: url
+          location:
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-google
+              attr: href
+          can_be_empty: true
+        - name: field-7194707f5add18de045e25292a3eeb06--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > em
+          can_be_empty: true
+        - name: field-71da9013e6a30befc5b585e30d544127--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p:nth-child(6)
+          can_be_empty: true
+        - name: field-762cd718ff752728fa437b3af6802e3d--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > strong:nth-child(7)
+          can_be_empty: true
+        - name: field-9343b31358e75130d8352eaff07ecc4e-href-0
+          type: url
+          location:
+            - selector: div.eventlist-column-info > ul.event-meta.eventlist-meta > li.event-meta-item.eventlist-meta-export.eventlist-meta-item > a.eventlist-meta-export-ical
+              attr: href
+          can_be_empty: true
+        - name: field-987632be97b1eaa7b73ce01f17fe5bf8--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p:nth-child(7)
+          can_be_empty: true
+        - name: field-c577e981b4170386a8d8c7180a803f0f--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > a
+          can_be_empty: true
+        - name: field-c577e981b4170386a8d8c7180a803f0f-href-0
+          type: url
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > a
+              attr: href
+          can_be_empty: true
+        - name: field-cf7f3b196fa06ff165831e5f8d151881--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > strong
+          can_be_empty: true
+        - name: field-d361681ee356edb4201a792b019256b2--0
+          type: text
+          location:
+            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p:nth-child(5)
+          can_be_empty: true
+        - name: field-e117db1e98c0930061fca88deb4e5806-href-0
           type: url
           location:
             - selector: a.content-fill.eventlist-column-thumbnail
               attr: href
           can_be_empty: true
-        - name: field-20
+        - name: field-eb015cc6dadb6af1252d6f4237576471--0
           type: text
           location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > a
+            - selector: a.eventlist-column-date > div.eventlist-datetag > div.eventlist-datetag-inner > div.eventlist-datetag-startdate
           can_be_empty: true
-        - name: field-21
+        - name: field-f5c752b3dff78fa35802b84e08b5fe4d-href-0
           type: url
           location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > a
+            - selector: a.eventlist-column-date
               attr: href
           can_be_empty: true
-        - name: field-22
-          type: text
+        - name: field-f83045a82815658d07549661b5227a8c-href-0
+          type: url
           location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p:nth-child(5)
-          can_be_empty: true
-        - name: field-24
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p:nth-child(3)
-          can_be_empty: true
-        - name: field-30
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > em
-          can_be_empty: true
-        - name: field-31
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > strong
-          can_be_empty: true
-        - name: field-34
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p:nth-child(7)
-          can_be_empty: true
-        - name: field-35
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p:nth-child(6)
-          can_be_empty: true
-        - name: field-36
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > strong:nth-child(7)
-          can_be_empty: true
-        - name: field-37
-          type: text
-          location:
-            - selector: div.eventlist-column-info > div.eventlist-description > div.columns-12.sqs-grid-12.sqs-layout > div.row.sqs-row > div.col.span-12.sqs-col-12 > div.html-block.sqs-block.sqs-block-html > div.sqs-block-content > div.sqs-html-content > p > strong:nth-child(3)
+            - selector: div.eventlist-column-info > a.eventlist-button.sqs-button-element--primary
+              attr: href
           can_be_empty: true

@@ -3,46 +3,46 @@ scrapers:
       url: file://testdata/enneagram/integral_life_com.html
       item: body > div.x-root > div.site > div.main.max.width.x-container > div.cf.offset > div.full.x-main > article.has-post-thumbnail.hentry.page.post-315837.status-publish.type-page > div.entry-wrap > div.content.entry-content > div.cs-content > div.e315837-8.m6rp9-0.m6rp9-2.x-section > div.e315837-9.m6rp9-3.m6rp9-5.max.width.x-container.x-row > div.x-row-inner > div.e315837-10.m6rp9-6.x-col > div.e315837-11.m6rp9-9.m6rp9-a.m6rp9-b.x-text > div.tribe-common.tribe-common--breakpoint-xsmall.tribe-events.tribe-events-view.tribe-events-view--list.tribe-events-view--shortcode.tribe-events-view--shortcode-f043b08c > div.tribe-common-l-container.tribe-events-l-container > div.tribe-events-calendar-list > div.tribe-common-g-row.tribe-events-calendar-list__event-row
       fields:
-        - name: field-12
+        - name: field-07ec105a2a664bb67ba1f98490d72c6b--0
           type: text
           location:
-            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-details > div.tribe-common-a11y-hidden.tribe-common-b2.tribe-events-calendar-list__event-description > p
+            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-date-tag > time.tribe-events-calendar-list__event-date-tag-datetime > span.tribe-common-h4--min-medium.tribe-common-h5.tribe-events-calendar-list__event-date-tag-daynum
           can_be_empty: true
-        - name: field-13
+        - name: field-6126a5a799ec83dd63cf42c097a43e38--0
           type: text
           location:
-            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-details > header.tribe-events-calendar-list__event-header > h3.tribe-common-h4--min-medium.tribe-common-h6.tribe-events-calendar-list__event-title > a.tribe-common-anchor-thin.tribe-events-calendar-list__event-title-link
+            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-date-tag > time.tribe-events-calendar-list__event-date-tag-datetime > span.tribe-events-calendar-list__event-date-tag-weekday
           can_be_empty: true
-        - name: field-14
-          type: url
-          location:
-            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-details > header.tribe-events-calendar-list__event-header > h3.tribe-common-h4--min-medium.tribe-common-h6.tribe-events-calendar-list__event-title > a.tribe-common-anchor-thin.tribe-events-calendar-list__event-title-link
-              attr: href
-          can_be_empty: true
-        - name: field-15
-          type: text
-          location:
-            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-details > header.tribe-events-calendar-list__event-header > div.tribe-common-b2.tribe-events-calendar-list__event-datetime-wrapper > time.tribe-events-calendar-list__event-datetime
-          can_be_empty: true
-        - name: field-16
-          type: url
-          location:
-            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-featured-image-wrapper > a.tribe-events-calendar-list__event-featured-image-link > img.tribe-events-calendar-list__event-featured-image
-              attr: src
-          can_be_empty: true
-        - name: field-17
+        - name: field-7e7a4992e286fe58ee1282bf743fe314-href-0
           type: url
           location:
             - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-featured-image-wrapper > a.tribe-events-calendar-list__event-featured-image-link
               attr: href
           can_be_empty: true
-        - name: field-18
+        - name: field-8dc5928483fd251d0e700e4b808719a5--0
           type: text
           location:
-            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-date-tag > time.tribe-events-calendar-list__event-date-tag-datetime > span.tribe-common-h4--min-medium.tribe-common-h5.tribe-events-calendar-list__event-date-tag-daynum
+            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-details > div.tribe-common-a11y-hidden.tribe-common-b2.tribe-events-calendar-list__event-description > p
           can_be_empty: true
-        - name: field-19
+        - name: field-a840f046209f900063c59b28323c1b27--0
           type: text
           location:
-            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-date-tag > time.tribe-events-calendar-list__event-date-tag-datetime > span.tribe-events-calendar-list__event-date-tag-weekday
+            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-details > header.tribe-events-calendar-list__event-header > h3.tribe-common-h4--min-medium.tribe-common-h6.tribe-events-calendar-list__event-title > a.tribe-common-anchor-thin.tribe-events-calendar-list__event-title-link
+          can_be_empty: true
+        - name: field-a840f046209f900063c59b28323c1b27-href-0
+          type: url
+          location:
+            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-details > header.tribe-events-calendar-list__event-header > h3.tribe-common-h4--min-medium.tribe-common-h6.tribe-events-calendar-list__event-title > a.tribe-common-anchor-thin.tribe-events-calendar-list__event-title-link
+              attr: href
+          can_be_empty: true
+        - name: field-e447a10529aa5614b8f847fa729ae2da-src-0
+          type: url
+          location:
+            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-featured-image-wrapper > a.tribe-events-calendar-list__event-featured-image-link > img.tribe-events-calendar-list__event-featured-image
+              attr: src
+          can_be_empty: true
+        - name: field-eb2372b4c2a6efc7df2fc627b773140e--0
+          type: text
+          location:
+            - selector: div.tribe-common-g-col.tribe-events-calendar-list__event-wrapper > article.has-post-thumbnail.hentry.status-publish.tribe-common-g-row.tribe-common-g-row--gutters.tribe-events-calendar-list__event.tribe_events.type-tribe_events > div.tribe-common-g-col.tribe-events-calendar-list__event-details > header.tribe-events-calendar-list__event-header > div.tribe-common-b2.tribe-events-calendar-list__event-datetime-wrapper > time.tribe-events-calendar-list__event-datetime
           can_be_empty: true

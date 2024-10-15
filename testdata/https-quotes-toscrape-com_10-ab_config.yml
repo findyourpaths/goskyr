@@ -3,30 +3,30 @@ scrapers:
       url: file://testdata/https-quotes-toscrape-com.html
       item: body > div.container > div.row > div.col-md-8 > div.quote
       fields:
-        - name: field-2
+        - name: field-1fafe46cc09236fee0309a37b0e5259e--0
           type: text
           location:
             - selector: div.tags > a.tag
           can_be_empty: true
-        - name: field-3
+        - name: field-1fafe46cc09236fee0309a37b0e5259e-href-0
           type: url
           location:
             - selector: div.tags > a.tag
               attr: href
           can_be_empty: true
-        - name: field-4
-          type: url
-          location:
-            - selector: span > a
-              attr: href
-          can_be_empty: true
-        - name: field-5
+        - name: field-7b1e2156c162fd7e224c21c8522126c1--0
           type: text
           location:
             - selector: span > small.author
           can_be_empty: true
-        - name: field-6
+        - name: field-bf96a7b1bc94e25a3ea634397b34f174--0
           type: text
           location:
             - selector: span.text
+          can_be_empty: true
+        - name: field-f3e3b5256802c2de0e8f314808f7d15e-href-0
+          type: url
+          location:
+            - selector: span > a
+              attr: href
           can_be_empty: true
