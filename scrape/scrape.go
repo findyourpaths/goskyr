@@ -40,17 +40,33 @@ type GlobalConfig struct {
 // Values will be taken from a config yml file or environment variables
 // or both.
 type Config struct {
+	ID       string
 	Writer   output.WriterConfig `yaml:"writer,omitempty"`
 	Scrapers []Scraper           `yaml:"scrapers,omitempty"`
 	Global   GlobalConfig        `yaml:"global,omitempty"`
+	ItemMaps output.ItemMaps
 }
 
 func (c Config) String() string {
-	yamlData, err := yaml.Marshal(&c)
+	cCopy := c
+	cCopy.ItemMaps = nil
+	yamlData, err := yaml.Marshal(&cCopy)
 	if err != nil {
 		log.Fatalf("error while marshaling config. %v", err)
 	}
 	return string(yamlData)
+}
+
+func (c Config) WriteToFile(base string) error {
+	if err := utils.WriteStringFile(fmt.Sprintf("%s_%s_config.yml", base, c.ID), c.String()); err != nil {
+		return err
+	}
+	if len(c.ItemMaps) > 0 {
+		if err := utils.WriteStringFile(fmt.Sprintf("%s_%s.json", base, c.ID), c.ItemMaps.String()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func NewConfig(configPath string) (*Config, error) {

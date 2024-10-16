@@ -63,7 +63,7 @@ func GenerateTest(t *testing.T, testname string, path string, dir string) {
 		InputURL:   "file://" + path,
 		// URLRequired: true,
 	}
-	cs, err := GenerateConfigs(opts)
+	cs, err := GenerateConfigurationsForPage(opts)
 	if err != nil {
 		t.Fatalf("error generating config: %v", err)
 	}

@@ -13,7 +13,6 @@ go_library(
         "//date:go_default_library",
         "//fetch:go_default_library",
         "//ml:go_default_library",
-        "//output:go_default_library",
         "//scrape:go_default_library",
         "//utils:go_default_library",
         "@com_github_agnivade_levenshtein//:go_default_library",
