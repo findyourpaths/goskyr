@@ -248,6 +248,7 @@ type Paginator struct {
 // to extract the desired information from a website
 type Scraper struct {
 	Name         string               `yaml:"name"`
+	InputURL     string               `yaml:"input_url"`
 	URL          string               `yaml:"url"`
 	Item         string               `yaml:"item"`
 	Fields       []Field              `yaml:"fields,omitempty"`
@@ -370,15 +371,6 @@ func (c Scraper) GQDocumentItems(gqdoc *goquery.Document, rawDyn bool) (output.I
 
 	slog.Debug("Scraper.GQDocumentItems() returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
 	return items, nil
-}
-
-func (c Scraper) GQDocumentsItems(gqdocs []*goquery.Document, rawDyn bool) (output.ItemMaps, error) {
-	allItems := output.ItemMaps{}
-	for _, gqdoc := range gqdocs {
-		items, _ := c.GQDocumentItems(gqdoc, rawDyn)
-		allItems = append(allItems, items...)
-	}
-	return allItems, nil
 }
 
 // GQSelectionItem fetches and returns an items from a website according to the

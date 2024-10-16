@@ -361,16 +361,17 @@ type ConfigAndItemMaps struct {
 }
 
 type ConfigOptions struct {
-	Batch       bool
-	InputURL    string
-	ModelName   string
-	OnlyVarying bool
-	RenderJS    bool
-	URLRequired bool
-	WordsDir    string
+	Batch           bool
+	InputURL        string
+	ModelName       string
+	OnlyVarying     bool
+	RenderJS        bool
+	SubpageRequired bool
+	URL             string
+	WordsDir        string
 }
 
-func ConfigurationsForURL(opts ConfigOptions, minOccs []int) (map[string]*ConfigAndItemMaps, error) {
+func ConfigurationsForURI(opts ConfigOptions, minOccs []int) (map[string]*ConfigAndItemMaps, error) {
 	slog.Debug("ConfigurationsForURL()", "opts", opts, "minOccs", minOccs)
 	if len(opts.InputURL) == 0 {
 		return nil, errors.New("URL field cannot be empty")
@@ -389,6 +390,7 @@ func ConfigurationsForURL(opts ConfigOptions, minOccs []int) (map[string]*Config
 	if err != nil {
 		return nil, err
 	}
+	opts.InputURL = "file://" + slug.Make(opts.InputURL) + ".html"
 
 	// A bit hacky. But goquery seems to manipulate the html (I only know of goquery adding tbody tags if missing)
 	// so we rely on goquery to read the html for both scraping AND figuring out the scraping config.
@@ -397,30 +399,34 @@ func ConfigurationsForURL(opts ConfigOptions, minOccs []int) (map[string]*Config
 		return nil, err
 	}
 
-	results := map[string]*ConfigAndItemMaps{}
+	rs := map[string]*ConfigAndItemMaps{}
 	// Generate configs for each of the minimum occs.
 	for _, minOcc := range minOccs {
 		slog.Debug("calling ConfigurationsForGQDocument()", "minOcc", minOcc, "opts.InputURL", opts.InputURL)
-		if err := ConfigurationsForGQDocument(gqdoc, opts, minOcc, results); err != nil {
+		cims, err := ConfigurationsForGQDocument(gqdoc, opts, minOcc)
+		if err != nil {
 			return nil, err
 		}
+		for k, v := range cims {
+			rs[k] = v
+		}
 	}
-	return results, nil
+	return rs, nil
 }
 
 var htmlOutputDir = "/tmp/goskyr/generate/ConfigurationsForGQDocument/"
 
-func ConfigurationsForGQDocument(gqdoc *goquery.Document, opts ConfigOptions, minOcc int, results map[string]*ConfigAndItemMaps) error {
+func ConfigurationsForGQDocument(gqdoc *goquery.Document, opts ConfigOptions, minOcc int) (map[string]*ConfigAndItemMaps, error) {
 	// Now we have to translate the goquery doc back into a string
 	htmlStr, err := goquery.OuterHtml(gqdoc.Children())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	slog.Debug("writing html to file", "u", opts.InputURL)
 	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(opts.InputURL)+".html"), htmlStr)
 	if err != nil {
-		return fmt.Errorf("failed to write html file: %v", err)
+		return nil, fmt.Errorf("failed to write html file: %v", err)
 	}
 	slog.Debug("wrote html to file", "fpath", fpath)
 
@@ -460,10 +466,10 @@ func ConfigurationsForGQDocument(gqdoc *goquery.Document, opts ConfigOptions, mi
 
 	if len(a.LocMan) == 0 {
 		slog.Warn("no fields found", "opts", opts, "minOcc", minOcc)
-		return nil
+		return nil, nil
 	}
 	if err := a.LocMan.setFieldNames(opts.ModelName, opts.WordsDir); err != nil {
-		return err
+		return nil, err
 	}
 
 	var locPropsSel []*locationProps
@@ -479,10 +485,14 @@ func ConfigurationsForGQDocument(gqdoc *goquery.Document, opts ConfigOptions, mi
 		locPropsSel = a.LocMan
 	}
 	if len(locPropsSel) == 0 {
-		return fmt.Errorf("no fields selected")
+		return nil, fmt.Errorf("no fields selected")
 	}
 
-	return expandAllPossibleConfigs(gqdoc, fmt.Sprintf("%02d-a", minOcc), opts, locPropsSel, nil, results)
+	rs := map[string]*ConfigAndItemMaps{}
+	if err := expandAllPossibleConfigs(gqdoc, fmt.Sprintf("%02d-a", minOcc), opts, locPropsSel, nil, rs); err != nil {
+		return nil, err
+	}
+	return rs, nil
 }
 
 func expandAllPossibleConfigs(gqdoc *goquery.Document, id string, opts ConfigOptions, locPropsSel []*locationProps, parentRootSelector path, results map[string]*ConfigAndItemMaps) error {
@@ -494,7 +504,8 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, id string, opts ConfigOpt
 	}
 
 	s := scrape.Scraper{
-		URL:      opts.InputURL,
+		URL:      opts.URL,
+		InputURL: opts.InputURL,
 		Name:     opts.InputURL,
 		RenderJs: opts.RenderJS,
 	}
@@ -507,7 +518,7 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, id string, opts ConfigOpt
 	s.Fields = processFields(locPropsSel, rootSelector)
 
 	c := &scrape.Config{Scrapers: []scrape.Scraper{s}}
-	items, err := s.GQDocumentsItems([]*goquery.Document{gqdoc}, true)
+	items, err := s.GQDocumentItems(gqdoc, true)
 	if err != nil {
 		return err
 	}
@@ -517,7 +528,7 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, id string, opts ConfigOpt
 	}
 
 	addResult := true
-	if opts.URLRequired && len(s.GetSubpageURLFields()) == 0 {
+	if opts.SubpageRequired && len(s.GetSubpageURLFields()) == 0 {
 		slog.Warn("a subpage URL field is required but none were found", "id", id, "opts", opts)
 		// We don't add this result, but we may add an expanded config.
 		addResult = false
