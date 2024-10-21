@@ -11,10 +11,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 	"testing"
 
+	"github.com/findyourpaths/goskyr/generate"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
@@ -23,99 +22,84 @@ import (
 )
 
 var htmlSuffix = ".html"
-var configSuffix = "_config.yml"
+var configSuffix = ".yml"
 var jsonSuffix = ".json"
 
 var writeActualTestOutputs = true
 var testOutputDir = "/tmp/goskyr/main_test/"
+var testInputDir = "testdata/"
+
+var urlsForTestnames = map[string]string{
+	"https-realpython-github-io-fake-jobs":                                 "https://realpython.github.io/fake-jobs/",
+	"https-webscraper-io-test-sites-e-commerce-allinone-computers-tablets": "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets",
+}
 
 func TestGenerate(t *testing.T) {
-	allPaths := []string{}
-	for _, glob := range []string{
-		filepath.Join("testdata", "*"+htmlSuffix),
-		filepath.Join("testdata/chicago", "*"+htmlSuffix),
-		filepath.Join("testdata/enneagram", "*"+htmlSuffix),
-	} {
-		paths, err := filepath.Glob(glob)
-		if err != nil {
-			t.Fatal(err)
-		}
-		allPaths = append(allPaths, paths...)
-	}
-
-	for _, path := range allPaths {
-		dir, filename := filepath.Split(path)
-		testname := filename[:len(filename)-len(htmlSuffix)]
-
+	for testname := range urlsForTestnames {
 		// Each path turns into a test: the test name is the filename without the
 		// extension.
 		t.Run(testname, func(t *testing.T) {
-			GenerateTest(t, testname, path, dir)
+			GenerateTest(t, testname)
 		})
 	}
 }
 
-func GenerateTest(t *testing.T, testname string, path string, dir string) {
-	opts := mainOpts{
-		Batch:      true,
-		ConfigFile: filepath.Join(testOutputDir, testname+configSuffix),
-		FieldsVary: true,
-		InputURL:   "file://" + path,
-		// URLRequired: true,
+func GenerateTest(t *testing.T, testname string) {
+	inputDir := testInputDir + "scraping"
+	outputDir := testOutputDir + "scraping"
+	opts := &generate.ConfigOptions{
+		Batch:       true,
+		InputDir:    inputDir,
+		InputURL:    "file://" + filepath.Join(inputDir, testname+htmlSuffix),
+		DoSubpages:  true,
+		MinOccs:     []int{5, 10, 20},
+		OnlyVarying: true,
+		OutputDir:   outputDir,
+		URL:         urlsForTestnames[testname],
 	}
-	cs, err := GenerateConfigurationsForPage(opts)
+	// slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+	pageConfigs, err := generate.ConfigurationsForPage(opts, false)
 	if err != nil {
 		t.Fatalf("error generating config: %v", err)
 	}
 
-	glob := filepath.Join(dir, testname+"_*-*"+configSuffix)
-	expPathGlob, err := filepath.Glob(glob)
-	if err != nil {
-		t.Fatal(err)
+	for id, pageConfig := range pageConfigs {
+		// fmt.Printf("looking at pageConfig with id: %q\n", id)
+		CheckGenerate(t, testname, pageConfig, id, outputDir, inputDir)
 	}
-	if len(expPathGlob) == 0 {
-		t.Logf("expected to find config file with glob: %q", glob)
+
+	subPageConfigs, err := generate.ConfigurationsForAllSubpages(opts, pageConfigs)
+	if err != nil {
+		t.Fatalf("error generating config: %v", err)
+	}
+
+	for id, subPageConfig := range subPageConfigs {
+		// fmt.Printf("looking at subPageConfig with id: %q\n", id)
+		CheckGenerate(t, testname, subPageConfig, id, outputDir, inputDir)
+	}
+}
+
+func CheckGenerate(t *testing.T, testname string, pageConfig *scrape.Config, id string, outputDir string, inputDir string) {
+	expPath := filepath.Join(inputDir, testname+"__"+id+".yml")
+	// fmt.Printf("looking at expPath: %q\n", expPath)
+	if _, err := os.Stat(expPath); err != nil {
 		return
 	}
-
-	expPath := expPathGlob[0]
-	starIdx := strings.Index(glob, "*")
-	// hyphenIdx := starIdx + strings.Index(expPath[starIdx:], "-")
-	// minOccStr := expPath[starIdx:hyphenIdx]
-	// fmt.Printf("minStr: %v\n", minOccStr)
-	// minOcc, err := strconv.Atoi(minOccStr)
-	// if err != nil {
-	// 	t.Fatalf("couldn't get min from substring %q in config file path: %q", minOccStr, expPath)
-	// }
-	// id := expPath[hyphenIdx : hyphenIdx+(len(expPath)-(hyphenIdx+len(configSuffix)))]
-	id := expPath[starIdx : starIdx+(len(expPath)-(starIdx+len(configSuffix)))]
-	// fmt.Printf("id: %v\n", id)
-	// fmt.Printf("looking at id: %q\n", id)
-	// fmt.Printf("looking at expPath: %q\n", expPath)
-	// fmt.Printf("looking at cs[id]: %v\n", cs[id])
-
 	exp, err := utils.ReadStringFile(expPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if cs[id] == nil {
-		keys := []string{}
-		for key := range cs {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		t.Fatalf("can't find config with id: %q in keys: %#v", id, keys)
-	}
-	act := cs[id].String()
+	act := pageConfig.String()
 	if writeActualTestOutputs {
-		actPath := filepath.Join(testOutputDir, fmt.Sprintf("%s_%s_actual%s", testname, id, configSuffix))
+		actPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s_actual%s", testname, id, configSuffix))
 		if err := utils.WriteStringFile(actPath, act); err != nil {
 			t.Fatalf("failed to write actual test output to %q: %v", actPath, err)
 		}
-		// fmt.Printf("wrote to actPath: %q\n", actPath)
 	}
 
+	fmt.Printf("checking id: %q\n", id)
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(string(exp), act, false)
 	// fmt.Printf("len(diffs): %d\n", len(diffs))
@@ -123,19 +107,20 @@ func GenerateTest(t *testing.T, testname string, path string, dir string) {
 	if len(diffs) == 1 && diffs[0].Type == diffmatchpatch.DiffEqual {
 		return
 	}
-	diffPath := filepath.Join(testOutputDir, testname+"_config.diff")
+	diffPath := filepath.Join(outputDir, testname+"_config.diff")
 	if err := utils.WriteStringFile(diffPath, fmt.Sprintf("%#v", diffs)); err != nil {
 		t.Fatalf("failed to write diff to %q: %v", diffPath, err)
 	}
 	t.Fatalf("actual output (%d) does not match expected output (%d) and wrote diff to %q", len(act), len(exp), diffPath)
+	fmt.Printf("wrote to actPath: %q\n", actPath)
 }
 
 func TestScrape(t *testing.T) {
 	// Find the paths of all input files in the data directories.
 	allPaths := []string{}
 	for _, glob := range []string{
-		filepath.Join("testdata", "*"+configSuffix),
-		filepath.Join("testdata/chicago", "*"+configSuffix),
+		filepath.Join("testdata/scraping", "*"+configSuffix),
+		// filepath.Join("testdata/chicago", "*"+configSuffix),
 	} {
 		paths, err := filepath.Glob(glob)
 		if err != nil {
@@ -151,7 +136,7 @@ func TestScrape(t *testing.T) {
 		// Each path turns into a test: the test name is the filename without the
 		// extension.
 		t.Run(testname, func(t *testing.T) {
-			conf, err := scrape.NewConfig(path)
+			conf, err := scrape.ReadConfig(path)
 			if err != nil {
 				t.Fatalf("cannot open config file path at %q: %v", path, err)
 			}

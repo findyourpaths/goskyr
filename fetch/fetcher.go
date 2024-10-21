@@ -14,12 +14,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/chromedp"
 	"github.com/findyourpaths/goskyr/config"
 	"github.com/findyourpaths/goskyr/types"
 	"github.com/findyourpaths/goskyr/utils"
+	"github.com/gosimple/slug"
 )
 
 type FetchOpts struct {
@@ -28,7 +30,7 @@ type FetchOpts struct {
 
 // A Fetcher allows to fetch the content of a web page
 type Fetcher interface {
-	Fetch(url string, opts FetchOpts) (string, error)
+	Fetch(url string, opts *FetchOpts) (string, error)
 }
 
 // The StaticFetcher fetches static page content
@@ -36,7 +38,42 @@ type StaticFetcher struct {
 	UserAgent string
 }
 
-func (s *StaticFetcher) Fetch(url string, opts FetchOpts) (string, error) {
+var htmlOutputDir = "/tmp/goskyr/scraper/fetchToDoc/"
+
+func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*goquery.Document, error) {
+	// slog.Debug("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
+	// slog.Debug("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
+	res, err := f.Fetch(urlStr, opts)
+	if err != nil {
+		return nil, err
+	}
+	// fmt.Println(res)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	if err != nil {
+		return nil, err
+	}
+
+	if !config.Debug {
+		return doc, nil
+	}
+
+	// In debug mode we want to write all the htmls to files.
+	htmlStr, err := goquery.OuterHtml(doc.Children())
+	if err != nil {
+		return nil, fmt.Errorf("failed to write html file: %v", err)
+	}
+
+	slog.Debug("writing html to file", "url", urlStr)
+	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(urlStr)+".html"), htmlStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write html file: %v", err)
+	}
+	slog.Debug("wrote html to file", "fpath", fpath)
+
+	return doc, nil
+}
+
+func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, error) {
 	// log.Printf("StaticFetcher.Fetch(url: %q, opts: %#v)", url, opts)
 	// s.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 	s.UserAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
@@ -115,7 +152,11 @@ func (d *DynamicFetcher) Cancel() {
 
 var pngOutputDir = "/tmp/goskyr/fetch/Fetch/"
 
-func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
+func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
+	if opts == nil {
+		opts = &FetchOpts{}
+	}
+
 	// log.Printf("DynamicFetcher.Fetch(urlStr: %q, opts: %#v)", urlStr, opts)
 	logger := slog.With(slog.String("fetcher", "dynamic"), slog.String("url", urlStr))
 	logger.Debug("fetching page", slog.String("user-agent", d.UserAgent))
@@ -215,7 +256,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts FetchOpts) (string, error) {
 type FileFetcher struct {
 }
 
-func (s *FileFetcher) Fetch(url string, opts FetchOpts) (string, error) {
+func (s *FileFetcher) Fetch(url string, opts *FetchOpts) (string, error) {
 	// log.Printf("FileFetcher.Fetch(url: %q, opts: %#v)", url, opts)
 	fpath := strings.TrimPrefix(url, "file://")
 	bs, err := ioutil.ReadFile(fpath)

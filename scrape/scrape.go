@@ -17,14 +17,12 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/antchfx/jsonquery"
-	"github.com/findyourpaths/goskyr/config"
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/types"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/goodsign/monday"
-	"github.com/gosimple/slug"
 	"github.com/ilyakaznacheev/cleanenv"
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
@@ -47,6 +45,19 @@ type Config struct {
 	ItemMaps output.ItemMaps
 }
 
+func (c Config) Copy() *Config {
+	r := c
+	r.ItemMaps = output.ItemMaps{}
+	for _, im := range c.ItemMaps {
+		rim := output.ItemMap{}
+		for k, v := range im {
+			rim[k] = v
+		}
+		r.ItemMaps = append(r.ItemMaps, rim)
+	}
+	return &r
+}
+
 func (c Config) String() string {
 	cCopy := c
 	cCopy.ItemMaps = nil
@@ -58,18 +69,19 @@ func (c Config) String() string {
 }
 
 func (c Config) WriteToFile(base string) error {
-	if err := utils.WriteStringFile(fmt.Sprintf("%s_%s_config.yml", base, c.ID), c.String()); err != nil {
+	// fmt.Printf("WriteToFile(base: %q) %q\n", base, base+c.ID+".yml")
+	if err := utils.WriteStringFile(fmt.Sprintf("%s%s.yml", base, c.ID), c.String()); err != nil {
 		return err
 	}
 	if len(c.ItemMaps) > 0 {
-		if err := utils.WriteStringFile(fmt.Sprintf("%s_%s.json", base, c.ID), c.ItemMaps.String()); err != nil {
+		if err := utils.WriteStringFile(fmt.Sprintf("%s%s.json", base, c.ID), c.ItemMaps.String()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func NewConfig(configPath string) (*Config, error) {
+func ReadConfig(configPath string) (*Config, error) {
 	var config Config
 	fileInfo, err := os.Stat(configPath)
 	if err != nil {
@@ -397,14 +409,14 @@ func (c Scraper) GQDocumentItems(gqdoc *goquery.Document, rawDyn bool) (output.I
 // the main page (not subpages). This is used by the ML feature generation.
 func (c Scraper) GQSelectionItem(s *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
 	slog.Debug("Scraper.GQSelectionItem()", "s", s, "baseUrl", baseUrl, "rawDyn", rawDyn)
-	for i, node := range s.Nodes {
-		slog.Debug("in Scraper.GQSelectionItem()", "i", i, "node", node)
-		// slog.Debug("in Scraper.GetItems(), c.Item match", "i", i)
-		// slog.Debug("in Scraper.GetItems(), c.Item matched", "c.Fields", c.Fields)
-	}
+	// for i, node := range s.Nodes {
+	// 	slog.Debug("in Scraper.GQSelectionItem()", "i", i, "node", node)
+	// 	// slog.Debug("in Scraper.GetItems(), c.Item match", "i", i)
+	// 	// slog.Debug("in Scraper.GetItems(), c.Item matched", "c.Fields", c.Fields)
+	// }
 	currentItem := output.ItemMap{}
 	for _, f := range c.Fields {
-		slog.Debug("in Scraper.GQSelectionItem(), looking at field", "f", f)
+		slog.Debug("in Scraper.GQSelectionItem(), looking at field", "f.Name", f.Name)
 		if f.Value != "" {
 			if !rawDyn {
 				// add static fields
@@ -450,7 +462,7 @@ func (c Scraper) GQSelectionItem(s *goquery.Selection, baseUrl string, rawDyn bo
 			slog.Debug("looking at", "subpageURL", subpageURL)
 			_, found := subDocs[subpageURL]
 			if !found {
-				subRes, err := c.fetcher.Fetch(subpageURL, fetch.FetchOpts{})
+				subRes, err := c.fetcher.Fetch(subpageURL, nil)
 				if err != nil {
 					return nil, fmt.Errorf("error while fetching subpage: %v. Skipping item %v.", err, currentItem)
 				}
@@ -602,12 +614,10 @@ func (c *Scraper) GetSubpageURLFields() []Field {
 	return rs
 }
 
-var htmlOutputDir = "/tmp/goskyr/scraper/fetchToDoc/"
-
 func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl, userAgent string, i []*types.Interaction) (bool, string, *goquery.Document, error) {
 
 	if nextPageI == 0 {
-		newDoc, err := c.fetchToDoc(currentPageUrl, fetch.FetchOpts{Interaction: i})
+		newDoc, err := fetch.GQDocument(c.fetcher, currentPageUrl, &fetch.FetchOpts{Interaction: i})
 		if err != nil {
 			return false, "", nil, err
 		}
@@ -630,7 +640,7 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 						Count:    nextPageI, // we always need to 'restart' the clicks because we always re-fetch the page
 					},
 				}
-				nextPageDoc, err := c.fetchToDoc(currentPageUrl, fetch.FetchOpts{Interaction: ia})
+				nextPageDoc, err := fetch.GQDocument(c.fetcher, currentPageUrl, &fetch.FetchOpts{Interaction: ia})
 				if err != nil {
 					return false, "", nil, err
 				}
@@ -646,7 +656,7 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 		return false, "", nil, err
 	}
 	if nextPageUrl != "" {
-		nextPageDoc, err := c.fetchToDoc(nextPageUrl, fetch.FetchOpts{})
+		nextPageDoc, err := fetch.GQDocument(c.fetcher, nextPageUrl, nil)
 		if err != nil {
 			return false, "", nil, err
 		}
@@ -656,39 +666,6 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 	}
 
 	return false, "", nil, nil
-}
-
-func (c *Scraper) fetchToDoc(urlStr string, opts fetch.FetchOpts) (*goquery.Document, error) {
-	// slog.Debug("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
-	// slog.Debug("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
-	res, err := c.fetcher.Fetch(urlStr, opts)
-	if err != nil {
-		return nil, err
-	}
-	// fmt.Println(res)
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
-	if err != nil {
-		return nil, err
-	}
-
-	if !config.Debug {
-		return doc, nil
-	}
-
-	// In debug mode we want to write all the htmls to files.
-	htmlStr, err := goquery.OuterHtml(doc.Children())
-	if err != nil {
-		return nil, fmt.Errorf("failed to write html file: %v", err)
-	}
-
-	slog.Debug("writing html to file", "url", urlStr)
-	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(urlStr)+".html"), htmlStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write html file: %v", err)
-	}
-	slog.Debug("wrote html to file", "fpath", fpath)
-
-	return doc, nil
 }
 
 func extractField(field *Field, event output.ItemMap, s *goquery.Selection, baseURL string) error {
@@ -989,7 +966,9 @@ func getURLString(e *ElementLocation, s *goquery.Selection, baseURL string) (str
 	return urlRes, nil
 }
 
-var skipTextOfTag = map[string]bool{
+var DoPruning = true
+
+var SkipTag = map[string]bool{
 	"noscript": true,
 	"script":   true,
 	"style":    true,
@@ -1013,7 +992,7 @@ func getTextString(e *ElementLocation, s *goquery.Selection) (string, error) {
 				var f func(*html.Node)
 				f = func(n *html.Node) {
 					// Skip the text in-between <style></style> tags.
-					if n.Type == html.ElementNode && skipTextOfTag[n.Data] {
+					if n.Type == html.ElementNode && SkipTag[n.Data] {
 						return
 					}
 					if n.Type == html.TextNode {

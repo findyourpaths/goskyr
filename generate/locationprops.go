@@ -61,7 +61,7 @@ func (l locationManager) setFieldNames(modelName, wordsDir string) error {
 	if modelName == "" {
 		for _, e := range l {
 			hash := md5.Sum([]byte(e.path.string()))
-			e.name = fmt.Sprintf("field-%s-%s-%d", hex.EncodeToString(hash[:]), e.attr, e.textIndex)
+			e.name = fmt.Sprintf("%s-%s-%d", hex.EncodeToString(hash[:]), e.attr, e.textIndex)
 		}
 		sort.Slice(l, func(i, j int) bool { return l[i].name < l[j].name })
 		return nil

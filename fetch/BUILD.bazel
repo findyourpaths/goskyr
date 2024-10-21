@@ -12,5 +12,7 @@ go_library(
         "@com_github_chromedp_cdproto//cdp:go_default_library",
         "@com_github_chromedp_cdproto//dom:go_default_library",
         "@com_github_chromedp_chromedp//:go_default_library",
+        "@com_github_gosimple_slug//:go_default_library",
+        "@com_github_puerkitobio_goquery//:go_default_library",
     ],
 )

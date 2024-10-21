@@ -3,6 +3,7 @@ package generate
 import (
 	"strings"
 
+	"github.com/findyourpaths/goskyr/scrape"
 	"golang.org/x/net/html"
 )
 
@@ -52,6 +53,9 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			a.InBody = !a.InBody
 		}
 		if !a.InBody {
+			return true
+		}
+		if scrape.DoPruning && scrape.SkipTag[tagNameStr] {
 			return true
 		}
 

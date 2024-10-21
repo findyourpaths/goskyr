@@ -18,7 +18,7 @@ import (
 
 type mainOpts struct {
 	Batch               bool   `short:"b" long:"batch" description:"Run batch (not interactively) to generate the config file."`
-	ConfigFile          string `short:"c" long:"config" default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."`
+	ConfigFile          string `short:"c" long:"config" default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
 	DebugFlag           bool   `short:"d" long:"debug" description:"Prints debug logs and writes scraped html's to files."`
 	ExtractFeatures     string `short:"e" long:"extract" description:"Extract ML features based on the given configuration file (-c) and write them to the given file in csv format."`
 	FieldsVary          bool   `short:"f" long:"fieldsvary" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
@@ -40,6 +40,8 @@ type mainOpts struct {
 var opts mainOpts
 
 var version = "dev"
+
+var mainDir = "/tmp/goskyr/main/"
 
 func main() {
 	_, err := flags.Parse(&opts)
@@ -86,8 +88,9 @@ func main() {
 			minOccs = []int{opts.MinOcc}
 		}
 
-		pageOpts := generate.ConfigOptions{
+		pageOpts := &generate.ConfigOptions{
 			Batch:       opts.Batch,
+			InputDir:    mainDir,
 			InputURL:    opts.InputURL,
 			ModelName:   opts.PretrainedModelPath,
 			OnlyVarying: opts.FieldsVary,
@@ -96,11 +99,18 @@ func main() {
 			URL:         opts.URL,
 			WordsDir:    opts.WordsDir,
 			MinOccs:     minOccs,
+			OutputDir:   mainDir,
 		}
-		base := strings.TrimSuffix(opts.ConfigFile, "_config.yml")
-		if _, err := generate.ConfigurationsForPage(pageOpts, base, opts.ToStdout, opts.DoSubpages); err != nil {
+		cs, err := generate.ConfigurationsForPage(pageOpts, opts.ToStdout)
+		if err != nil {
 			slog.Error("error generating configs", "err", err)
 			os.Exit(1)
+		}
+		if pageOpts.DoSubpages {
+			if _, err := generate.ConfigurationsForAllSubpages(pageOpts, cs); err != nil {
+				slog.Error("error generating configuration for all subpages", "err", err)
+				return
+			}
 		}
 		return
 	}
@@ -113,7 +123,7 @@ func main() {
 		return
 	}
 
-	conf, err := scrape.NewConfig(opts.ConfigFile)
+	conf, err := scrape.ReadConfig(opts.ConfigFile)
 	if err != nil {
 		slog.Error("error making new config", "err", err)
 		os.Exit(1)

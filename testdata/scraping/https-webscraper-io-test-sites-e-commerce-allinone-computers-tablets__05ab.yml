@@ -1,0 +1,34 @@
+id: 05ab
+scrapers:
+    - name: file://testdata/scraping/https-webscraper-io-test-sites-e-commerce-allinone-computers-tablets.html
+      input_url: file://testdata/scraping/https-webscraper-io-test-sites-e-commerce-allinone-computers-tablets.html
+      url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
+      item: body > div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper
+      fields:
+        - name: 9377b7c7d77f5ba2e60670df85aef234--0
+          type: text
+          location:
+            - selector: div.caption > p.card-text.description
+          can_be_empty: true
+        - name: c482da397baa2664c950f99122a020e6--0
+          type: text
+          location:
+            - selector: div.caption > h4.card-title.float-end.price.pull-right
+          can_be_empty: true
+        - name: cb5ded8a801194ee9c4bc65bbe870223--0
+          type: text
+          location:
+            - selector: div.caption > h4 > a.title
+          can_be_empty: true
+        - name: cb5ded8a801194ee9c4bc65bbe870223-href-0
+          type: url
+          location:
+            - selector: div.caption > h4 > a.title
+              attr: href
+          can_be_empty: true
+        - name: d35776a14e438f044e3d0ab77cf5fcaa--0
+          type: text
+          location:
+            - selector: div.ratings > p.float-end.review-count
+          can_be_empty: true
+itemmaps: []

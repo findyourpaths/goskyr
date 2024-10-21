@@ -1,0 +1,29 @@
+id: 05a_f58cf5818b0e7ba072212360fe73a5a7-href-0_05a
+scrapers:
+    - name: file://testdata/scraping/https-realpython-github-io-fake-jobs.html
+      input_url: file://testdata/scraping/https-realpython-github-io-fake-jobs.html
+      url: https://realpython.github.io/fake-jobs/
+      item: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content
+      fields:
+        - name: 3f7a03ad2855026a556d0f3f4482b8e8--0
+          type: text
+          location:
+            - selector: div.media > div.media-content > h2.is-5.title
+          can_be_empty: true
+        - name: 50f498dd0d7b3321bc440a39ca38a8f8--0
+          type: text
+          location:
+            - selector: div.media > div.media-content > h3.company.is-6.subtitle
+          can_be_empty: true
+        - name: 90817f1242c33ba4cb0ed30001b2252e--0
+          type: text
+          location:
+            - selector: div.content > p.location
+          can_be_empty: true
+        - name: f58cf5818b0e7ba072212360fe73a5a7-href-0
+          type: url
+          location:
+            - selector: footer.card-footer > a.card-footer-item:nth-child(2)
+              attr: href
+          can_be_empty: true
+itemmaps: []
