@@ -1,9 +1,8 @@
 package generate
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
+	"hash/crc32"
 	"sort"
 
 	"github.com/findyourpaths/goskyr/ml"
@@ -58,10 +57,16 @@ func (l locationManager) setColors() {
 }
 
 func (l locationManager) setFieldNames(modelName, wordsDir string) error {
+	hashes := map[uint32]string{}
 	if modelName == "" {
 		for _, e := range l {
-			hash := md5.Sum([]byte(e.path.string()))
-			e.name = fmt.Sprintf("%s-%s-%d", hex.EncodeToString(hash[:]), e.attr, e.textIndex)
+			pathStr := e.path.string()
+			hash := crc32.ChecksumIEEE([]byte(pathStr))
+			if prev, found := hashes[hash]; found && prev != pathStr {
+				panic(fmt.Sprintf("Detected duplicate hash %q for field %q", hash, e.path.string()))
+			}
+			hashes[hash] = pathStr
+			e.name = fmt.Sprintf("F%x-%s-%d", hash, e.attr, e.textIndex)
 		}
 		sort.Slice(l, func(i, j int) bool { return l[i].name < l[j].name })
 		return nil

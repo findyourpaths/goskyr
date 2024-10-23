@@ -26,6 +26,7 @@ func (a *Analyzer) Parse() {
 }
 
 func (a *Analyzer) ParseToken(tt html.TokenType) bool {
+	// slog.Debug("ParseToken()", "tt", tt)
 	switch tt {
 	case html.ErrorToken:
 		return false

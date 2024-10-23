@@ -38,11 +38,55 @@ type GlobalConfig struct {
 // Values will be taken from a config yml file or environment variables
 // or both.
 type Config struct {
-	ID       string
+	ID       ConfigID
 	Writer   output.WriterConfig `yaml:"writer,omitempty"`
 	Scrapers []Scraper           `yaml:"scrapers,omitempty"`
 	Global   GlobalConfig        `yaml:"global,omitempty"`
 	ItemMaps output.ItemMaps
+}
+
+type ConfigID struct {
+	Slug  string
+	ID    string
+	Field string
+	SubID string
+}
+
+func (cid ConfigID) String() string {
+	// slog.Debug(fmt.Sprintf("ConfigID.String(): cid %#v\n", cid))
+	// fmt.Printf("ConfigID.String(): cid %#v\n", cid)
+	rb := strings.Builder{}
+
+	// if cid.Base != "" {
+	// 	r.WriteString(cid.Base)
+	// }
+	if cid.Slug != "" {
+		rb.WriteString(cid.Slug)
+	}
+	rb.WriteString(cid.IDString())
+	r := rb.String()
+	// slog.Debug(fmt.Sprintf("ConfigID.String() returning %q\n", r))
+	// fmt.Printf("ConfigID.String() returning %q\n", r)
+	return r
+}
+
+func (cid ConfigID) IDString() string {
+	rb := strings.Builder{}
+	sep := "__"
+	if cid.ID != "" {
+		rb.WriteString(sep + cid.ID)
+		sep = "_"
+	}
+	if cid.Field != "" {
+		rb.WriteString(sep + cid.Field)
+		sep = "_"
+	}
+	if cid.SubID != "" {
+		rb.WriteString(sep + cid.SubID)
+		sep = "_"
+	}
+	r := rb.String()
+	return r
 }
 
 func (c Config) Copy() *Config {
@@ -68,13 +112,13 @@ func (c Config) String() string {
 	return string(yamlData)
 }
 
-func (c Config) WriteToFile(base string) error {
+func (c Config) WriteToFile(dir string) error {
 	// fmt.Printf("WriteToFile(base: %q) %q\n", base, base+c.ID+".yml")
-	if err := utils.WriteStringFile(fmt.Sprintf("%s%s.yml", base, c.ID), c.String()); err != nil {
+	if err := utils.WriteStringFile(filepath.Join(dir, c.ID.String()+".yml"), c.String()); err != nil {
 		return err
 	}
 	if len(c.ItemMaps) > 0 {
-		if err := utils.WriteStringFile(fmt.Sprintf("%s%s.json", base, c.ID), c.ItemMaps.String()); err != nil {
+		if err := utils.WriteStringFile(filepath.Join(dir, c.ID.String()+".json"), c.ItemMaps.String()); err != nil {
 			return err
 		}
 	}
@@ -355,6 +399,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 			if err != nil {
 				scrLogger.Error(err.Error())
 			}
+			slog.Debug("in Scraper.GetItems()", "sel item", item)
 			if item != nil {
 				items = append(items, item)
 			}
@@ -1152,4 +1197,26 @@ func extractJsonField(p string, s string) (string, error) {
 		extractedString = fmt.Sprintf("%v", node.Value())
 	}
 	return extractedString, nil
+}
+
+func (c *Scraper) ExtendGQDocumentItems(fname string, itemMaps output.ItemMaps, gqdocs []*goquery.Document) error {
+	for i, gqdoc := range gqdocs {
+		subIMs, err := c.GQDocumentItems(gqdoc, true)
+		if err != nil {
+			return fmt.Errorf("error scraping subpage for field %q: %v", fname, err)
+		}
+		// if len(subIMs) > 1 {
+		// 	slog.Debug("error scraping subpage: expected no more than one item map", "fname", fname, "len(subIMs)", len(subIMs))
+		// 	continue
+		// }
+		// The subpage may not have had a valid ItemMap.
+		if len(subIMs) != 1 {
+			slog.Debug("error scraping subpage: expected exactly one item map", "fname", fname, "len(subIMs)", len(subIMs))
+			continue
+		}
+		for k, v := range subIMs[0] {
+			itemMaps[i][fname+"__"+k] = v
+		}
+	}
+	return nil
 }

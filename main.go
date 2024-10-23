@@ -25,6 +25,7 @@ type mainOpts struct {
 	InputURL            string `short:"i" long:"inputurl" description:"Automatically generate a config file for the given input url."`
 	JSONFile            string `short:"j" long:"json" description:"Writes scraped data as JSON to the given file path."`
 	MinOcc              int    `short:"m" long:"min" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	ToStdout            bool   `short:"o" long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
 	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
 	RenderJs            bool   `short:"r" long:"renderjs" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
 	DoSubpages          bool   `short:"s" long:"subpages" description:"Whether to generate configurations for subpages as well."`
@@ -33,7 +34,6 @@ type mainOpts struct {
 	URL          string `short:"u" long:"url" description:"Canonical URL source of the input URL, useful for resolving relative paths when the input URL is for a file."`
 	PrintVersion bool
 	WordsDir     string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
-	ToStdout     bool   `long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
 	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
 }
 
@@ -88,7 +88,7 @@ func main() {
 			minOccs = []int{opts.MinOcc}
 		}
 
-		pageOpts := &generate.ConfigOptions{
+		pageOpts, err := generate.InitOpts(generate.ConfigOptions{
 			Batch:       opts.Batch,
 			InputDir:    mainDir,
 			InputURL:    opts.InputURL,
@@ -100,12 +100,18 @@ func main() {
 			WordsDir:    opts.WordsDir,
 			MinOccs:     minOccs,
 			OutputDir:   mainDir,
+		})
+		if err != nil {
+			slog.Error("error initializing page options", "err", err)
+			os.Exit(1)
 		}
-		cs, err := generate.ConfigurationsForPage(pageOpts, opts.ToStdout)
+		// fmt.Printf("pageOpts before generate.ConfigurationsForPage: %#v\n", pageOpts)
+		cs, err := generate.ConfigurationsForPage(pageOpts)
 		if err != nil {
 			slog.Error("error generating configs", "err", err)
 			os.Exit(1)
 		}
+		// fmt.Printf("pageOpts before generate.ConfigurationsForAllSubpages: %#v\n", pageOpts)
 		if pageOpts.DoSubpages {
 			if _, err := generate.ConfigurationsForAllSubpages(pageOpts, cs); err != nil {
 				slog.Error("error generating configuration for all subpages", "err", err)
@@ -149,6 +155,10 @@ func main() {
 			continue
 		}
 		allItems = append(allItems, items...)
+	}
+
+	if opts.ToStdout {
+		fmt.Println(allItems) //conf.String())
 	}
 
 	if opts.JSONFile != "" {

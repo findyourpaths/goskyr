@@ -236,23 +236,28 @@ func stripNthChild(lp *locationProps, minOcc int) {
 }
 
 func checkAndUpdateLocProps(old, new *locationProps) bool {
+	// slog.Debug("checkAndUpdateLocProps()", "old.path", old.path, "new.path", new.path)
 	// Returns true if the paths overlap and the rest of the
 	// element location is identical. If true is returned,
 	// the Selector of old will be updated if necessary.
 
 	if old.textIndex != new.textIndex {
+		// slog.Debug("in checkAndUpdateLocProps, old.textIndex != new.textIndex, returning false", "old.textIndex", old.textIndex, "new.textIndex", new.textIndex)
 		return false
 	}
 	if old.attr != new.attr {
+		// slog.Debug("in checkAndUpdateLocProps, old.attr != new.attr, returning false")
 		return false
 	}
 	if len(old.path) != len(new.path) {
+		// slog.Debug("in checkAndUpdateLocProps, len(old.path) != len(new.path), returning false", "len(old.path)", len(old.path), "len(new.path)", len(new.path))
 		return false
 	}
 
 	newPath := make(path, 0, len(old.path)) // Pre-allocate with capacity
 	for i, on := range old.path {
 		if on.tagName != new.path[i].tagName {
+			// slog.Debug("in checkAndUpdateLocProps, on.tagName != new.path[i].tagName, returning false")
 			return false
 		}
 
@@ -290,6 +295,7 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 		}
 	}
 
+	// slog.Debug("in checkAndUpdateLocProps, incrementing")
 	// If we get until here, there is an overlapping path.
 	old.path = newPath
 	old.count++
@@ -368,43 +374,33 @@ type ConfigOptions struct {
 	RenderJS      bool
 	URL           string
 	WordsDir      string
+	configID      scrape.ConfigID
 	configPrefix  string
 	inputDirBase  string
 	outputDirBase string
 }
 
-func ConfigurationsForPage(opts *ConfigOptions, toStdout bool) (map[string]*scrape.Config, error) {
-	slog.Debug("starting to generate config")
-	slog.Debug("analyzing", "opts.InputURL", opts.InputURL)
-
-	if err := initOpts(opts); err != nil {
-		return nil, err
-	}
-
-	configBase := filepath.Join(opts.outputDirBase, opts.configPrefix+"__")
-
-	slog.Debug("in ConfigurationsForPage()", "opts.outputDirBase", opts.outputDirBase)
-	slog.Debug("in ConfigurationsForPage()", "opts.configPrefix", opts.configPrefix)
-	slog.Debug("in ConfigurationsForPage()", "configBase", configBase)
-
-	cs, htmlStr, err := ConfigurationsForURI(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := utils.WriteStringFile(opts.outputDirBase+".html", htmlStr); err != nil {
-		return nil, fmt.Errorf("failed to write html file: %v", err)
-	}
-
-	for _, c := range cs {
-		if toStdout {
-			fmt.Println(c.String())
+func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
+	host := ""
+	if strings.HasPrefix(opts.InputURL, "http") {
+		iu, err := url.Parse(opts.InputURL)
+		if err != nil {
+			return opts, fmt.Errorf("error parsing input URL %q: %v", opts.InputURL, err)
 		}
-		if err := c.WriteToFile(configBase); err != nil {
-			return nil, err
-		}
+		host = iu.Host
+		opts.outputDirBase = filepath.Join(opts.OutputDir, slug.Make(opts.InputURL))
+		opts.inputDirBase = filepath.Join(opts.InputDir, slug.Make(opts.InputURL))
+	} else if strings.HasPrefix(opts.InputURL, "file") {
+		_, host = filepath.Split(opts.InputURL)
+		ext := filepath.Ext(host)
+		host = strings.TrimSuffix(host, ext)
+		opts.outputDirBase = filepath.Join(opts.OutputDir, slug.Make(host))
+		opts.inputDirBase = filepath.Join(opts.InputDir, slug.Make(host))
 	}
-	return cs, nil
+
+	opts.configID.Slug = slug.Make(host)
+
+	return opts, nil
 }
 
 func setDefaultLogger(logPath string) (*slog.Logger, error) {
@@ -420,31 +416,34 @@ func setDefaultLogger(logPath string) (*slog.Logger, error) {
 	return prevLogger, nil
 }
 
-func initOpts(opts *ConfigOptions) error {
-	host := ""
-	if strings.HasPrefix(opts.InputURL, "http") {
-		iu, err := url.Parse(opts.InputURL)
-		if err != nil {
-			return fmt.Errorf("error parsing input URL %q: %v", opts.InputURL, err)
-		}
-		host = iu.Host
-		opts.outputDirBase = filepath.Join(opts.OutputDir, slug.Make(opts.InputURL))
-		opts.inputDirBase = filepath.Join(opts.InputDir, slug.Make(opts.InputURL))
-	} else if strings.HasPrefix(opts.InputURL, "file") {
-		_, host = filepath.Split(opts.InputURL)
-		ext := filepath.Ext(host)
-		host = strings.TrimSuffix(host, ext)
-		opts.outputDirBase = filepath.Join(opts.OutputDir, slug.Make(host))
-		opts.inputDirBase = filepath.Join(opts.InputDir, slug.Make(host))
+func ConfigurationsForPage(opts ConfigOptions) (map[string]*scrape.Config, error) {
+	slog.Debug("starting to generate config")
+	slog.Debug("analyzing", "opts.InputURL", opts.InputURL)
+
+	// opts.configID.Base = filepath.Join(opts.outputDirBase, opts.configID.Slug+"__")
+	// opts.configID.OutputDirBase = opts.outputDirBase
+
+	slog.Debug("in ConfigurationsForPage()", "opts.configID", opts.configID)
+
+	cs, htmlStr, err := ConfigurationsForURI(opts)
+	if err != nil {
+		return nil, err
 	}
 
-	opts.configPrefix = slug.Make(host)
+	if err := utils.WriteStringFile(filepath.Join(opts.outputDirBase, opts.configID.String()+".html"), htmlStr); err != nil {
+		return nil, fmt.Errorf("failed to write html file: %v", err)
+	}
 
-	return nil
+	for _, c := range cs {
+		if err := c.WriteToFile(opts.outputDirBase); err != nil {
+			return nil, err
+		}
+	}
+	return cs, nil
 }
 
-func ConfigurationsForURI(opts *ConfigOptions) (map[string]*scrape.Config, string, error) {
-	prevLogger, err := setDefaultLogger(filepath.Join(opts.outputDirBase, opts.configPrefix+"_ConfigurationsForURI_log.txt"))
+func ConfigurationsForURI(opts ConfigOptions) (map[string]*scrape.Config, string, error) {
+	prevLogger, err := setDefaultLogger(filepath.Join(opts.outputDirBase, opts.configID.String()+"_ConfigurationsForURI_log.txt"))
 	if err != nil {
 		return nil, "", err
 	}
@@ -519,10 +518,8 @@ func ConfigurationsForURI(opts *ConfigOptions) (map[string]*scrape.Config, strin
 
 var htmlOutputDir = "/tmp/goskyr/generate/ConfigurationsForGQDocument/"
 
-func ConfigurationsForGQDocument(gqdoc *goquery.Document, htmlStr string, opts *ConfigOptions, minOcc int) (map[string]*scrape.Config, error) {
-	minOccStr := fmt.Sprintf("%02da", minOcc)
-
-	prevLogger, err := setDefaultLogger(filepath.Join(opts.outputDirBase, opts.configPrefix+"_"+minOccStr+"_ConfigurationsForGQDocument_log.txt"))
+func ConfigurationsForGQDocument(gqdoc *goquery.Document, htmlStr string, opts ConfigOptions, minOcc int) (map[string]*scrape.Config, error) {
+	prevLogger, err := setDefaultLogger(filepath.Join(opts.outputDirBase, opts.configID.String()+"_ConfigurationsForGQDocument_log.txt"))
 	if err != nil {
 		return nil, err
 	}
@@ -561,6 +558,7 @@ func ConfigurationsForGQDocument(gqdoc *goquery.Document, htmlStr string, opts *
 			slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
 		}
 	}
+	slog.Debug("in ConfigurationsForGQDocument, final", "len(a.LocMan)", len(a.LocMan))
 
 	if len(a.LocMan) == 0 {
 		slog.Warn("no fields found", "opts", opts, "minOcc", minOcc)
@@ -570,6 +568,7 @@ func ConfigurationsForGQDocument(gqdoc *goquery.Document, htmlStr string, opts *
 		return nil, err
 	}
 
+	slog.Debug("in ConfigurationsForGQDocument", "opts", opts)
 	var locPropsSel []*locationProps
 	if !opts.Batch {
 		a.LocMan.setColors()
@@ -586,36 +585,51 @@ func ConfigurationsForGQDocument(gqdoc *goquery.Document, htmlStr string, opts *
 		return nil, fmt.Errorf("no fields selected")
 	}
 
+	slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(a.LocMan)", len(a.LocMan))
+	slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(locPropsSel)", len(locPropsSel))
+	// fmt.Printf("checking opts.configID.ID: %v\n", opts.configID.ID)
+	// fmt.Printf("checking opts.configID: %v\n", opts.configID)
+	minOccStr := fmt.Sprintf("%02da", minOcc)
+	if opts.configID.Field != "" {
+		opts.configID.SubID = minOccStr
+	} else {
+		opts.configID.ID = minOccStr
+	}
 	rs := map[string]*scrape.Config{}
-	if err := expandAllPossibleConfigs(gqdoc, minOccStr, opts, locPropsSel, nil, "", rs); err != nil {
+	// fmt.Printf("before generating Config %#v", opts.configID)
+	if err := expandAllPossibleConfigs(gqdoc, opts, locPropsSel, nil, "", rs); err != nil {
 		return nil, err
 	}
 	return rs, nil
 }
 
-func expandAllPossibleConfigs(gqdoc *goquery.Document, id string, opts *ConfigOptions, locPropsSel []*locationProps, parentRootSelector path, parentItemsStr string, results map[string]*scrape.Config) error {
+func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPropsSel []*locationProps, parentRootSelector path, parentItemsStr string, results map[string]*scrape.Config) error {
+	prevLogger, err := setDefaultLogger(filepath.Join(opts.outputDirBase, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"))
+	if err != nil {
+		return err
+	}
+	defer slog.SetDefault(prevLogger)
+
+	// fmt.Printf("generating Config %#v", opts.configID)
+	slog.Debug("generating Config and itemMaps", "opts.configID", opts.configID)
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		slog.Debug("generating Config and itemMaps", "id", id)
 		for i, lp := range locPropsSel {
 			slog.Debug("expecting counts", "i", i, "lp.count", lp.count)
 		}
 	}
 
 	s := scrape.Scraper{
-		URL:      opts.URL,
 		InputURL: opts.InputURL,
-		Name:     opts.InputURL,
+		Name:     opts.configID.String(),
 		RenderJs: opts.RenderJS,
+		URL:      opts.URL,
 	}
 
 	rootSelector := findSharedRootSelector(locPropsSel)
-	slog.Debug("in expandAllPossibleConfigs()", "root selector", rootSelector)
-	// s.Item = shortenRootSelector(rootSelector).string()
 	s.Item = rootSelector.string()
-	slog.Debug("in expandAllPossibleConfigs()", "s.Item", s.Item)
 	s.Fields = processFields(locPropsSel, rootSelector)
 	if opts.DoSubpages && len(s.GetSubpageURLFields()) == 0 {
-		slog.Warn("a subpage URL field is required but none were found, ending early", "id", id, "opts", opts)
+		slog.Warn("a subpage URL field is required but none were found, ending early", "opts.configID", opts.configID, "opts", opts)
 		return nil
 	}
 
@@ -625,17 +639,16 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, id string, opts *ConfigOp
 	}
 	itemsStr := items.String()
 	if scrape.DoPruning && itemsStr == parentItemsStr {
-		slog.Debug("generate produced same items as its parent, ending early", "id", id)
+		slog.Debug("generate produced same items as its parent, ending early", "opts.configID", opts.configID)
 		return nil
 	}
 
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		slog.Debug("generate produced scraper returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
-		// fmt.Println(itemsStr)
 	}
 
-	results[id] = &scrape.Config{
-		ID:       id,
+	results[opts.configID.IDString()] = &scrape.Config{
+		ID:       opts.configID,
 		Scrapers: []scrape.Scraper{s},
 		ItemMaps: items,
 	}
@@ -649,7 +662,13 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, id string, opts *ConfigOp
 
 	lastID := 'a'
 	for _, clusterID := range clusterIDs {
-		if err := expandAllPossibleConfigs(gqdoc, id+string(lastID), opts, clusters[clusterID], rootSelector, itemsStr, results); err != nil {
+		nextOpts := opts
+		if opts.configID.Field != "" {
+			nextOpts.configID.SubID += string(lastID)
+		} else {
+			nextOpts.configID.ID += string(lastID)
+		}
+		if err := expandAllPossibleConfigs(gqdoc, nextOpts, clusters[clusterID], rootSelector, itemsStr, results); err != nil {
 			return err
 		}
 		lastID++
@@ -669,25 +688,20 @@ type fieldJoin struct {
 	url   string
 }
 
-func ConfigurationsForAllSubpages(pageOpts *ConfigOptions, pageConfigs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
-	// prevLogger, err := setDefaultLogger(filepath.Join(pageOpts.outputDirBase, pageOpts.configPrefix+"_ConfigurationsForAllSubpages_log.txt"))
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// defer slog.SetDefault(prevLogger)
-
-	slog.Debug("in ConfigurationsForAllSubpages()", "pageOpts.InputURL", pageOpts.InputURL)
-
-	// if err := initOpts(pageOpts); err != nil {
-	// 	return nil, err
-	// }
-
-	slog.Debug("in ConfigurationsForAllSubPages()", "pageOpts.outputDirBase", pageOpts.outputDirBase)
-	slog.Debug("in ConfigurationsForAllSubpages()", "pageOpts", pageOpts)
-
-	uBase, err := url.Parse(pageOpts.URL)
+func ConfigurationsForAllSubpages(opts ConfigOptions, pageConfigs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+	prevLogger, err := setDefaultLogger(filepath.Join(opts.outputDirBase, opts.configID.String()+"_ConfigurationsForAllSubpages_log.txt"))
 	if err != nil {
-		return nil, fmt.Errorf("error parsing input url %q: %v", pageOpts.URL, err)
+		return nil, err
+	}
+	defer slog.SetDefault(prevLogger)
+
+	slog.Debug("in ConfigurationsForAllSubpages()", "opts.InputURL", opts.InputURL)
+	slog.Debug("in ConfigurationsForAllSubPages()", "opts.outputDirBase", opts.outputDirBase)
+	slog.Debug("in ConfigurationsForAllSubpages()", "opts", opts)
+
+	uBase, err := url.Parse(opts.URL)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing input url %q: %v", opts.URL, err)
 	}
 
 	pageJoinsByFieldName := map[string][]*pageJoin{}
@@ -728,13 +742,14 @@ func ConfigurationsForAllSubpages(pageOpts *ConfigOptions, pageConfigs map[strin
 		subURLs = append(subURLs, u)
 	}
 	sort.Strings(subURLs)
+	// subURLs = subURLs[0:5]
 
-	subDir := pageOpts.inputDirBase + "_subpages"
+	subDir := opts.inputDirBase + "_subpages"
 	slog.Debug("in ConfigurationsForAllSubpages()", "subDir", subDir)
 	// return nil, nil
 
-	subURLsPath := fmt.Sprintf("%s_urls.txt", pageOpts.outputDirBase)
-	if err := utils.WriteStringFile(subURLsPath, strings.Join(subURLs, "\n")); err != nil {
+	// subURLsPath := fmt.Sprintf("%s_urls.txt", opts.outputDirBase)
+	if err := utils.WriteStringFile(filepath.Join(opts.outputDirBase, opts.configID.String()+"_urls.txt"), strings.Join(subURLs, "\n")); err != nil {
 		return nil, fmt.Errorf("failed to write subpage URLs list: %v", err)
 	}
 	if err := fetchSubpages(subURLs, subDir); err != nil {
@@ -743,7 +758,8 @@ func ConfigurationsForAllSubpages(pageOpts *ConfigOptions, pageConfigs map[strin
 
 	subCs := map[string]*scrape.Config{}
 	for fname, pjs := range pageJoinsByFieldName {
-		cs, err := ConfigurationsForSubpages(pageOpts, subDir, fname, pjs)
+		opts.configID.Field = fname
+		cs, err := ConfigurationsForSubpages(opts, subDir, pjs)
 		if err != nil {
 			return nil, fmt.Errorf("error generating configuration for subpages for field %q: %v", fname, err)
 		}
@@ -755,15 +771,15 @@ func ConfigurationsForAllSubpages(pageOpts *ConfigOptions, pageConfigs map[strin
 }
 
 // ConfigurationsForSubpages collects the URL values for a candidate subpage field, retrieves the pages at those URLs, concatenates them, trains a scraper to extract from those subpages, and merges the resulting ItemMap into the parent page, outputing the result.
-func ConfigurationsForSubpages(pageOpts *ConfigOptions, subDir string, fname string, pjs []*pageJoin) (map[string]*scrape.Config, error) {
-	prevLogger, err := setDefaultLogger(filepath.Join(pageOpts.outputDirBase, pageOpts.configPrefix+"__"+fname+"_ConfigurationsForSubpages_log.txt"))
+func ConfigurationsForSubpages(opts ConfigOptions, subDir string, pjs []*pageJoin) (map[string]*scrape.Config, error) {
+	prevLogger, err := setDefaultLogger(filepath.Join(opts.outputDirBase, opts.configID.String()+"_ConfigurationsForSubpages_log.txt"))
 	if err != nil {
 		return nil, err
 	}
 	defer slog.SetDefault(prevLogger)
 
 	// base := fmt.Sprintf("%s_%s", allSubsBase, fname)
-	slog.Debug("in ConfigurationsForSubpages()", "pageOpts", pageOpts)
+	slog.Debug("in ConfigurationsForSubpages()", "opts", opts)
 
 	// Get all URLs appearing in the values of the fields with this name in the parent pages.
 	subURLsSet := map[string]bool{}
@@ -777,56 +793,50 @@ func ConfigurationsForSubpages(pageOpts *ConfigOptions, subDir string, fname str
 		subURLs = append(subURLs, u)
 	}
 	sort.Strings(subURLs)
-	subURLsPrefix := pageOpts.configPrefix + "__" + fname
+	// subURLs = subURLs[0:5]
+
+	// subURLsID := pageOpts.configID
+	// subURLsID.Field = fname
+	// subURLsPrefix := pageOpts.configID.Slug + "__" + fname
 	// subURLsPrefix := pageOpts.configPrefix
-	subURLsPath := filepath.Join(pageOpts.outputDirBase, subURLsPrefix+"_urls.txt")
-	if err := utils.WriteStringFile(subURLsPath, strings.Join(subURLs, "\n")); err != nil {
+	// subURLsPath := subURLsID.WithSuffix("_urls.txt").String()
+	// fmt.Printf("subURLsPath: %q\n", subURLsPath)
+	if err := utils.WriteStringFile(filepath.Join(opts.outputDirBase, opts.configID.String()+"_urls.txt"), strings.Join(subURLs, "\n")); err != nil {
 		return nil, fmt.Errorf("error writing subpage URLs page: %v", err)
 	}
 
 	// Concatenate all of the subpages pointed to by the field with this name in the parent pages.
-	joined := strings.Builder{}
-	joined.WriteString("<htmls>\n")
-	for _, subURL := range subURLs {
-		subPath := filepath.Join(subDir, slug.Make(subURL)+".html")
-		sub, err := utils.ReadStringFile(subPath)
-		if err != nil {
-			slog.Debug("error reading subpage at %q: %v", subPath, err)
-			continue
-		}
-		joined.WriteString("\n")
-		joined.WriteString(sub)
-		joined.WriteString("\n")
+	joinedStr, err := joinPageSubpages(subDir, subURLs)
+	if err != nil {
+		return nil, err
 	}
-	joined.WriteString("\n</htmls>\n")
-	joinedPath := filepath.Join(pageOpts.outputDirBase, subURLsPrefix+".html")
-	if err := utils.WriteStringFile(joinedPath, joined.String()); err != nil {
+	joinedPath := filepath.Join(opts.outputDirBase, opts.configID.String()+".html")
+
+	if err := utils.WriteStringFile(joinedPath, joinedStr); err != nil {
 		return nil, fmt.Errorf("error writing joined subpages: %v", err)
 	}
 
 	// Generate scrapers for the concatenated subpages.
-	opts := &ConfigOptions{}
-	*opts = *pageOpts
+	// opts := &ConfigOptions{}
+	// *opts = *pageOpts
 	opts.InputURL = "file://" + joinedPath
 	opts.DoSubpages = false
-	opts.configPrefix = pageOpts.configPrefix + "__" + fname
+	// opts.configID.Slug = pageOpts.configID.Slug + "__" + fname
+	// opts.configID.Field = fname
 	cs, _, err := ConfigurationsForURI(opts)
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("opts.outputDirBase: %v\n", opts.outputDirBase)
-	// fmt.Printf("pageOpts.configPrefix: %v\n", pageOpts.configPrefix)
-	// fmt.Printf("opts.configPrefix: %v\n", opts.configPrefix)
-	// fmt.Printf("fname: %v\n", fname)
 
-	subCConfigBase := filepath.Join(opts.outputDirBase, opts.configPrefix+"__")
-	slog.Debug("in ConfigurationsForSubpages()", "subCConfigBase", subCConfigBase)
+	// subCConfigBase := filepath.Join(opts.outputDirBase, opts.configID.Slug+"__")
+	// slog.Debug("in ConfigurationsForSubpages()", "subCConfigBase", subCConfigBase)
 	for id, c := range cs {
 		slog.Debug("in ConfigurationsForSubpages()", "id", id)
 		slog.Debug("before", "c.Scrapers[0].Item", c.Scrapers[0].Item)
 		c.Scrapers[0].Item = strings.TrimPrefix(c.Scrapers[0].Item, "body > htmls > ")
 		slog.Debug("after", "c.Scrapers[0].Item", c.Scrapers[0].Item)
-		if err := c.WriteToFile(subCConfigBase); err != nil {
+		// if err := c.WriteToFile(subCConfigBase); err != nil {
+		if err := c.WriteToFile(opts.outputDirBase); err != nil {
 			return nil, err
 		}
 	}
@@ -838,6 +848,7 @@ func ConfigurationsForSubpages(pageOpts *ConfigOptions, subDir string, fname str
 	for _, subURL := range subURLs {
 		subPath := filepath.Join(subDir, slug.Make(subURL)+".html")
 		gqdoc, err := fetch.GQDocument(f, "file://"+subPath, nil)
+		// fmt.Printf("adding subURL: %q\n", subURL)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching subpage at : %v", err)
 		}
@@ -846,43 +857,48 @@ func ConfigurationsForSubpages(pageOpts *ConfigOptions, subDir string, fname str
 
 	// Traverse the fieldJoins for all of the page configs that have a field with this name.
 	mergedCs := map[string]*scrape.Config{}
-	mergedCConfigBase := filepath.Join(opts.outputDirBase, pageOpts.configPrefix+"__")
-	slog.Debug("in ConfigurationsForSubpages()", "mergedCConfigBase", mergedCConfigBase)
+	// mergedCConfigBase := filepath.Join(opts.outputDirBase, pageOpts.configID.Slug+"__")
+	// slog.Debug("in ConfigurationsForSubpages()", "mergedCConfigBase", mergedCConfigBase)
 	for _, pj := range pjs {
-		slog.Debug("looking at", "pj.pageConfig.ID", pj.config.ID)
+		slog.Debug("looking at", "pj.config.ID.IDString()", pj.config.ID.IDString())
+		gqdocs := []*goquery.Document{}
+		for _, fj := range pj.fieldJoins {
+			// slog.Debug("looking at", "i", i, "fj.name", fj.name)
+			// if gqdocsByURL[fj.url] == nil {
+			// 	continue
+			// 	// fmt.Printf("error: gqdocsByURL[%q] is nil\n", fj.url)
+			// }
+			gqdocs = append(gqdocs, gqdocsByURL[fj.url])
+		}
 		for _, c := range cs {
 			slog.Debug("looking at", "c.ID", c.ID)
 			mergedC := pj.config.Copy()
-			mergedC.ID = fmt.Sprintf("%s_%s_%s", pj.config.ID, fname, c.ID)
-			for i, fj := range pj.fieldJoins {
-				slog.Debug("looking at", "i", i, "fj.name", fj.name)
-				gqdoc := gqdocsByURL[fj.url]
-				subIMs, err := c.Scrapers[0].GQDocumentItems(gqdoc, true)
-				if err != nil {
-					return nil, fmt.Errorf("error scraping subpage for field %q: %v", fname, err)
-				}
-				// if len(subIMs) > 1 {
-				// 	slog.Debug("error scraping subpage: expected no more than one item map", "fname", fname, "len(subIMs)", len(subIMs))
-				// 	continue
-				// }
-				// The subpage may not have had a valid ItemMap.
-				if len(subIMs) != 1 {
-					slog.Debug("error scraping subpage: expected exactly one item map", "fname", fname, "len(subIMs)", len(subIMs))
-					continue
-				}
-				for k, v := range subIMs[0] {
-					mergedC.ItemMaps[i][fname+"__"+k] = v
-				}
-			}
-			slog.Debug("writing", "mergedC.ID", mergedC.ID)
-			if err := mergedC.WriteToFile(mergedCConfigBase); err != nil {
+			// mergedC.ID.ID = pj.config.ID.ID
+			mergedC.ID.Field = opts.configID.Field
+			mergedC.ID.SubID = c.ID.SubID
+			subScraper := c.Scrapers[0]
+			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
+			// mergedC.ID.Field = fname
+			// mergedID := opts.configID
+			// mergedID.ID = id
+			// m
+			// // mergedC.ID.ID = fmt.Sprintf("%s_%s_%s", pj.config.ID, fname, c.ID.ID)
+
+			if err := subScraper.ExtendGQDocumentItems(opts.configID.Field, mergedC.ItemMaps, gqdocs); err != nil {
 				return nil, err
 			}
-			mergedCs[mergedC.ID] = mergedC
+
+			// slog.Debug("writing", "mergedC.ID", mergedC.ID)
+			// if err := mergedC.WriteToFile(mergedCConfigBase); err != nil {
+			if err := mergedC.WriteToFile(opts.outputDirBase); err != nil {
+				return nil, err
+			}
+			mergedCs[mergedC.ID.IDString()] = mergedC
 		}
 	}
 
 	return mergedCs, nil
+	// return nil, nil
 }
 
 func fetchSubpages(us []string, base string) error {
@@ -960,4 +976,21 @@ func getTagMetadata(tagName string, z *html.Tokenizer, siblingNodes []node) (map
 
 	}
 	return attrs, cls, pCls
+}
+
+func joinPageSubpages(subDir string, subURLs []string) (string, error) {
+	r := strings.Builder{}
+	r.WriteString("<htmls>\n")
+	for _, subURL := range subURLs {
+		subPath := filepath.Join(subDir, slug.Make(subURL)+".html")
+		sub, err := utils.ReadStringFile(subPath)
+		if err != nil {
+			return "", fmt.Errorf("error reading subpage at %q: %v", subPath, err)
+		}
+		r.WriteString("\n")
+		r.WriteString(sub)
+		r.WriteString("\n")
+	}
+	r.WriteString("\n</htmls>\n")
+	return r.String(), nil
 }
