@@ -372,7 +372,7 @@ type ConfigOptions struct {
 	OutputDir     string
 	InputDir      string
 	RenderJS      bool
-	URL           string
+	InputFile     string
 	WordsDir      string
 	configID      scrape.ConfigID
 	configPrefix  string
@@ -456,14 +456,16 @@ func ConfigurationsForURI(opts ConfigOptions) (map[string]*scrape.Config, string
 
 	// slog.Debug("strings.HasPrefix(s.URL, \"file://\": %t", strings.HasPrefix(s.URL, "file://"))
 	var fetcher fetch.Fetcher
-	if opts.RenderJS {
-		fetcher = fetch.NewDynamicFetcher("", 0)
-	} else if strings.HasPrefix(opts.InputURL, "file://") {
+	inputURL := opts.InputURL
+	if strings.HasPrefix(inputURL, "file://") {
+		inputURL = "file://" + filepath.Join(opts.inputDirBase, strings.TrimPrefix(inputURL, "file://"))
 		fetcher = &fetch.FileFetcher{}
+	} else if opts.RenderJS {
+		fetcher = fetch.NewDynamicFetcher("", 0)
 	} else {
 		fetcher = &fetch.StaticFetcher{}
 	}
-	res, err := fetcher.Fetch(opts.InputURL, nil)
+	res, err := fetcher.Fetch(inputURL, nil)
 	if err != nil {
 		return nil, "", err
 	}
@@ -622,7 +624,7 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 		InputURL: opts.InputURL,
 		Name:     opts.configID.String(),
 		RenderJs: opts.RenderJS,
-		URL:      opts.URL,
+		URL:      opts.InputFile,
 	}
 
 	rootSelector := findSharedRootSelector(locPropsSel)
@@ -699,9 +701,9 @@ func ConfigurationsForAllSubpages(opts ConfigOptions, pageConfigs map[string]*sc
 	slog.Debug("in ConfigurationsForAllSubPages()", "opts.outputDirBase", opts.outputDirBase)
 	slog.Debug("in ConfigurationsForAllSubpages()", "opts", opts)
 
-	uBase, err := url.Parse(opts.URL)
+	uBase, err := url.Parse(opts.InputFile)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing input url %q: %v", opts.URL, err)
+		return nil, fmt.Errorf("error parsing input url %q: %v", opts.InputFile, err)
 	}
 
 	pageJoinsByFieldName := map[string][]*pageJoin{}
@@ -819,7 +821,7 @@ func ConfigurationsForSubpages(opts ConfigOptions, subDir string, pjs []*pageJoi
 	// Generate scrapers for the concatenated subpages.
 	// opts := &ConfigOptions{}
 	// *opts = *pageOpts
-	opts.InputURL = "file://" + joinedPath
+	opts.InputURL = "file://" + opts.configID.String() + ".html" // joinedPath
 	opts.DoSubpages = false
 	// opts.configID.Slug = pageOpts.configID.Slug + "__" + fname
 	// opts.configID.Field = fname

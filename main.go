@@ -4,67 +4,37 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"runtime/debug"
-	"strings"
 
-	"github.com/findyourpaths/goskyr/config"
+	"github.com/alecthomas/kong"
 	"github.com/findyourpaths/goskyr/generate"
 	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
-	"github.com/jessevdk/go-flags"
 )
-
-type mainOpts struct {
-	Batch               bool   `short:"b" long:"batch" description:"Run batch (not interactively) to generate the config file."`
-	ConfigFile          string `short:"c" long:"config" default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
-	DebugFlag           bool   `short:"d" long:"debug" description:"Prints debug logs and writes scraped html's to files."`
-	ExtractFeatures     string `short:"e" long:"extract" description:"Extract ML features based on the given configuration file (-c) and write them to the given file in csv format."`
-	FieldsVary          bool   `short:"f" long:"fieldsvary" description:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
-	InputURL            string `short:"i" long:"inputurl" description:"Automatically generate a config file for the given input url."`
-	JSONFile            string `short:"j" long:"json" description:"Writes scraped data as JSON to the given file path."`
-	MinOcc              int    `short:"m" long:"min" description:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
-	ToStdout            bool   `short:"o" long:"stdout" description:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
-	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
-	RenderJs            bool   `short:"r" long:"renderjs" description:"Render JS before generating a configuration file. Works in combination with the -g flag."`
-	DoSubpages          bool   `short:"s" long:"subpages" description:"Whether to generate configurations for subpages as well."`
-	// SubpagesRequired     bool   `short:"s" long:"subpage" description:"Whether a URL for a subpage is required in the generated config. If true, configs will not be produced if they don't have a subpage URL field. URLs for images (e.g. ending in .jpg, .gif, or .png) are not considered subpage URLs."`
-	TrainModel   string `short:"t" long:"train" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
-	URL          string `short:"u" long:"url" description:"Canonical URL source of the input URL, useful for resolving relative paths when the input URL is for a file."`
-	PrintVersion bool
-	WordsDir     string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
-	// writeTest := flag.Bool("writetest", false, "Runs on test inputs and rewrites test outputs.")
-}
-
-var opts mainOpts
 
 var version = "dev"
 
-var mainDir = "/tmp/goskyr/main/"
-
 func main() {
-	_, err := flags.Parse(&opts)
-	if err != nil {
-		slog.Error(err.Error())
-		os.Exit(1)
+	cli := CLI{
+		Globals: Globals{
+			// Version: VersionFlag("0.1.1"),
+		},
 	}
 
-	if opts.PrintVersion {
-		buildInfo, ok := debug.ReadBuildInfo()
-		if ok {
-			if buildInfo.Main.Version != "" && buildInfo.Main.Version != "(devel)" {
-				fmt.Println(buildInfo.Main.Version)
-				return
-			}
-		}
-		fmt.Println(version)
-		return
-	}
+	ctx := kong.Parse(&cli,
+		kong.Name("goskyr"),
+		// kong.Description("A self-sufficient runtime for containers"),
+		kong.UsageOnError(),
+		kong.ConfigureHelp(kong.HelpOptions{
+			Compact: true,
+		}),
+		kong.Vars{
+			"version": "0.0.1",
+		})
 
-	config.Debug = opts.DebugFlag
 	var logLevel slog.Level
-	if opts.DebugFlag {
+	if cli.Globals.Debug {
 		logLevel = slog.LevelDebug
 	} else {
 		logLevel = slog.LevelInfo
@@ -73,78 +43,126 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
 
-	if opts.InputURL != "" {
+	err := ctx.Run(&cli.Globals)
+	ctx.FatalIfErrorf(err)
+}
 
-		if opts.URL == "" {
-			if strings.HasPrefix(opts.InputURL, "file://") {
-				slog.Error("URL flag required if InputURL is file")
-				os.Exit(1)
-			}
-			opts.URL = opts.InputURL
-		}
+type CLI struct {
+	Globals
 
-		minOccs := []int{5, 10, 20}
-		if opts.MinOcc != 0 {
-			minOccs = []int{opts.MinOcc}
-		}
+	ExtractFeatures ExtractFeaturesCmd `cmd:"" help:"Extract ML features based on the given configuration file"`
+	Generate        GenerateCmd        `cmd:"" help:"Automatically generate a configuration file for the given URL"`
+	Scrape          ScrapeCmd          `cmd:"" help:"Scrape"`
 
-		pageOpts, err := generate.InitOpts(generate.ConfigOptions{
-			Batch:       opts.Batch,
-			InputDir:    mainDir,
-			InputURL:    opts.InputURL,
-			ModelName:   opts.PretrainedModelPath,
-			OnlyVarying: opts.FieldsVary,
-			RenderJS:    opts.RenderJs,
-			DoSubpages:  opts.DoSubpages,
-			URL:         opts.URL,
-			WordsDir:    opts.WordsDir,
-			MinOccs:     minOccs,
-			OutputDir:   mainDir,
-		})
-		if err != nil {
-			slog.Error("error initializing page options", "err", err)
-			os.Exit(1)
-		}
-		// fmt.Printf("pageOpts before generate.ConfigurationsForPage: %#v\n", pageOpts)
-		cs, err := generate.ConfigurationsForPage(pageOpts)
-		if err != nil {
-			slog.Error("error generating configs", "err", err)
-			os.Exit(1)
-		}
-		// fmt.Printf("pageOpts before generate.ConfigurationsForAllSubpages: %#v\n", pageOpts)
-		if pageOpts.DoSubpages {
-			if _, err := generate.ConfigurationsForAllSubpages(pageOpts, cs); err != nil {
-				slog.Error("error generating configuration for all subpages", "err", err)
-				return
-			}
-		}
-		return
-	}
+	// Build   BuildCmd   `cmd:"" help:"Build an image from a Dockerfile"`
+	// omitted all the other options
+}
 
-	if opts.TrainModel != "" {
-		if err := ml.TrainModel(opts.TrainModel); err != nil {
-			slog.Error("error training model", "err", err)
-			os.Exit(1)
-		}
-		return
-	}
+type Globals struct {
+	Debug bool `short:"d" help:"Enable debug mode"`
+}
 
-	conf, err := scrape.ReadConfig(opts.ConfigFile)
+type ExtractFeaturesCmd struct {
+	File            string `default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
+	ExtractFeatures string `short:"e" long:"extract" description:"Write extracted features to the given file in csv format."`
+	WordsDir        string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
+}
+
+func (a *ExtractFeaturesCmd) Run(globals *Globals) error {
+	conf, err := scrape.ReadConfig(a.File)
 	if err != nil {
-		slog.Error("error making new config", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("error reading config: %v", err)
 	}
 
-	if opts.ExtractFeatures != "" {
-		if err := ml.ExtractFeatures(conf, opts.ExtractFeatures, opts.WordsDir); err != nil {
-			slog.Error("error extracting features", "err", err)
-			os.Exit(1)
+	if err := ml.ExtractFeatures(conf, a.ExtractFeatures, a.WordsDir); err != nil {
+		return fmt.Errorf("error extracting features: %v", err)
+	}
+	return nil
+}
+
+type GenerateCmd struct {
+	Batch               bool   `short:"b" long:"batch" help:"Run batch (not interactively) to generate the config file."`
+	DoSubpages          bool   `short:"s" long:"subpages" help:"Whether to generate configurations for subpages as well."`
+	FieldsVary          bool   `long:"fieldsvary" help:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
+	File                string `help:"skip retrieving from the URL and use this saved copy of the page instead"`
+	MinOcc              int    `short:"m" long:"min" help:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	OutputDir           string `help:"The output directory."`
+	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
+	RenderJs            bool   `short:"r" long:"renderjs" help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
+	URL                 string `short:"u" long:"url" help:"Automatically generate a config file for the given input url."`
+	WordsDir            string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
+	// NoStdin    bool   `help:"Do not attach STDIN"`
+	// SigProxy   bool   `help:"Proxy all received signals to the process" default:"true"`
+
+	// Container string `arg required help:"Container ID to attach to."`
+}
+
+var mainDir = "/tmp/goskyr/main/"
+
+func (a *GenerateCmd) Run(globals *Globals) error {
+	// fmt.Printf("Config: %s\n", globals.Config)
+	// fmt.Printf("Attaching to: %v\n", a.Container)
+	// fmt.Printf("Batch: %v\n", a.Batch)
+	// return nil
+
+	// if opts.URL == "" {
+	// 	if strings.HasPrefix(opts.InputURL, "file://") {
+	// 		slog.Error("URL flag required if InputURL is file")
+	// 		os.Exit(1)
+	// 	}
+	// 	opts.URL = opts.InputURL
+	// }
+
+	minOccs := []int{5, 10, 20}
+	if a.MinOcc != 0 {
+		minOccs = []int{a.MinOcc}
+	}
+
+	if a.OutputDir != "" {
+		mainDir = a.OutputDir
+	}
+
+	pageOpts, err := generate.InitOpts(generate.ConfigOptions{
+		Batch:       a.Batch,
+		InputDir:    mainDir,
+		InputFile:   a.File,
+		InputURL:    a.URL,
+		ModelName:   a.PretrainedModelPath,
+		OnlyVarying: a.FieldsVary,
+		RenderJS:    a.RenderJs,
+		DoSubpages:  a.DoSubpages,
+		WordsDir:    a.WordsDir,
+		MinOccs:     minOccs,
+		OutputDir:   mainDir,
+	})
+	if err != nil {
+		return fmt.Errorf("error initializing page options: %v", err)
+	}
+	// fmt.Printf("pageOpts before generate.ConfigurationsForPage: %#v\n", pageOpts)
+	cs, err := generate.ConfigurationsForPage(pageOpts)
+	if err != nil {
+		return fmt.Errorf("error generating configs: %v", err)
+	}
+	// fmt.Printf("pageOpts before generate.ConfigurationsForAllSubpages: %#v\n", pageOpts)
+	if pageOpts.DoSubpages {
+		if _, err := generate.ConfigurationsForAllSubpages(pageOpts, cs); err != nil {
+
+			return fmt.Errorf("error generating configuration for all subpages: %v", err)
 		}
-		return
 	}
+	return nil
+}
 
-	if conf.Global.UserAgent == "" {
-		conf.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
+type ScrapeCmd struct {
+	File     string `default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
+	ToStdout bool   `short:"o" long:"stdout" default:"true" help:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
+	JSONFile string `short:"j" long:"json" description:"Writes scraped data as JSON to the given file path."`
+}
+
+func (a *ScrapeCmd) Run(globals *Globals) error {
+	conf, err := scrape.ReadConfig(a.File)
+	if err != nil {
+		return fmt.Errorf("error reading config: %v", err)
 	}
 
 	allItems := output.ItemMaps{}
@@ -157,13 +175,25 @@ func main() {
 		allItems = append(allItems, items...)
 	}
 
-	if opts.ToStdout {
+	if a.ToStdout {
 		fmt.Println(allItems) //conf.String())
 	}
 
-	if opts.JSONFile != "" {
-		if err := utils.WriteJSONFile(opts.JSONFile, allItems); err != nil {
-			slog.Error("error writing json file", "path", opts.JSONFile)
+	if a.JSONFile != "" {
+		if err := utils.WriteJSONFile(a.JSONFile, allItems); err != nil {
+			return fmt.Errorf("error writing json file to path: %q: %v", a.JSONFile, err)
 		}
 	}
+	return nil
+}
+
+type TrainCmd struct {
+	TrainModel string `short:"t" long:"train" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
+}
+
+func (a *TrainCmd) Run(globals *Globals) error {
+	if err := ml.TrainModel(a.TrainModel); err != nil {
+		return fmt.Errorf("error training model: %v", err)
+	}
+	return nil
 }

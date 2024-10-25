@@ -19,15 +19,7 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/findyourpaths/goskyr",
     visibility = ["//visibility:public"],
-    deps = [
-        "//config:go_default_library",
-        "//generate:go_default_library",
-        "//ml:go_default_library",
-        "//output:go_default_library",
-        "//scrape:go_default_library",
-        "//utils:go_default_library",
-        "@com_github_jessevdk_go_flags//:go_default_library",
-    ],
+    deps = ["@com_github_alecthomas_kong//:go_default_library"],
 )
 
 go_binary(
@@ -42,6 +34,7 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":go_default_library"],
     deps = [
+        "//generate:go_default_library",
         "//output:go_default_library",
         "//scrape:go_default_library",
         "//utils:go_default_library",

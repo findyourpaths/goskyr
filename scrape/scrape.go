@@ -160,6 +160,9 @@ func ReadConfig(configPath string) (*Config, error) {
 	if config.Writer.Type == "" {
 		config.Writer.Type = output.STDOUT_WRITER_TYPE
 	}
+	if config.Global.UserAgent == "" {
+		config.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
+	}
 	return &config, nil
 }
 

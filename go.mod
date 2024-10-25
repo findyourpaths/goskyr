@@ -25,6 +25,7 @@ require (
 )
 
 require (
+	github.com/alecthomas/kong v1.2.1 // indirect
 	github.com/antchfx/xpath v1.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/gonum/blas v0.0.0-20181208220705-f22b278b28ac // indirect

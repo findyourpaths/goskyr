@@ -53,7 +53,7 @@ func TGenerateAllConfigs(t *testing.T, cid scrape.ConfigID) {
 		MinOccs:     []int{5, 10, 20},
 		OnlyVarying: true,
 		OutputDir:   outputDir,
-		URL:         urlsForTestnames[cid.Base],
+		InputFile:   urlsForTestnames[cid.Base],
 	}
 
 	pageConfigs, err := generate.ConfigurationsForPage(opts)

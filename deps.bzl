@@ -26,6 +26,24 @@ def go_dependencies():
         version = "v0.0.0-20211024235047-1546f124cd8b",
     )
     go_repository(
+        name = "com_github_alecthomas_assert_v2",
+        importpath = "github.com/alecthomas/assert/v2",
+        sum = "h1:jjRCHsj6hBJhkmhznrCzoNpbA3zqy0fYiUcYZP/GkPY=",
+        version = "v2.10.0",
+    )
+    go_repository(
+        name = "com_github_alecthomas_kong",
+        importpath = "github.com/alecthomas/kong",
+        sum = "h1:E8jH4Tsgv6wCRX2nGrdPyHDUCSG83WH2qE4XLACD33Q=",
+        version = "v1.2.1",
+    )
+    go_repository(
+        name = "com_github_alecthomas_repr",
+        importpath = "github.com/alecthomas/repr",
+        sum = "h1:GhI2A8MACjfegCPVq9f1FLvIBS+DrQ2KQBFZP1iFzXc=",
+        version = "v0.4.0",
+    )
+    go_repository(
         name = "com_github_andybalholm_cascadia",
         importpath = "github.com/andybalholm/cascadia",
         sum = "h1:3Xi6Dw5lHF15JtdcmAHD3i1+T8plmv7BQ/nsViSLyss=",
@@ -516,6 +534,12 @@ def go_dependencies():
         importpath = "github.com/hashicorp/golang-lru",
         sum = "h1:0hERBMJE1eitiLkihrMvRVBYAkpHzc/J3QdDN+dAcgU=",
         version = "v0.5.1",
+    )
+    go_repository(
+        name = "com_github_hexops_gotextdiff",
+        importpath = "github.com/hexops/gotextdiff",
+        sum = "h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=",
+        version = "v1.0.3",
     )
     go_repository(
         name = "com_github_hpcloud_tail",
