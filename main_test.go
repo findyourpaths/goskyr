@@ -45,6 +45,7 @@ var urlsForTestnamesByDir = map[string]map[string]string{
 		"realpython-github-io-fake-jobs": "https://realpython.github.io/fake-jobs/",
 		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets",
 		"www-scrapethissite-com-pages-simple":                            "https://www.scrapethissite.com/pages/simple",
+		"www-scrapethissite-com-pages-forms":                             "https://www.scrapethissite.com/pages/forms",
 	},
 }
 
