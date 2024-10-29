@@ -1,0 +1,66 @@
+id:
+    slug: hideoutchicago-com
+    id: 10aab
+    field: ""
+    subid: ""
+scrapers:
+    - name: hideoutchicago-com__10aab
+      url: https://hideoutchicago.com/events
+      item: body > div.col-full.px-1.px-md-2.py-2 > div.flex-column-reverse.flex-lg-row.g-0.my-5.row > div.wEv > div.generalView.rhp-desktop-list > div.col-12.eventWrapper.px-0.py-4.rhpSingleEvent > div.g-0.row
+      fields:
+        - name: F61f69ea1--0
+          type: text
+          location:
+            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.eventTitleDiv.px-0 > a.url > h2.font1By5RemXS.font1By5remMD.font1By75RemSM.font1by25.lineHeight12.marginBottom3PX.mb-md-2.mt-md-0
+          can_be_empty: true
+        - name: F742aad57--0
+          type: text
+          location:
+            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0.rhpEventDetails > div.g-0.row > div.align-items-center.col-12.d-flex.eventCost.eventsColor.mb-md-2.mt-md-0.pt-md-0 > span
+          can_be_empty: true
+        - name: F7a8063a3-href-0
+          type: url
+          location:
+            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.eventTitleDiv.px-0 > a.url
+              attr: href
+          can_be_empty: true
+        - name: F7f19e181--0
+          type: text
+          location:
+            - selector: div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.mt-md-0.rhp-event-list-cta > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
+          can_be_empty: true
+        - name: F7f19e181-href-0
+          type: url
+          location:
+            - selector: div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.mt-md-0.rhp-event-list-cta > span.rhp-event-cta > a.btn.btn-md.btn-primary.d-block.w-100
+              attr: href
+          can_be_empty: true
+        - name: F7f1b6036-href-0
+          type: url
+          location:
+            - selector: div.col-12.col-md-3.text-center > div.g-0.row > div.col-12.eventMoreInfo.mt-2.text-center > a.btn.btn-md.d-block.w-100
+              attr: href
+          can_be_empty: true
+        - name: F99655b2--0
+          type: text
+          location:
+            - selector: div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url > div.BelowImage.eventDateList > div.eventMonth.mb-0.singleEventDate.text-uppercase
+          can_be_empty: true
+        - name: Fb0e9b97a-href-0
+          type: url
+          location:
+            - selector: div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url
+              attr: href
+          can_be_empty: true
+        - name: Fe01dc85d-src-0
+          type: url
+          location:
+            - selector: div.col-12.col-md-3 > div.g-0.row > div.col-sm-12.p-0 > div.rhp-event-thumb > a.url > div.rhp-events-event-image > img.eventListImage
+              attr: src
+          can_be_empty: true
+        - name: Febe1d111--0
+          type: text
+          location:
+            - selector: div.col-12.col-md-6 > div.col-12.rhp-event-info > div.g-0.row > div.belowLowTicketSection.col-12.p-2 > div.col-12.px-0.rhpEventDetails > div.g-0.row > div.col-12 > div.eventDateDetails.mb-md-2.mt-md-0 > div.align-items-center.d-flex.eventDoorStartDate.eventsColor > span.font0by75.fontWeight500.lineHeight15
+          can_be_empty: true
+itemmaps: []

@@ -35,38 +35,57 @@ var testInputDir = "testdata/"
 //	go run main.go --debug generate https://books.toscrape.com --fields-vary --batch --do-subpages --output-dir /tmp/goskyr/main/
 //
 // and copy the new directory within /tmp/goskyr/main/ to testdata.
-var urlsForTestnames = map[string]string{
-	"books-toscrape-com":             "https://books.toscrape.com",
-	"quotes-toscrape-com":            "https://quotes.toscrape.com",
-	"realpython-github-io-fake-jobs": "https://realpython.github.io/fake-jobs/",
-	"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets",
-	"www-scrapethissite-com-pages-simple":                            "https://www.scrapethissite.com/pages/simple",
+var urlsForTestnamesByDir = map[string]map[string]string{
+	"chicago": {
+		"hideoutchicago-com-events": "https://hideoutchicago.com/events",
+	},
+	"scraping": {
+		"books-toscrape-com":             "https://books.toscrape.com",
+		"quotes-toscrape-com":            "https://quotes.toscrape.com",
+		"realpython-github-io-fake-jobs": "https://realpython.github.io/fake-jobs/",
+		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets",
+		"www-scrapethissite-com-pages-simple":                            "https://www.scrapethissite.com/pages/simple",
+	},
 }
 
 func TestGenerate(t *testing.T) {
+	dirs := []string{}
+	for dir := range urlsForTestnamesByDir {
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+
+	for _, dir := range dirs {
+		t.Run(dir, func(t *testing.T) {
+			TGenerateAllDirConfigs(t, dir)
+		})
+	}
+}
+
+func TGenerateAllDirConfigs(t *testing.T, dir string) {
 	testnames := []string{}
-	for testname := range urlsForTestnames {
+	for testname := range urlsForTestnamesByDir[dir] {
 		testnames = append(testnames, testname)
 	}
 	sort.Strings(testnames)
 
 	for _, testname := range testnames {
 		t.Run(testname, func(t *testing.T) {
-			TGenerateAllConfigs(t, testname)
+			TGenerateAllConfigs(t, dir, testname)
 		})
 	}
 }
 
-func TGenerateAllConfigs(t *testing.T, testname string) {
-	inputDir := testInputDir + "scraping"
-	outputDir := testOutputDir + "scraping"
+func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
+	inputDir := testInputDir + dir
+	outputDir := testOutputDir + dir
 	_, err := os.Stat(filepath.Join(inputDir, testname+"_subpages"))
 	doSubpages := err != nil
 
 	opts, err := generate.InitOpts(generate.ConfigOptions{
 		Batch:       true,
 		InputDir:    inputDir,
-		URL:         urlsForTestnames[testname],
+		URL:         urlsForTestnamesByDir[dir][testname],
 		DoSubpages:  doSubpages,
 		MinOccs:     []int{5, 10, 20},
 		OnlyVarying: true,
@@ -154,21 +173,35 @@ func TGenerateConfig(t *testing.T, testname string, config *scrape.Config, outpu
 }
 
 func TestScrape(t *testing.T) {
+	dirs := []string{}
+	for dir := range urlsForTestnamesByDir {
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+
+	for _, dir := range dirs {
+		t.Run(dir, func(t *testing.T) {
+			TScrapeWithAllDirConfigs(t, dir)
+		})
+	}
+}
+
+func TScrapeWithAllDirConfigs(t *testing.T, dir string) {
 	testnames := []string{}
-	for testname := range urlsForTestnames {
+	for testname := range urlsForTestnamesByDir[dir] {
 		testnames = append(testnames, testname)
 	}
 	sort.Strings(testnames)
 
 	for _, testname := range testnames {
 		t.Run(testname, func(t *testing.T) {
-			TScrapeWithAllConfigs(t, testname)
+			TScrapeWithAllConfigs(t, dir, testname)
 		})
 	}
 }
 
-func TScrapeWithAllConfigs(t *testing.T, testname string) {
-	glob := filepath.Join(testInputDir, "scraping", testname+"_configs", "*"+configSuffix)
+func TScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
+	glob := filepath.Join(testInputDir, dir, testname+"_configs", "*"+configSuffix)
 	// fmt.Printf("glob: %s\n", glob)
 	allPaths, err := filepath.Glob(glob)
 	if err != nil {
@@ -180,7 +213,7 @@ func TScrapeWithAllConfigs(t *testing.T, testname string) {
 	}
 	sort.Strings(paths)
 
-	// startLen := len(filepath.Join(testInputDir, "scraping", cid.Slug+"__"))
+	// startLen := len(filepath.Join(testInputDir, dir, cid.Slug+"__"))
 	// endLen := len(".p") + len(configSuffix)
 	for _, path := range paths {
 		// fmt.Printf("path: %q\n", path)
@@ -191,23 +224,23 @@ func TScrapeWithAllConfigs(t *testing.T, testname string) {
 			t.Fatalf("cannot open config file path at %q: %v", path, err)
 		}
 		t.Run(config.ID.String(), func(t *testing.T) {
-			TScrapeWithConfig(t, testname, config)
+			TScrapeWithConfig(t, dir, testname, config)
 		})
 	}
 }
 
-func getItems(testname string, config *scrape.Config) (output.ItemMaps, error) {
+func getItems(dir string, testname string, config *scrape.Config) (output.ItemMaps, error) {
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
 		// We're looking at an event list page scraper. Scrape the page in the outer directory.
-		htmlPath := filepath.Join(testInputDir, "scraping", testname+htmlSuffix)
+		htmlPath := filepath.Join(testInputDir, dir, testname+htmlSuffix)
 		return scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
 	} else if config.ID.ID == "" && config.ID.Field != "" && config.ID.SubID != "" {
 		// We're looking at an event page scraper. Scrape the page in this directory.
-		htmlPath := filepath.Join(testInputDir, "scraping", testname+"_configs", config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
+		htmlPath := filepath.Join(testInputDir, dir, testname+"_configs", config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
 		return scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
 	} else {
 		// We're looking at a combined event list and page scraper. Scrape both pages.
-		htmlPath := filepath.Join(testInputDir, "scraping", testname+htmlSuffix)
+		htmlPath := filepath.Join(testInputDir, dir, testname+htmlSuffix)
 		itemMaps, err := scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
 		if err != nil {
 			return nil, err
@@ -216,7 +249,7 @@ func getItems(testname string, config *scrape.Config) (output.ItemMaps, error) {
 		fetchFn := func(u string) (*goquery.Document, error) {
 			u = strings.TrimPrefix(u, "http://")
 			u = strings.TrimPrefix(u, "https://")
-			u = "file://" + filepath.Join(testInputDir, "scraping", testname+"_subpages", slug.Make(u)+".html")
+			u = "file://" + filepath.Join(testInputDir, dir, testname+"_subpages", slug.Make(u)+".html")
 			return fetch.GQDocument(f, u, nil)
 		}
 		err = scrape.Subpages(config, &config.Scrapers[1], itemMaps, fetchFn)
@@ -224,8 +257,8 @@ func getItems(testname string, config *scrape.Config) (output.ItemMaps, error) {
 	}
 }
 
-func TScrapeWithConfig(t *testing.T, testname string, config *scrape.Config) {
-	itemMaps, err := getItems(testname, config)
+func TScrapeWithConfig(t *testing.T, dir string, testname string, config *scrape.Config) {
+	itemMaps, err := getItems(dir, testname, config)
 	if err != nil {
 		t.Fatalf("failed to get items for scraper config %q: %v", config.ID.String(), err)
 	}
@@ -238,7 +271,7 @@ func TScrapeWithConfig(t *testing.T, testname string, config *scrape.Config) {
 	// Each input file is expected to have a "golden output" file, with the
 	// same path except the .input extension is replaced by the golden suffix.
 	// jsonfile := path[:len(path)-len(configSuffix)] + jsonSuffix
-	jsonPath := filepath.Join(testInputDir, "scraping", testname+"_configs", config.ID.String()+jsonSuffix)
+	jsonPath := filepath.Join(testInputDir, dir, testname+"_configs", config.ID.String()+jsonSuffix)
 	exp, err := os.ReadFile(jsonPath)
 	if err != nil {
 		t.Fatalf("error reading golden file at %q: %v", jsonPath, err)
@@ -254,14 +287,14 @@ func TScrapeWithConfig(t *testing.T, testname string, config *scrape.Config) {
 	}
 
 	id := config.ID.String()
-	diffPath := filepath.Join(testOutputDir, "scraping", testname+"_configs", id+jsonSuffix+".diff")
+	diffPath := filepath.Join(testOutputDir, dir, testname+"_configs", id+jsonSuffix+".diff")
 	if err := utils.WriteStringFile(diffPath, diffStr); err != nil {
 		t.Fatalf("failed to write diff to %q: %v", diffStr, err)
 	}
 	t.Errorf("actual output (%d) does not match expected output (%d) and wrote diff to %q", len(act), len(exp), diffPath)
 
 	if writeActualTestOutputs {
-		actPath := filepath.Join(testOutputDir, "scraping", testname+"_configs", id+".actual"+jsonSuffix)
+		actPath := filepath.Join(testOutputDir, dir, testname+"_configs", id+".actual"+jsonSuffix)
 		if err := utils.WriteBytesFile(actPath, act); err != nil {
 			t.Fatalf("failed to write actual test output to %q: %v", actPath, err)
 		}
