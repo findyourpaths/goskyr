@@ -24,7 +24,7 @@ func main() {
 
 	ctx := kong.Parse(&cli,
 		kong.Name("goskyr"),
-		// kong.Description("A self-sufficient runtime for containers"),
+		kong.Description("A configurable command-line web scraper."),
 		kong.UsageOnError(),
 		kong.ConfigureHelp(kong.HelpOptions{
 			Compact: true,
@@ -53,9 +53,6 @@ type CLI struct {
 	ExtractFeatures ExtractFeaturesCmd `cmd:"" help:"Extract ML features based on the given configuration file"`
 	Generate        GenerateCmd        `cmd:"" help:"Automatically generate a configuration file for the given URL"`
 	Scrape          ScrapeCmd          `cmd:"" help:"Scrape"`
-
-	// Build   BuildCmd   `cmd:"" help:"Build an image from a Dockerfile"`
-	// omitted all the other options
 }
 
 type Globals struct {
@@ -63,7 +60,7 @@ type Globals struct {
 }
 
 type ExtractFeaturesCmd struct {
-	File            string `default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
+	File            string `default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."`
 	ExtractFeatures string `short:"e" long:"extract" description:"Write extracted features to the given file in csv format."`
 	WordsDir        string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
 }
@@ -81,6 +78,8 @@ func (a *ExtractFeaturesCmd) Run(globals *Globals) error {
 }
 
 type GenerateCmd struct {
+	URL string `arg:"" help:"Automatically generate a config file for the given input url."`
+
 	Batch               bool   `short:"b" long:"batch" help:"Run batch (not interactively) to generate the config file."`
 	DoSubpages          bool   `short:"s" long:"subpages" help:"Whether to generate configurations for subpages as well."`
 	FieldsVary          bool   `long:"fieldsvary" help:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
@@ -89,12 +88,7 @@ type GenerateCmd struct {
 	OutputDir           string `help:"The output directory."`
 	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
 	RenderJs            bool   `short:"r" long:"renderjs" help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
-	URL                 string `short:"u" long:"url" help:"Automatically generate a config file for the given input url."`
 	WordsDir            string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
-	// NoStdin    bool   `help:"Do not attach STDIN"`
-	// SigProxy   bool   `help:"Proxy all received signals to the process" default:"true"`
-
-	// Container string `arg required help:"Container ID to attach to."`
 }
 
 var mainDir = "/tmp/goskyr/main/"
@@ -125,8 +119,8 @@ func (a *GenerateCmd) Run(globals *Globals) error {
 	pageOpts, err := generate.InitOpts(generate.ConfigOptions{
 		Batch:       a.Batch,
 		InputDir:    mainDir,
-		InputFile:   a.File,
-		InputURL:    a.URL,
+		File:        a.File,
+		URL:         a.URL,
 		ModelName:   a.PretrainedModelPath,
 		OnlyVarying: a.FieldsVary,
 		RenderJS:    a.RenderJs,
@@ -154,7 +148,8 @@ func (a *GenerateCmd) Run(globals *Globals) error {
 }
 
 type ScrapeCmd struct {
-	File     string `default:"./config.yml" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
+	File string `arg:"" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
+
 	ToStdout bool   `short:"o" long:"stdout" default:"true" help:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
 	JSONFile string `short:"j" long:"json" description:"Writes scraped data as JSON to the given file path."`
 }
@@ -167,7 +162,7 @@ func (a *ScrapeCmd) Run(globals *Globals) error {
 
 	allItems := output.ItemMaps{}
 	for _, s := range conf.Scrapers {
-		items, err := s.GetItems(&conf.Global, false)
+		items, err := scrape.Page(&s, &conf.Global, false, "")
 		if err != nil {
 			slog.Error("error scraping", "err", err)
 			continue

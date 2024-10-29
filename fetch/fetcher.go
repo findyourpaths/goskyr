@@ -89,6 +89,7 @@ func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, error) {
 	}
 	client := &http.Client{Transport: tr}
 
+	fmt.Printf("static fetching: %q\n", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return resString, fmt.Errorf("when fetching url, error in creating new request: %w", err)
@@ -176,6 +177,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 		}
 		urlStr = "file://" + wd + "/" + strings.TrimPrefix(urlStr, "file://")
 	}
+	fmt.Printf("dynamic fetching: %q\n", urlStr)
 
 	var body string
 	sleepTime := time.Duration(d.WaitMilliseconds) * time.Millisecond

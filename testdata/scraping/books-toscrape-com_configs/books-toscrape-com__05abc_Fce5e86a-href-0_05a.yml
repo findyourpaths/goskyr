@@ -1,0 +1,139 @@
+id:
+    slug: books-toscrape-com
+    id: 05abc
+    field: Fce5e86a-href-0
+    subid: 05a
+scrapers:
+    - name: books-toscrape-com__05abc
+      url: https://books.toscrape.com
+      item: body > div.container-fluid.page > div.page_inner > div.row > div.col-md-9.col-sm-8 > section > div > ol.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
+      fields:
+        - name: Fce5e86a--0
+          type: text
+          location:
+            - {}
+          can_be_empty: true
+        - name: Fce5e86a-href-0
+          type: url
+          location:
+            - attr: href
+          can_be_empty: true
+    - name: books-toscrape-com__Fce5e86a-href-0_05a
+      url: https://books.toscrape.com
+      item: div.container-fluid.page > div.page_inner
+      fields:
+        - name: F175ffce--0
+          type: text
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
+          can_be_empty: true
+        - name: F175ffce-href-0
+          type: url
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
+              attr: href
+          can_be_empty: true
+        - name: F26346f61--0
+          type: text
+          location:
+            - selector: div.content > div > article.product_page > table.table.table-striped > tbody > tr > td
+          can_be_empty: true
+        - name: F2ed45786-href-0
+          type: url
+          location:
+            - selector: div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.image_container > a
+              attr: href
+          can_be_empty: true
+        - name: F2f82234a--0
+          type: text
+          location:
+            - selector: div.content > div > article.product_page > table.table.table-striped > tbody > tr > th
+          can_be_empty: true
+        - name: F3a4852d--0
+          type: text
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > div.row > div.col-sm-6.product_main > h1
+          can_be_empty: true
+        - name: F41c63edd--0
+          type: text
+          location:
+            - selector: ul.breadcrumb > li.active
+          can_be_empty: true
+        - name: F672a4346--2
+          type: text
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > div.row > div.col-sm-6.product_main > p.availability.instock
+              child_index: 2
+          can_be_empty: true
+        - name: F6f58e655--0
+          type: text
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.product_price > p.price_color
+          can_be_empty: true
+        - name: F6fe602c7--0
+          type: text
+          location:
+            - selector: div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
+          can_be_empty: true
+        - name: F6fe602c7-href-0
+          type: url
+          location:
+            - selector: div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
+              attr: href
+          can_be_empty: true
+        - name: F8ecceebe--0
+          type: text
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > p
+          can_be_empty: true
+        - name: F9284b829--0
+          type: text
+          location:
+            - selector: div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.product_price > p.price_color
+          can_be_empty: true
+        - name: F996d10cb-href-0
+          type: url
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.image_container > a
+              attr: href
+          can_be_empty: true
+        - name: Fa5eb3d47-src-0
+          type: url
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > div.row > div.col-sm-6 > div.carousel > div.thumbnail > div.carousel-inner > div.active.item > img
+              attr: src
+          can_be_empty: true
+        - name: Fa7f49325--0
+          type: text
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > div.row > div.col-sm-6.product_main > p.price_color
+          can_be_empty: true
+        - name: Fcb324d8d-src-0
+          type: url
+          location:
+            - selector: div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.image_container > a > img.thumbnail
+              attr: src
+          can_be_empty: true
+        - name: Fdcf92592--0
+          type: text
+          location:
+            - selector: div.content > div > article.product_page > div.sub-header > h2
+          can_be_empty: true
+        - name: Fe16f173f-src-0
+          type: url
+          location:
+            - selector: div.content > div:nth-child(2) > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.image_container > a > img.thumbnail
+              attr: src
+          can_be_empty: true
+        - name: Ffa3021f6--0
+          type: text
+          location:
+            - selector: ul.breadcrumb > li:nth-child(3) > a
+          can_be_empty: true
+        - name: Ffa3021f6-href-0
+          type: url
+          location:
+            - selector: ul.breadcrumb > li:nth-child(3) > a
+              attr: href
+          can_be_empty: true
+itemmaps: []

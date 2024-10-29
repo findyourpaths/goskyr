@@ -63,15 +63,7 @@ func (cid ConfigID) String() string {
 	if cid.Slug != "" {
 		rb.WriteString(cid.Slug)
 	}
-	rb.WriteString(cid.IDString())
-	r := rb.String()
-	// slog.Debug(fmt.Sprintf("ConfigID.String() returning %q\n", r))
-	// fmt.Printf("ConfigID.String() returning %q\n", r)
-	return r
-}
 
-func (cid ConfigID) IDString() string {
-	rb := strings.Builder{}
 	sep := "__"
 	if cid.ID != "" {
 		rb.WriteString(sep + cid.ID)
@@ -85,7 +77,10 @@ func (cid ConfigID) IDString() string {
 		rb.WriteString(sep + cid.SubID)
 		sep = "_"
 	}
+
 	r := rb.String()
+	// slog.Debug(fmt.Sprintf("ConfigID.String() returning %q\n", r))
+	// fmt.Printf("ConfigID.String() returning %q\n", r)
 	return r
 }
 
@@ -323,7 +318,6 @@ type Paginator struct {
 // to extract the desired information from a website
 type Scraper struct {
 	Name         string               `yaml:"name"`
-	InputURL     string               `yaml:"input_url"`
 	URL          string               `yaml:"url"`
 	Item         string               `yaml:"item"`
 	Fields       []Field              `yaml:"fields,omitempty"`
@@ -335,33 +329,36 @@ type Scraper struct {
 	fetcher      fetch.Fetcher
 }
 
-// GetItems fetches and returns all items from a website according to the
+// Page fetches and returns all items from a webpage according to the
 // Scraper's paramaters. When rawDyn is set to true the items returned are
 // not processed according to their type but instead the raw values based
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
-func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemMaps, error) {
-	// slog.Debug("Scraper.GetItems(globalConfig: %#v, rawDyn: %t)", globalConfig, rawDyn)
-	scrLogger := slog.With(slog.String("name", c.Name))
+func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.ItemMaps, error) {
+	// slog.Debug("Scraper.Page(globalConfig: %#v, rawDyn: %t)", globalConfig, rawDyn)
+	scrLogger := slog.With(slog.String("name", s.Name))
 	// initialize fetcher
-	if c.RenderJs {
-		dynFetcher := fetch.NewDynamicFetcher(globalConfig.UserAgent, c.PageLoadWait)
+
+	u := s.URL
+	if path != "" {
+		s.fetcher = &fetch.FileFetcher{}
+		u = path
+	} else if s.RenderJs {
+		dynFetcher := fetch.NewDynamicFetcher(globalConfig.UserAgent, s.PageLoadWait)
 		defer dynFetcher.Cancel()
-		c.fetcher = dynFetcher
-	} else if strings.HasPrefix(c.URL, "file://") {
-		c.fetcher = &fetch.FileFetcher{}
+		s.fetcher = dynFetcher
 	} else {
-		c.fetcher = &fetch.StaticFetcher{
+		s.fetcher = &fetch.StaticFetcher{
 			UserAgent: globalConfig.UserAgent,
 			// UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
 		}
 	}
 
-	items := output.ItemMaps{}
+	rs := output.ItemMaps{}
 
 	scrLogger.Debug("initializing filters")
-	if err := c.initializeFilters(); err != nil {
+	if err := s.initializeFilters(); err != nil {
 		return nil, err
 	}
 
@@ -369,7 +366,7 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 	currentPage := 0
 	var doc *goquery.Document
 
-	hasNextPage, pageURL, doc, err := c.fetchPage(nil, currentPage, c.URL, globalConfig.UserAgent, c.Interaction)
+	hasNextPage, pageURL, doc, err := s.fetchPage(nil, currentPage, u, globalConfig.UserAgent, s.Interaction)
 	if err != nil {
 		// slog.Debug("pageURL: %q", pageURL)
 		return nil, fmt.Errorf("failed to fetch next page: %w", err)
@@ -378,15 +375,15 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 	for hasNextPage {
 		baseUrl := getBaseURL(pageURL, doc)
 
-		slog.Debug("in Scraper.GetItems()", "c.Item", c.Item)
-		slog.Debug("in Scraper.GetItems()", "len(doc.Find(c.Item).Nodes)", len(doc.Find(c.Item).Nodes))
+		slog.Debug("in Scraper.Page()", "c.Item", s.Item)
+		slog.Debug("in Scraper.Page()", "len(doc.Find(c.Item).Nodes)", len(doc.Find(s.Item).Nodes))
 		// if len(doc.Find(c.Item).Nodes) == 0 {
-		// 	slog.Debug("in Scraper.GetItems(), no items found, shortening selector to find the longest prefix that selects items")
+		// 	slog.Debug("in Scraper.Page(), no items found, shortening selector to find the longest prefix that selects items")
 		// 	itemPath := c.Item
 		// 	for {
-		// 		slog.Debug("in Scraper.GetItems(), itemPath: %#v", itemPath)
+		// 		slog.Debug("in Scraper.Page(), itemPath: %#v", itemPath)
 		// 		if len(doc.Find(itemPath).Nodes) != 0 {
-		// 			slog.Debug("in Scraper.GetItems(), len(doc.Find(itemPath).Nodes): %d", len(doc.Find(itemPath).Nodes))
+		// 			slog.Debug("in Scraper.Page(), len(doc.Find(itemPath).Nodes): %d", len(doc.Find(itemPath).Nodes))
 		// 			for _, node := range doc.Find(itemPath).Nodes {
 		// 				slog.Debug("%#v", node)
 		// 			}
@@ -397,28 +394,28 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 		// 	}
 		// }
 
-		doc.Find(c.Item).Each(func(i int, s *goquery.Selection) {
-			item, err := c.GQSelectionItem(s, baseUrl, rawDyn)
+		doc.Find(s.Item).Each(func(i int, sel *goquery.Selection) {
+			item, err := GQSelection(s, sel, baseUrl, rawDyn)
 			if err != nil {
 				scrLogger.Error(err.Error())
 			}
-			slog.Debug("in Scraper.GetItems()", "sel item", item)
+			slog.Debug("in Scraper.Page()", "sel item", item)
 			if item != nil {
-				items = append(items, item)
+				rs = append(rs, item)
 			}
 		})
 
 		currentPage++
-		hasNextPage, pageURL, doc, err = c.fetchPage(doc, currentPage, pageURL, globalConfig.UserAgent, nil)
+		hasNextPage, pageURL, doc, err = s.fetchPage(doc, currentPage, pageURL, globalConfig.UserAgent, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch next page: %w", err)
 		}
 	}
 
-	c.guessYear(items, time.Now())
+	s.guessYear(rs, time.Now())
 
-	slog.Debug("Scraper.GetItems() returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
-	return items, nil
+	slog.Debug("Scraper.Page() returning", "len(items)", len(rs), "items.TotalFields()", rs.TotalFields())
+	return rs, nil
 }
 
 // GQDocumentItems fetches and returns all items from a website according to the
@@ -427,26 +424,26 @@ func (c Scraper) GetItems(globalConfig *GlobalConfig, rawDyn bool) (output.ItemM
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
-func (c Scraper) GQDocumentItems(gqdoc *goquery.Document, rawDyn bool) (output.ItemMaps, error) {
-	items := output.ItemMaps{}
-	baseUrl := getBaseURL(c.URL, gqdoc)
+func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMaps, error) {
+	rs := output.ItemMaps{}
+	baseUrl := getBaseURL(s.URL, gqdoc)
 
-	slog.Debug("in Scraper.GQDocumentItems()", "c.Item", c.Item)
-	slog.Debug("in Scraper.GQDocumentItems()", "len(doc.Find(c.Item).Nodes)", len(gqdoc.Find(c.Item).Nodes))
-	gqdoc.Find(c.Item).Each(func(i int, s *goquery.Selection) {
-		item, err := c.GQSelectionItem(s, baseUrl, rawDyn)
+	slog.Debug("in Scraper.GQDocumentItems()", "c.Item", s.Item)
+	slog.Debug("in Scraper.GQDocumentItems()", "len(doc.Find(c.Item).Nodes)", len(gqdoc.Find(s.Item).Nodes))
+	gqdoc.Find(s.Item).Each(func(i int, sel *goquery.Selection) {
+		item, err := GQSelection(s, sel, baseUrl, rawDyn)
 		if err != nil {
 			slog.Warn("in Scraper.GQDocumentItems()", "err", err.Error())
 		}
 		if item != nil {
-			items = append(items, item)
+			rs = append(rs, item)
 		}
 	})
 
-	c.guessYear(items, time.Now())
+	s.guessYear(rs, time.Now())
 
-	slog.Debug("Scraper.GQDocumentItems() returning", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
-	return items, nil
+	slog.Debug("Scraper.GQDocumentItems() returning", "len(items)", len(rs), "items.TotalFields()", rs.TotalFields())
+	return rs, nil
 }
 
 // GQSelectionItem fetches and returns an items from a website according to the
@@ -455,20 +452,20 @@ func (c Scraper) GQDocumentItems(gqdoc *goquery.Document, rawDyn bool) (output.I
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not subpages). This is used by the ML feature generation.
-func (c Scraper) GQSelectionItem(s *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
-	slog.Debug("Scraper.GQSelectionItem()", "s", s, "baseUrl", baseUrl, "rawDyn", rawDyn)
+func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
+	slog.Debug("Scraper.GQSelection()", "s", sel, "baseUrl", baseUrl, "rawDyn", rawDyn)
 	// for i, node := range s.Nodes {
-	// 	slog.Debug("in Scraper.GQSelectionItem()", "i", i, "node", node)
+	// 	slog.Debug("in Scraper.GQSelection()", "i", i, "node", node)
 	// 	// slog.Debug("in Scraper.GetItems(), c.Item match", "i", i)
 	// 	// slog.Debug("in Scraper.GetItems(), c.Item matched", "c.Fields", c.Fields)
 	// }
-	currentItem := output.ItemMap{}
-	for _, f := range c.Fields {
-		slog.Debug("in Scraper.GQSelectionItem(), looking at field", "f.Name", f.Name)
+	rs := output.ItemMap{}
+	for _, f := range s.Fields {
+		slog.Debug("in Scraper.GQSelection(), looking at field", "f.Name", f.Name)
 		if f.Value != "" {
 			if !rawDyn {
 				// add static fields
-				currentItem[f.Name] = f.Value
+				rs[f.Name] = f.Value
 			}
 			continue
 		}
@@ -477,12 +474,12 @@ func (c Scraper) GQSelectionItem(s *goquery.Selection, baseUrl string, rawDyn bo
 		if f.OnSubpage == "" {
 			var err error
 			if rawDyn {
-				err = extractRawField(&f, currentItem, s)
+				err = extractRawField(&f, rs, sel)
 			} else {
-				err = extractField(&f, currentItem, s, baseUrl)
+				err = extractField(&f, rs, sel, baseUrl)
 			}
 			if err != nil {
-				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping item %v.", f.Name, err, currentItem)
+				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping item %v.", f.Name, err, rs)
 			}
 		}
 
@@ -491,57 +488,57 @@ func (c Scraper) GQSelectionItem(s *goquery.Selection, baseUrl string, rawDyn bo
 		// we want to filter out a certain item. Especially, if
 		// certain elements would need to be fetched from subpages.
 		// filter fast!
-		if !c.keepItem(currentItem) {
+		if !s.keepItem(rs) {
 			return nil, nil
 		}
 	}
-	slog.Debug("in Scraper.GQSelectionItem(), after field check", "currentItem", currentItem)
+	slog.Debug("in Scraper.GQSelection(), after field check", "currentItem", rs)
 
 	// handle all fields on subpages
 	if !rawDyn {
 		subDocs := make(map[string]*goquery.Document)
-		for _, f := range c.Fields {
+		for _, f := range s.Fields {
 			if f.OnSubpage == "" || f.Value != "" {
 				continue
 			}
 
 			// check whether we fetched the page already
-			subpageURL := fmt.Sprint(currentItem[f.OnSubpage])
+			subpageURL := fmt.Sprint(rs[f.OnSubpage])
 			slog.Debug("looking at", "subpageURL", subpageURL)
 			_, found := subDocs[subpageURL]
 			if !found {
-				subRes, err := c.fetcher.Fetch(subpageURL, nil)
+				subRes, err := s.fetcher.Fetch(subpageURL, nil)
 				if err != nil {
-					return nil, fmt.Errorf("error while fetching subpage: %v. Skipping item %v.", err, currentItem)
+					return nil, fmt.Errorf("error while fetching subpage: %v. Skipping item %v.", err, rs)
 				}
 				subDoc, err := goquery.NewDocumentFromReader(strings.NewReader(subRes))
 				if err != nil {
-					return nil, fmt.Errorf("error while reading subpage document: %v. Skipping item %v", err, currentItem)
+					return nil, fmt.Errorf("error while reading subpage document: %v. Skipping item %v", err, rs)
 				}
 				subDocs[subpageURL] = subDoc
 			}
 
 			baseURLSubpage := getBaseURL(subpageURL, subDocs[subpageURL])
-			err := extractField(&f, currentItem, subDocs[subpageURL].Selection, baseURLSubpage)
+			err := extractField(&f, rs, subDocs[subpageURL].Selection, baseURLSubpage)
 			if err != nil {
-				return nil, fmt.Errorf("error while parsing subpage field %s: %v. Skipping item %v.", f.Name, err, currentItem)
+				return nil, fmt.Errorf("error while parsing subpage field %s: %v. Skipping item %v.", f.Name, err, rs)
 			}
 			// filter fast!
-			if !c.keepItem(currentItem) {
+			if !s.keepItem(rs) {
 				return nil, nil
 			}
 		}
 	}
-	slog.Debug("in Scraper.GQSelectionItem(), after rawDyn", "currentItem", currentItem)
+	slog.Debug("in Scraper.GQSelection(), after rawDyn", "currentItem", rs)
 
 	// check if item should be filtered
-	if !c.keepItem(currentItem) {
+	if !s.keepItem(rs) {
 		return nil, nil
 	}
 
-	currentItem = c.removeHiddenFields(currentItem)
-	slog.Debug("in Scraper.GQSelectionItem(), after checks", "currentItem", currentItem)
-	return currentItem, nil
+	rs = s.removeHiddenFields(rs)
+	slog.Debug("in Scraper.GQSelection(), after checks", "currentItem", rs)
+	return rs, nil
 }
 
 func (c *Scraper) guessYear(items output.ItemMaps, ref time.Time) {
@@ -716,13 +713,13 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 	return false, "", nil, nil
 }
 
-func extractField(field *Field, event output.ItemMap, s *goquery.Selection, baseURL string) error {
-	slog.Debug("Scraper.extractField()", "field", field, "event", event, "s", s, "baseURL", baseURL)
+func extractField(field *Field, event output.ItemMap, sel *goquery.Selection, baseURL string) error {
+	slog.Debug("Scraper.extractField()", "field", field, "event", event, "s", sel, "baseURL", baseURL)
 	switch field.Type {
 	case "text", "": // the default, ie when type is not configured, is 'text'
 		parts := []string{}
 		for _, p := range field.ElementLocations {
-			ts, err := getTextString(&p, s)
+			ts, err := getTextString(&p, sel)
 			if err != nil {
 				return err
 			}
@@ -752,7 +749,7 @@ func extractField(field *Field, event output.ItemMap, s *goquery.Selection, base
 		if len(field.ElementLocations) != 1 {
 			return fmt.Errorf("a field of type 'url' must exactly have one location")
 		}
-		url, err := getURLString(&field.ElementLocations[0], s, baseURL)
+		url, err := getURLString(&field.ElementLocations[0], sel, baseURL)
 		if err != nil {
 			return err
 		}
@@ -766,7 +763,7 @@ func extractField(field *Field, event output.ItemMap, s *goquery.Selection, base
 		}
 		event[field.Name] = url
 	case "date":
-		d, err := getDate(field, s, dateDefaults{})
+		d, err := getDate(field, sel, dateDefaults{})
 		if err != nil {
 			return err
 		}
@@ -777,13 +774,13 @@ func extractField(field *Field, event output.ItemMap, s *goquery.Selection, base
 	return nil
 }
 
-func extractRawField(field *Field, event output.ItemMap, s *goquery.Selection) error {
-	slog.Debug("Scraper.extractRawField()", "field", field, "event", event, "s", s)
+func extractRawField(field *Field, event output.ItemMap, sel *goquery.Selection) error {
+	slog.Debug("Scraper.extractRawField()", "field", field, "event", event, "s", sel)
 	switch field.Type {
 	case "text", "":
 		parts := []string{}
 		for _, p := range field.ElementLocations {
-			ts, err := getTextString(&p, s)
+			ts, err := getTextString(&p, sel)
 			if err != nil {
 				return err
 			}
@@ -806,7 +803,7 @@ func extractRawField(field *Field, event output.ItemMap, s *goquery.Selection) e
 			// because we don't want the url to be auto expanded
 			field.ElementLocations[0].Attr = "href"
 		}
-		ts, err := getTextString(&field.ElementLocations[0], s)
+		ts, err := getTextString(&field.ElementLocations[0], sel)
 		if err != nil {
 			return err
 		}
@@ -815,7 +812,7 @@ func extractRawField(field *Field, event output.ItemMap, s *goquery.Selection) e
 		}
 		event[field.Name] = ts
 	case "date":
-		cs, err := getRawDateComponents(field, s)
+		cs, err := getRawDateComponents(field, sel)
 		if err != nil {
 			return err
 		}
@@ -836,7 +833,7 @@ type dateDefaults struct {
 	time string // should be format 15:04
 }
 
-func getDate(f *Field, s *goquery.Selection, dd dateDefaults) (time.Time, error) {
+func getDate(f *Field, sel *goquery.Selection, dd dateDefaults) (time.Time, error) {
 	// time zone
 	var t time.Time
 	loc, err := time.LoadLocation(f.DateLocation)
@@ -858,7 +855,7 @@ func getDate(f *Field, s *goquery.Selection, dd dateDefaults) (time.Time, error)
 			if err := date.CheckForDoubleDateParts(c.Covers, combinedParts); err != nil {
 				return t, err
 			}
-			sp, err := getTextString(&c.ElementLocation, s)
+			sp, err := getTextString(&c.ElementLocation, sel)
 			if err != nil {
 				return t, err
 			}
@@ -941,10 +938,10 @@ func getDate(f *Field, s *goquery.Selection, dd dateDefaults) (time.Time, error)
 	return t, err
 }
 
-func getRawDateComponents(f *Field, s *goquery.Selection) (map[string]string, error) {
+func getRawDateComponents(f *Field, sel *goquery.Selection) (map[string]string, error) {
 	rawComponents := map[string]string{}
 	for _, c := range f.Components {
-		ts, err := getTextString(&c.ElementLocation, s)
+		ts, err := getTextString(&c.ElementLocation, sel)
 		if err != nil {
 			return rawComponents, err
 		}
@@ -966,7 +963,7 @@ func getRawDateComponents(f *Field, s *goquery.Selection) (map[string]string, er
 	return rawComponents, nil
 }
 
-func getURLString(e *ElementLocation, s *goquery.Selection, baseURL string) (string, error) {
+func getURLString(e *ElementLocation, sel *goquery.Selection, baseURL string) (string, error) {
 	var urlVal, urlRes string
 	u, _ := url.Parse(baseURL)
 	if e.Attr == "" {
@@ -974,7 +971,7 @@ func getURLString(e *ElementLocation, s *goquery.Selection, baseURL string) (str
 		e.Attr = "href"
 	}
 
-	urlVal, err := getTextString(e, s)
+	urlVal, err := getTextString(e, sel)
 	if err != nil {
 		return "", err
 	}
@@ -1022,14 +1019,14 @@ var SkipTag = map[string]bool{
 	"style":    true,
 }
 
-func getTextString(e *ElementLocation, s *goquery.Selection) (string, error) {
-	slog.Debug("getTextString()", "e", e, "s", s)
+func getTextString(e *ElementLocation, sel *goquery.Selection) (string, error) {
+	slog.Debug("getTextString()", "e", e, "s", sel)
 	var fieldStrings []string
 	var fieldSelection *goquery.Selection
 	if e.Selector == "" {
-		fieldSelection = s
+		fieldSelection = sel
 	} else {
-		fieldSelection = s.Find(e.Selector)
+		fieldSelection = sel.Find(e.Selector)
 	}
 	slog.Debug("in getTextString()", "e.Selector", e.Selector)
 	if len(fieldSelection.Nodes) > 0 {
@@ -1202,24 +1199,68 @@ func extractJsonField(p string, s string) (string, error) {
 	return extractedString, nil
 }
 
-func (c *Scraper) ExtendGQDocumentItems(fname string, itemMaps output.ItemMaps, gqdocs []*goquery.Document) error {
-	for i, gqdoc := range gqdocs {
-		subIMs, err := c.GQDocumentItems(gqdoc, true)
+// func (c *Scraper) ExtendGQDocumentsItems(fname string, itemMaps output.ItemMaps, gqdocs []*goquery.Document) error {
+// 	for i, gqdoc := range gqdocs {
+// 		subIMs, err := c.GQDocumentItems(gqdoc, true)
+// 		if err != nil {
+// 			return fmt.Errorf("error scraping subpage for field %q: %v", fname, err)
+// 		}
+// 		// if len(subIMs) > 1 {
+// 		// 	slog.Debug("error scraping subpage: expected no more than one item map", "fname", fname, "len(subIMs)", len(subIMs))
+// 		// 	continue
+// 		// }
+// 		// The subpage may not have had a valid ItemMap.
+// 		if len(subIMs) != 1 {
+// 			slog.Debug("error scraping subpage: expected exactly one item map", "fname", fname, "len(subIMs)", len(subIMs))
+// 			continue
+// 		}
+// 		for k, v := range subIMs[0] {
+// 			itemMaps[i][fname+"__"+k] = v
+// 		}
+// 	}
+// 	return nil
+// }
+
+func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (*goquery.Document, error)) error {
+	uBase, err := url.Parse(s.URL)
+	if err != nil {
+		return fmt.Errorf("error parsing input url %q: %v", s.URL, err)
+	}
+
+	for _, im := range ims {
+		rel, err := url.Parse(im[c.ID.Field].(string))
 		if err != nil {
-			return fmt.Errorf("error scraping subpage for field %q: %v", fname, err)
+			return fmt.Errorf("error parsing subpage url %q: %v", c.ID.Field, err)
 		}
-		// if len(subIMs) > 1 {
-		// 	slog.Debug("error scraping subpage: expected no more than one item map", "fname", fname, "len(subIMs)", len(subIMs))
-		// 	continue
-		// }
-		// The subpage may not have had a valid ItemMap.
-		if len(subIMs) != 1 {
-			slog.Debug("error scraping subpage: expected exactly one item map", "fname", fname, "len(subIMs)", len(subIMs))
-			continue
+		subURL := uBase.ResolveReference(rel).String()
+		var gqdoc *goquery.Document
+		if fetchFn != nil {
+			gqdoc, err = fetchFn(subURL)
+		} else {
+			return fmt.Errorf("need to fetch subpage")
 		}
-		for k, v := range subIMs[0] {
-			itemMaps[i][fname+"__"+k] = v
+		// fmt.Printf("adding subURL: %q\n", subURL)
+		if err != nil {
+			return fmt.Errorf("error fetching subpage GQDocument at %q: %v", subURL, err)
 		}
+		if err := SubGQDocument(c, s, im, c.ID.Field, gqdoc); err != nil {
+			return fmt.Errorf("error extending items: %v", err)
+		}
+	}
+	return nil
+}
+
+func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc *goquery.Document) error {
+	subIMs, err := GQDocument(s, gqdoc, true)
+	if err != nil {
+		return fmt.Errorf("error scraping subpage for field %q: %v", fname, err)
+	}
+	// The subpage may not have had a valid ItemMap.
+	if len(subIMs) != 1 {
+		return fmt.Errorf("error scraping subpage: expected exactly one item map for configID: %q, fname %q, got %d instead", c.ID.String(), fname, len(subIMs))
+	}
+	for k, v := range subIMs[0] {
+		im[fname+"__"+k] = v
 	}
 	return nil
 }

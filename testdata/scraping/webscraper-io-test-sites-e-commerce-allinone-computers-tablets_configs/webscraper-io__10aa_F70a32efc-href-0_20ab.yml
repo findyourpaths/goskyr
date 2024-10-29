@@ -1,0 +1,61 @@
+id:
+    slug: webscraper-io
+    id: 10aa
+    field: F70a32efc-href-0
+    subid: 20ab
+scrapers:
+    - name: webscraper-io__10aa
+      url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
+      item: body > div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption
+      fields:
+        - name: F6c24067a--0
+          type: text
+          location:
+            - selector: h4.card-title.float-end.price.pull-right
+          can_be_empty: true
+        - name: F70a32efc--0
+          type: text
+          location:
+            - selector: h4 > a.title
+          can_be_empty: true
+        - name: F70a32efc-href-0
+          type: url
+          location:
+            - selector: h4 > a.title
+              attr: href
+          can_be_empty: true
+        - name: F8acac8cc--0
+          type: text
+          location:
+            - selector: p.card-text.description
+          can_be_empty: true
+    - name: webscraper-io__F70a32efc-href-0_20ab
+      url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
+      item: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10
+      fields:
+        - name: F2dff4b89--0
+          type: text
+          location:
+            - selector: div.caption > p.card-text.description
+          can_be_empty: true
+        - name: F49df913a--0
+          type: text
+          location:
+            - selector: div.ratings > p.review-count
+          can_be_empty: true
+        - name: F5f1066dd--0
+          type: text
+          location:
+            - selector: div.caption > h4.float-end.price.pull-right
+          can_be_empty: true
+        - name: Fc859c220--0
+          type: text
+          location:
+            - selector: div.swatches > button.btn.swatch
+          can_be_empty: true
+        - name: Ff33aaba9--0
+          type: text
+          location:
+            - selector: div.caption > h4.card-title.title
+          can_be_empty: true
+itemmaps: []

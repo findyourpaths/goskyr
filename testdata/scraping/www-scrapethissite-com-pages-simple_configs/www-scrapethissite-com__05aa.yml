@@ -1,0 +1,32 @@
+id:
+    slug: www-scrapethissite-com
+    id: 05aa
+    field: ""
+    subid: ""
+scrapers:
+    - name: www-scrapethissite-com__05aa
+      url: https://www.scrapethissite.com/pages/simple
+      item: body > div > section > div.container > div.row > div.col-md-4.country
+      fields:
+        - name: F4b66d070--0
+          type: text
+          location:
+            - selector: div.country-info > span.country-area
+          can_be_empty: true
+        - name: F53eebc28--0
+          type: text
+          location:
+            - selector: div.country-info > span.country-population
+          can_be_empty: true
+        - name: F9a2a5663--0
+          type: text
+          location:
+            - selector: div.country-info > span.country-capital
+          can_be_empty: true
+        - name: Ffd69cf0e--2
+          type: text
+          location:
+            - selector: h3.country-name
+              child_index: 2
+          can_be_empty: true
+itemmaps: []

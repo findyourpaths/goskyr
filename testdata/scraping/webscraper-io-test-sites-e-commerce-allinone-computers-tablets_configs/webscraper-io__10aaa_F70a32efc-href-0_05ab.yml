@@ -1,0 +1,61 @@
+id:
+    slug: webscraper-io
+    id: 10aaa
+    field: F70a32efc-href-0
+    subid: 05ab
+scrapers:
+    - name: webscraper-io__10aaa
+      url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
+      item: body > div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4 > a.title
+      fields:
+        - name: F70a32efc--0
+          type: text
+          location:
+            - {}
+          can_be_empty: true
+        - name: F70a32efc-href-0
+          type: url
+          location:
+            - attr: href
+          can_be_empty: true
+    - name: webscraper-io__F70a32efc-href-0_05ab
+      url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
+      item: div.wrapper > div.container.test-site > div.row
+      fields:
+        - name: F1039d341--0
+          type: text
+          location:
+            - selector: div.col-lg-3.sidebar > div.navbar-light.sidebar > div.navbar-collapse.sidebar-nav > ul.flex-column.nav > li.nav-item > a.nav-link
+          can_be_empty: true
+        - name: F1039d341-href-0
+          type: url
+          location:
+            - selector: div.col-lg-3.sidebar > div.navbar-light.sidebar > div.navbar-collapse.sidebar-nav > ul.flex-column.nav > li.nav-item > a.nav-link
+              attr: href
+          can_be_empty: true
+        - name: F2dff4b89--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > p.card-text.description
+          can_be_empty: true
+        - name: F49df913a--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.ratings > p.review-count
+          can_be_empty: true
+        - name: F5f1066dd--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > h4.float-end.price.pull-right
+          can_be_empty: true
+        - name: Fc859c220--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.swatches > button.btn.swatch
+          can_be_empty: true
+        - name: Ff33aaba9--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > h4.card-title.title
+          can_be_empty: true
+itemmaps: []

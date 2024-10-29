@@ -19,7 +19,14 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/findyourpaths/goskyr",
     visibility = ["//visibility:public"],
-    deps = ["@com_github_alecthomas_kong//:go_default_library"],
+    deps = [
+        "//generate:go_default_library",
+        "//ml:go_default_library",
+        "//output:go_default_library",
+        "//scrape:go_default_library",
+        "//utils:go_default_library",
+        "@com_github_alecthomas_kong//:go_default_library",
+    ],
 )
 
 go_binary(
@@ -39,6 +46,7 @@ go_test(
         "//scrape:go_default_library",
         "//utils:go_default_library",
         "@com_github_nsf_jsondiff//:go_default_library",
+        "@com_github_sergi_go_diff//:go_default_library",
         "@com_github_sergi_go_diff//diffmatchpatch:go_default_library",
     ],
 )
