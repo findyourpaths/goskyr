@@ -767,12 +767,12 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin) (map[string]
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("found %d configs\n", len(cs))
+	// fmt.Printf("found %d configs\n", len(cs))
 
 	// subCConfigBase := filepath.Join(opts.outputDirBase, opts.configID.Slug+"__")
 	// slog.Debug("in ConfigurationsForSubpages()", "subCConfigBase", subCConfigBase)
 	for id, c := range cs {
-		fmt.Printf("for %q, found %d itemmaps\n", id, len(c.ItemMaps))
+		// fmt.Printf("for %q, found %d itemmaps\n", id, len(c.ItemMaps))
 		slog.Debug("in ConfigurationsForSubpages()", "id", id)
 		slog.Debug("before", "c.Scrapers[0].Item", c.Scrapers[0].Item)
 		c.Scrapers[0].Item = strings.TrimPrefix(c.Scrapers[0].Item, "body > htmls > ")

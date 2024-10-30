@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"runtime/pprof"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/alecthomas/kong"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/generate"
 	"github.com/findyourpaths/goskyr/ml"
-	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 )
@@ -84,14 +84,14 @@ func (a *ExtractFeaturesCmd) Run(globals *Globals) error {
 type GenerateCmd struct {
 	URL string `arg:"" help:"Automatically generate a config file for the given input url."`
 
-	Batch               bool   `short:"b" long:"batch" help:"Run batch (not interactively) to generate the config file."`
-	DoSubpages          bool   `short:"s" long:"subpages" help:"Whether to generate configurations for subpages as well."`
-	FieldsVary          bool   `long:"fieldsvary" help:"Only show fields that have varying values across the list of items. Works in combination with the -g flag."`
+	Batch               bool   `short:"b" long:"batch" default:true help:"Run batch (not interactively) to generate the config file."`
+	DoSubpages          bool   `short:"s" long:"subpages" default:true help:"Whether to generate configurations for subpages as well."`
+	FieldsVary          bool   `long:"fieldsvary" default:true help:"Only show fields that have varying values across the list of items."`
 	File                string `help:"skip retrieving from the URL and use this saved copy of the page instead"`
 	MinOcc              int    `short:"m" long:"min" help:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
 	OutputDir           string `help:"The output directory."`
 	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
-	RenderJs            bool   `short:"r" long:"renderjs" help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
+	RenderJs            bool   `short:"r" long:"renderjs" default:true help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
 	WordsDir            string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
 }
 
@@ -175,6 +175,13 @@ func (a *GenerateCmd) Run(globals *Globals) error {
 type RegenerateCmd struct{}
 
 func (a *RegenerateCmd) Run(globals *Globals) error {
+	f, err := os.Create("regenerate.prof")
+	if err != nil {
+		return err
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	for dir, urlsForTestnames := range urlsForTestnamesByDir {
 		for testname, url := range urlsForTestnames {
 			fmt.Printf("Regenerating test %q\n", testname)
@@ -211,22 +218,30 @@ func (a *ScrapeCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error reading config: %v", err)
 	}
 
-	allItems := output.ItemMaps{}
-	for _, s := range conf.Scrapers {
-		items, err := scrape.Page(&s, &conf.Global, true, a.File)
-		if err != nil {
-			slog.Error("error scraping", "err", err)
-			continue
+	itemMaps, err := scrape.Page(&conf.Scrapers[0], &conf.Global, true, a.File)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("found %d itemMaps\n", len(itemMaps))
+	f := &fetch.FileFetcher{}
+	slugID := fetch.MakeURLStringSlug(conf.Scrapers[0].URL)
+	fetchFn := func(u string) (*goquery.Document, error) {
+		u = "file://" + mainDir + "/" + slugID + "_subpages" + "/" + fetch.MakeURLStringSlug(u) + ".html"
+		slog.Debug("in ScrapeCmd.Run()", "u", u)
+		return fetch.GQDocument(f, u, nil)
+	}
+	if len(conf.Scrapers) > 1 {
+		if err = scrape.Subpages(conf, &conf.Scrapers[1], itemMaps, fetchFn); err != nil {
+			return err
 		}
-		allItems = append(allItems, items...)
 	}
 
 	if a.ToStdout {
-		fmt.Println(allItems) //conf.String())
+		fmt.Println(itemMaps) //conf.String())
 	}
 
 	if a.JSONFile != "" {
-		if err := utils.WriteJSONFile(a.JSONFile, allItems); err != nil {
+		if err := utils.WriteJSONFile(a.JSONFile, itemMaps); err != nil {
 			return fmt.Errorf("error writing json file to path: %q: %v", a.JSONFile, err)
 		}
 	}

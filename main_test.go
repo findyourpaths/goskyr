@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
@@ -17,7 +16,6 @@ import (
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
-	"github.com/gosimple/slug"
 	"github.com/nsf/jsondiff"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -222,9 +220,7 @@ func getItems(dir string, testname string, config *scrape.Config) (output.ItemMa
 		}
 		f := &fetch.FileFetcher{}
 		fetchFn := func(u string) (*goquery.Document, error) {
-			u = strings.TrimPrefix(u, "http://")
-			u = strings.TrimPrefix(u, "https://")
-			u = "file://" + filepath.Join(testInputDir, dir, testname+"_subpages", slug.Make(u)+".html")
+			u = "file://" + filepath.Join(testInputDir, dir, testname+"_subpages", fetch.MakeURLStringSlug(u)+".html")
 			return fetch.GQDocument(f, u, nil)
 		}
 		err = scrape.Subpages(config, &config.Scrapers[1], itemMaps, fetchFn)
