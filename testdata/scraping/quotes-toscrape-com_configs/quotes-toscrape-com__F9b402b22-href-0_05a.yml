@@ -88,4 +88,5 @@ scrapers:
           location:
             - selector: div.author-details > p > span.author-born-location
           can_be_empty: true
+      render_js: true
 itemmaps: []

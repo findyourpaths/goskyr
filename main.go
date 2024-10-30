@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"runtime/pprof"
 
 	"github.com/alecthomas/kong"
+	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/generate"
 	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/output"
@@ -52,6 +55,7 @@ type CLI struct {
 
 	ExtractFeatures ExtractFeaturesCmd `cmd:"" help:"Extract ML features based on the given configuration file"`
 	Generate        GenerateCmd        `cmd:"" help:"Automatically generate a configuration file for the given URL"`
+	Regenerate      RegenerateCmd      `cmd:"" help:"Automatically regenerate test data"`
 	Scrape          ScrapeCmd          `cmd:"" help:"Scrape"`
 }
 
@@ -94,6 +98,13 @@ type GenerateCmd struct {
 var mainDir = "/tmp/goskyr/main/"
 
 func (a *GenerateCmd) Run(globals *Globals) error {
+	f, err := os.Create("generate.prof")
+	if err != nil {
+		return err
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	// fmt.Printf("Config: %s\n", globals.Config)
 	// fmt.Printf("Attaching to: %v\n", a.Container)
 	// fmt.Printf("Batch: %v\n", a.Batch)
@@ -138,31 +149,71 @@ func (a *GenerateCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error generating configs: %v", err)
 	}
 	// fmt.Printf("pageOpts before generate.ConfigurationsForAllSubpages: %#v\n", pageOpts)
+	var subCs map[string]*scrape.Config
 	if pageOpts.DoSubpages {
-		if _, err := generate.ConfigurationsForAllSubpages(pageOpts, cs); err != nil {
+		if subCs, err = generate.ConfigurationsForAllSubpages(pageOpts, cs); err != nil {
 
 			return fmt.Errorf("error generating configuration for all subpages: %v", err)
+		}
+	}
+
+	outDir := filepath.Join(mainDir, fetch.MakeURLStringSlug(a.URL)+"_configs")
+	for _, c := range cs {
+		if err := c.WriteToFile(outDir); err != nil {
+			return err
+		}
+	}
+	for _, c := range subCs {
+		if err := c.WriteToFile(outDir); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type RegenerateCmd struct{}
+
+func (a *RegenerateCmd) Run(globals *Globals) error {
+	for dir, urlsForTestnames := range urlsForTestnamesByDir {
+		for testname, url := range urlsForTestnames {
+			fmt.Printf("Regenerating test %q\n", testname)
+
+			_, err := os.Stat(filepath.Join("testdata", dir, testname+"_subpages"))
+			doSubpages := err == nil
+			cmd := GenerateCmd{
+				Batch:      true,
+				DoSubpages: doSubpages,
+				FieldsVary: true,
+				File:       filepath.Join("testdata", dir, testname+".html"),
+				OutputDir:  "/tmp/goskyr/main/",
+				RenderJs:   true,
+				URL:        url,
+			}
+			if err := cmd.Run(globals); err != nil {
+				fmt.Printf("ERROR: error running generate with dir: %q, testname: %q, url: %q\n", dir, testname, url)
+			}
 		}
 	}
 	return nil
 }
 
 type ScrapeCmd struct {
-	File string `arg:"" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
-
-	ToStdout bool   `short:"o" long:"stdout" default:"true" help:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
-	JSONFile string `short:"j" long:"json" description:"Writes scraped data as JSON to the given file path."`
+	ConfigFile string `arg:"" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
+	File       string `help:"skip retrieving from the URL and use this saved copy of the page instead"`
+	ToStdout   bool   `short:"o" long:"stdout" default:"true" help:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
+	JSONFile   string `short:"j" long:"json" description:"Writes scraped data as JSON to the given file path."`
 }
 
 func (a *ScrapeCmd) Run(globals *Globals) error {
-	conf, err := scrape.ReadConfig(a.File)
+	conf, err := scrape.ReadConfig(a.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("error reading config: %v", err)
 	}
 
 	allItems := output.ItemMaps{}
 	for _, s := range conf.Scrapers {
-		items, err := scrape.Page(&s, &conf.Global, false, "")
+		items, err := scrape.Page(&s, &conf.Global, true, a.File)
 		if err != nil {
 			slog.Error("error scraping", "err", err)
 			continue
@@ -191,4 +242,31 @@ func (a *TrainCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error training model: %v", err)
 	}
 	return nil
+}
+
+var htmlSuffix = ".html"
+var configSuffix = ".yml"
+var jsonSuffix = ".json"
+
+var writeActualTestOutputs = true
+var testOutputDir = "/tmp/goskyr/main_test/"
+var testInputDir = "testdata/"
+
+// urlsForTestnames stores the live URLs used to create tests. They are needed to resolve relative paths for event pages that appear in event-list pages. To add new tests, run:
+//
+//	go run main.go --debug generate https://books.toscrape.com --fields-vary --batch --do-subpages --output-dir /tmp/goskyr/main/
+//
+// and copy the new directory within /tmp/goskyr/main/ to testdata.
+var urlsForTestnamesByDir = map[string]map[string]string{
+	"chicago": {
+		"hideoutchicago-com-events": "https://hideoutchicago.com/events",
+	},
+	"scraping": {
+		"books-toscrape-com":             "https://books.toscrape.com",
+		"quotes-toscrape-com":            "https://quotes.toscrape.com",
+		"realpython-github-io-fake-jobs": "https://realpython.github.io/fake-jobs/",
+		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets",
+		"www-scrapethissite-com-pages-forms":                             "https://www.scrapethissite.com/pages/forms",
+		"www-scrapethissite-com-pages-simple":                            "https://www.scrapethissite.com/pages/simple",
+	},
 }

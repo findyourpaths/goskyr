@@ -62,4 +62,5 @@ scrapers:
             - selector: header.fixed-top.navbar.navbar-dark.navbar-expand-lg.navbar-static.svg-background > div.container > div.in.side-collapse > nav.collapse.navbar-collapse > ul.nav.navbar-nav.navbar-right > li.nav-item > a.nav-link
               attr: href
           can_be_empty: true
+      render_js: true
 itemmaps: []

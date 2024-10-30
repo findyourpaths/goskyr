@@ -19,6 +19,7 @@ scrapers:
           location:
             - attr: href
           can_be_empty: true
+      render_js: true
     - name: books-toscrape-com__Fd88b1752-href-0_10aa
       url: https://books.toscrape.com
       item: div.container-fluid.page > div.page_inner
@@ -254,4 +255,5 @@ scrapers:
             - selector: ul.breadcrumb > li:nth-child(3) > a
               attr: href
           can_be_empty: true
+      render_js: true
 itemmaps: []

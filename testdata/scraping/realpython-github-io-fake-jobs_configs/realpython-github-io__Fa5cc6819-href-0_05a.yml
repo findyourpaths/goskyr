@@ -29,4 +29,5 @@ scrapers:
           location:
             - selector: h2.company.is-4.subtitle
           can_be_empty: true
+      render_js: true
 itemmaps: []

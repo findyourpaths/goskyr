@@ -22,33 +22,6 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-var htmlSuffix = ".html"
-var configSuffix = ".yml"
-var jsonSuffix = ".json"
-
-var writeActualTestOutputs = true
-var testOutputDir = "/tmp/goskyr/main_test/"
-var testInputDir = "testdata/"
-
-// urlsForTestnames stores the live URLs used to create tests. They are needed to resolve relative paths for event pages that appear in event-list pages. To add new tests, run:
-//
-//	go run main.go --debug generate https://books.toscrape.com --fields-vary --batch --do-subpages --output-dir /tmp/goskyr/main/
-//
-// and copy the new directory within /tmp/goskyr/main/ to testdata.
-var urlsForTestnamesByDir = map[string]map[string]string{
-	"chicago": {
-		"hideoutchicago-com-events": "https://hideoutchicago.com/events",
-	},
-	"scraping": {
-		"books-toscrape-com":             "https://books.toscrape.com",
-		"quotes-toscrape-com":            "https://quotes.toscrape.com",
-		"realpython-github-io-fake-jobs": "https://realpython.github.io/fake-jobs/",
-		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets",
-		"www-scrapethissite-com-pages-simple":                            "https://www.scrapethissite.com/pages/simple",
-		"www-scrapethissite-com-pages-forms":                             "https://www.scrapethissite.com/pages/forms",
-	},
-}
-
 func TestGenerate(t *testing.T) {
 	dirs := []string{}
 	for dir := range urlsForTestnamesByDir {
@@ -85,13 +58,14 @@ func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
 
 	opts, err := generate.InitOpts(generate.ConfigOptions{
 		Batch:       true,
-		InputDir:    inputDir,
-		URL:         urlsForTestnamesByDir[dir][testname],
 		DoSubpages:  doSubpages,
+		File:        filepath.Join(inputDir, testname+".html"),
+		InputDir:    inputDir,
 		MinOccs:     []int{5, 10, 20},
 		OnlyVarying: true,
 		OutputDir:   outputDir,
-		File:        filepath.Join(inputDir, testname+".html"),
+		RenderJS:    true,
+		URL:         urlsForTestnamesByDir[dir][testname],
 	})
 	if err != nil {
 		t.Fatalf("error initializing page options: %v", err)

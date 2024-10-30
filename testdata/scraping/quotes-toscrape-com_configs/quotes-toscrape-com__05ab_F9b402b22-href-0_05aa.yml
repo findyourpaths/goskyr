@@ -57,6 +57,7 @@ scrapers:
           location:
             - selector: span.text
           can_be_empty: true
+      render_js: true
     - name: quotes-toscrape-com__F9b402b22-href-0_05aa
       url: https://quotes.toscrape.com
       item: div.container > div.author-details
@@ -81,4 +82,5 @@ scrapers:
           location:
             - selector: p > span.author-born-location
           can_be_empty: true
+      render_js: true
 itemmaps: []

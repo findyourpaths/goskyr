@@ -57,4 +57,5 @@ scrapers:
           location:
             - selector: span.text
           can_be_empty: true
+      render_js: true
 itemmaps: []

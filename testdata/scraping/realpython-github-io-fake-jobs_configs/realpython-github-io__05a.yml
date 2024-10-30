@@ -29,4 +29,5 @@ scrapers:
           location:
             - selector: div.content > p.location
           can_be_empty: true
+      render_js: true
 itemmaps: []

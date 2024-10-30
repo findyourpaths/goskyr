@@ -29,4 +29,5 @@ scrapers:
             - selector: h3.country-name
               child_index: 2
           can_be_empty: true
+      render_js: true
 itemmaps: []

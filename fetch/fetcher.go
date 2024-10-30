@@ -40,6 +40,17 @@ type StaticFetcher struct {
 
 var htmlOutputDir = "/tmp/goskyr/scraper/fetchToDoc/"
 
+func TrimURLScheme(u string) string {
+	u = strings.TrimPrefix(u, "file://")
+	u = strings.TrimPrefix(u, "http://")
+	u = strings.TrimPrefix(u, "https://")
+	return u
+}
+
+func MakeURLStringSlug(u string) string {
+	return slug.Make(TrimURLScheme(u))
+}
+
 func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*goquery.Document, error) {
 	// slog.Debug("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
 	// slog.Debug("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
