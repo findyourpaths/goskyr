@@ -354,6 +354,7 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 			// UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
 		}
 	}
+	fmt.Println("in scrape.Page()", "u", u)
 
 	rs := output.ItemMaps{}
 
@@ -414,7 +415,8 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 
 	s.guessYear(rs, time.Now())
 
-	slog.Debug("Scraper.Page() returning", "len(items)", len(rs), "items.TotalFields()", rs.TotalFields())
+	fmt.Println("in scrape.Page()", "len(items)", len(rs), "items.TotalFields()", rs.TotalFields())
+	slog.Debug("in scrape.Page()", "len(items)", len(rs), "items.TotalFields()", rs.TotalFields())
 	return rs, nil
 }
 
@@ -428,21 +430,23 @@ func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMa
 	rs := output.ItemMaps{}
 	baseUrl := getBaseURL(s.URL, gqdoc)
 
-	slog.Debug("in Scraper.GQDocumentItems()", "c.Item", s.Item)
-	slog.Debug("in Scraper.GQDocumentItems()", "len(doc.Find(c.Item).Nodes)", len(gqdoc.Find(s.Item).Nodes))
+	slog.Debug("in scrape.GQDocument()", "s", s)
+	slog.Debug("in scrape.GQDocument()", "rawDyn", rawDyn)
+
 	gqdoc.Find(s.Item).Each(func(i int, sel *goquery.Selection) {
 		item, err := GQSelection(s, sel, baseUrl, rawDyn)
 		if err != nil {
 			slog.Warn("in Scraper.GQDocumentItems()", "err", err.Error())
 		}
 		if item != nil {
+			// fmt.Println("in scrape.GQDocument(), discarding empty item")
 			rs = append(rs, item)
 		}
 	})
 
 	s.guessYear(rs, time.Now())
 
-	slog.Debug("Scraper.GQDocumentItems() returning", "len(items)", len(rs), "items.TotalFields()", rs.TotalFields())
+	// fmt.Println("in scrape.GQDocument()", "len(items)", len(rs), "items.TotalFields()", rs.TotalFields())
 	return rs, nil
 }
 

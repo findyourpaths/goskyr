@@ -7,15 +7,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/agnivade/levenshtein"
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/scrape"
@@ -23,60 +20,6 @@ import (
 	"github.com/gosimple/slug"
 	"golang.org/x/net/html"
 )
-
-// A node is our representation of a node in an html tree
-type node struct {
-	tagName       string
-	classes       []string
-	pseudoClasses []string
-}
-
-func (n node) string() string {
-	nodeString := n.tagName
-	for _, cl := range n.classes {
-		// https://www.itsupportguides.com/knowledge-base/website-tips/css-colon-in-id/
-		cl = strings.ReplaceAll(cl, ":", "\\:")
-		cl = strings.ReplaceAll(cl, ">", "\\>")
-		// https://stackoverflow.com/questions/45293534/css-class-starting-with-number-is-not-getting-applied
-		if unicode.IsDigit(rune(cl[0])) {
-			cl = fmt.Sprintf(`\3%s `, string(cl[1:]))
-		}
-		nodeString += fmt.Sprintf(".%s", cl)
-	}
-	if len(n.pseudoClasses) > 0 {
-		nodeString += fmt.Sprintf(":%s", strings.Join(n.pseudoClasses, ":"))
-	}
-	return nodeString
-}
-
-func (n node) equals(n2 node) bool {
-	if n.tagName == n2.tagName {
-		if utils.SliceEquals(n.classes, n2.classes) {
-			if utils.SliceEquals(n.pseudoClasses, n2.pseudoClasses) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// A path is a list of nodes starting from the root node and going down
-// the html tree to a specific node
-type path []node
-
-func (p path) string() string {
-	nodeStrings := []string{}
-	for _, n := range p {
-		nodeStrings = append(nodeStrings, n.string())
-	}
-	return strings.Join(nodeStrings, " > ")
-}
-
-// distance calculates the levenshtein distance between the string represention
-// of two paths
-func (p path) distance(p2 path) float64 {
-	return float64(levenshtein.ComputeDistance(p.string(), p2.string()))
-}
 
 func findSharedRootSelector(locPropsSel []*locationProps) path {
 	for i := 0; ; i++ {
@@ -824,10 +767,12 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin) (map[string]
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("found %d configs\n", len(cs))
 
 	// subCConfigBase := filepath.Join(opts.outputDirBase, opts.configID.Slug+"__")
 	// slog.Debug("in ConfigurationsForSubpages()", "subCConfigBase", subCConfigBase)
 	for id, c := range cs {
+		fmt.Printf("for %q, found %d itemmaps\n", id, len(c.ItemMaps))
 		slog.Debug("in ConfigurationsForSubpages()", "id", id)
 		slog.Debug("before", "c.Scrapers[0].Item", c.Scrapers[0].Item)
 		c.Scrapers[0].Item = strings.TrimPrefix(c.Scrapers[0].Item, "body > htmls > ")
@@ -916,59 +861,6 @@ func fetchSubpages(us []string, base string) error {
 		}
 	}
 	return nil
-}
-
-var spacesRE = regexp.MustCompile(`\s+`)
-
-// getTagMetadata, for a given node returns a map of key value pairs (only for the attriutes we're interested in) and
-// a list of this node's classes and a list of this node's pseudo classes (currently only nth-child).
-func getTagMetadata(tagName string, z *html.Tokenizer, siblingNodes []node) (map[string]string, []string, []string) {
-	allowedAttrs := map[string]map[string]bool{
-		"a":   {"href": true},
-		"img": {"src": true},
-	}
-	moreAttr := true
-	attrs := make(map[string]string)
-	var cls []string       // classes
-	if tagName != "body" { // we don't care about classes for the body tag
-		for moreAttr {
-			k, v, m := z.TagAttr()
-			vString := strings.TrimSpace(string(v))
-			kString := string(k)
-			if kString == "class" && vString != "" {
-				cls = spacesRE.Split(vString, -1)
-				j := 0
-				for _, cl := range cls {
-					// for now we ignore classes that contain dots
-					if cl != "" && !strings.Contains(cl, ".") {
-						cls[j] = cl
-						j++
-					}
-				}
-				cls = cls[:j]
-			}
-			if _, found := allowedAttrs[tagName]; found {
-				if _, found := allowedAttrs[tagName][kString]; found {
-					attrs[kString] = vString
-				}
-			}
-			moreAttr = m
-		}
-	}
-	var pCls []string // pseudo classes
-	// only add nth-child if there has been another node before at the same
-	// level (sibling node) with same tag and the same classes
-	for i := 0; i < len(siblingNodes); i++ {
-		childNode := siblingNodes[i]
-		if childNode.tagName == tagName {
-			if utils.SliceEquals(childNode.classes, cls) {
-				pCls = []string{fmt.Sprintf("nth-child(%d)", len(siblingNodes)+1)}
-				break
-			}
-		}
-
-	}
-	return attrs, cls, pCls
 }
 
 func joinPageSubpages(subDir string, subURLs []string) (string, error) {
