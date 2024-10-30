@@ -810,22 +810,18 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin) (map[string]
 	}
 
 	// slog.Debug("in ConfigurationsForSubpages()", "mergedCConfigBase", mergedCConfigBase)
-	for _, pj := range pjs {
-		slog.Debug("looking at", "pj.config.ID.String()", pj.config.ID.String())
-		gqdocs := []*goquery.Document{}
-		for _, fj := range pj.fieldJoins {
-			// slog.Debug("looking at", "i", i, "fj.name", fj.name)
-			gqdocs = append(gqdocs, gqdocsByURL[fj.url])
-		}
-		for _, c := range cs {
-			slog.Debug("looking at", "c.ID", c.ID)
-			rs[c.ID.String()] = c
+	for _, c := range cs {
+		slog.Debug("looking at", "c.ID", c.ID)
+		rs[c.ID.String()] = c
+		subScraper := c.Scrapers[0]
+		subScraper.Item = strings.TrimPrefix(subScraper.Item, "body > htmls > ")
+
+		for _, pj := range pjs {
+			slog.Debug("looking at", "pj.config.ID.String()", pj.config.ID.String())
 
 			mergedC := pj.config.Copy()
 			mergedC.ID.Field = opts.configID.Field
 			mergedC.ID.SubID = c.ID.SubID
-			subScraper := c.Scrapers[0]
-			subScraper.Item = strings.TrimPrefix(subScraper.Item, "body > htmls > ")
 			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
 
 			if err := scrape.Subpages(mergedC, &subScraper, mergedC.ItemMaps, fetchFn); err != nil {
