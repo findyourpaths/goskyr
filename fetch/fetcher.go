@@ -170,8 +170,8 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 	}
 
 	// log.Printf("DynamicFetcher.Fetch(urlStr: %q, opts: %#v)", urlStr, opts)
-	logger := slog.With(slog.String("fetcher", "dynamic"), slog.String("url", urlStr))
-	logger.Debug("fetching page", slog.String("user-agent", d.UserAgent))
+	slg := slog.With(slog.String("fetcher", "dynamic"), slog.String("url", urlStr))
+	slg.Debug("fetching page", slog.String("user-agent", d.UserAgent))
 	// start := time.Now()
 	ctx, cancel := chromedp.NewContext(d.allocContext)
 	// ctx, cancel := chromedp.NewContext(d.allocContext,
@@ -196,9 +196,9 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 		chromedp.Navigate(urlStr),
 		chromedp.Sleep(sleepTime),
 	}
-	logger.Debug(fmt.Sprintf("appended chrome actions: Navigate, Sleep(%v)", sleepTime))
+	slg.Debug(fmt.Sprintf("appended chrome actions: Navigate, Sleep(%v)", sleepTime))
 	for j, ia := range opts.Interaction {
-		logger.Debug(fmt.Sprintf("processing interaction nr %d, type %s", j, ia.Type))
+		slg.Debug(fmt.Sprintf("processing interaction nr %d, type %s", j, ia.Type))
 		delay := 500 * time.Millisecond // default is .5 seconds
 		if ia.Delay > 0 {
 			delay = time.Duration(ia.Delay) * time.Millisecond
@@ -218,11 +218,11 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 					if len(nodes) == 0 {
 						return nil
 					} // nothing to do
-					logger.Debug(fmt.Sprintf("clicking on node with selector: %s", ia.Selector))
+					slg.Debug(fmt.Sprintf("clicking on node with selector: %s", ia.Selector))
 					return chromedp.MouseClickNode(nodes[0]).Do(ctx)
 				}))
 				actions = append(actions, chromedp.Sleep(delay))
-				logger.Debug(fmt.Sprintf("appended chrome actions: ActionFunc (mouse click), Sleep(%v)", delay))
+				slg.Debug(fmt.Sprintf("appended chrome actions: ActionFunc (mouse click), Sleep(%v)", delay))
 			}
 		}
 	}
@@ -244,15 +244,15 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 		var buf []byte
 		actions = append(actions, chromedp.CaptureScreenshot(&buf))
 		actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
-			logger.Debug(fmt.Sprintf("writing screenshot to file"))
+			slg.Debug(fmt.Sprintf("writing screenshot to file"))
 			fpath, err := utils.WriteTempStringFile(filepath.Join(pngOutputDir, u.Host+".png"), string(buf))
 			if err != nil {
 				return err
 			}
-			logger.Debug(fmt.Sprintf("wrote screenshot to file %s", fpath))
+			slg.Debug(fmt.Sprintf("wrote screenshot to file %s", fpath))
 			return nil
 		}))
-		logger.Debug("appended chrome actions: CaptureScreenshot, ActionFunc (save screenshot)")
+		slg.Debug("appended chrome actions: CaptureScreenshot, ActionFunc (save screenshot)")
 	}
 
 	// run task list

@@ -32,23 +32,6 @@ var doDebug = true
 
 // var doDebug = false
 
-var writeSeparateLogFiles = true
-
-// var writeSeparateLogFiles = false
-
-func setDefaultLogger(logPath string) (*slog.Logger, error) {
-	prevLogger := slog.Default()
-	if err := os.MkdirAll(filepath.Dir(logPath), 0770); err != nil {
-		return nil, fmt.Errorf("error creating parent directories for log output file %q: %v", logPath, err)
-	}
-	logF, err := os.Create(logPath)
-	if err != nil {
-		return nil, fmt.Errorf("error opening log output file %q: %v", logPath, err)
-	}
-	slog.SetDefault(slog.New(slog.NewTextHandler(logF, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	return prevLogger, nil
-}
-
 // GlobalConfig is used for storing global configuration parameters that
 // are needed across all scrapers
 type GlobalConfig struct {
@@ -357,12 +340,12 @@ type Scraper struct {
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
 func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.ItemMaps, error) {
-	if writeSeparateLogFiles {
-		prevLogger, err := setDefaultLogger("/tmp/goskyr/main/scrape_Page_log.txt")
+	if output.WriteSeparateLogFiles {
+		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_Page_log.txt")
 		if err != nil {
 			return nil, err
 		}
-		defer slog.SetDefault(prevLogger)
+		defer output.RestoreDefaultLogger(prevLogger)
 	}
 	slg := slog.With(slog.String("s.Name", s.Name))
 	slg.Debug("scrape.Page()")
@@ -460,12 +443,12 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
 func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMaps, error) {
-	if writeSeparateLogFiles {
-		prevLogger, err := setDefaultLogger("/tmp/goskyr/main/scrape_GQDocument_log.txt")
+	if output.WriteSeparateLogFiles {
+		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQDocument_log.txt")
 		if err != nil {
 			return nil, err
 		}
-		defer slog.SetDefault(prevLogger)
+		defer output.RestoreDefaultLogger(prevLogger)
 	}
 	slg := slog.With(slog.String("s.Name", s.Name))
 	slg.Debug("scrape.GQDocument()")
@@ -495,19 +478,19 @@ func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMa
 	return rs, nil
 }
 
-// GQSelectionItem fetches and returns an items from a website according to the
+// GQSelection fetches and returns an items from a website according to the
 // Scraper's paramaters. When rawDyn is set to true the item returned is not
 // processed according to its type but instead the raw value based only on the
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not subpages). This is used by the ML feature generation.
 func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
-	if writeSeparateLogFiles {
-		prevLogger, err := setDefaultLogger("/tmp/goskyr/main/scrape_GQSelection_log.txt")
+	if output.WriteSeparateLogFiles {
+		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQSelection_log.txt")
 		if err != nil {
 			return nil, err
 		}
-		defer slog.SetDefault(prevLogger)
+		defer output.RestoreDefaultLogger(prevLogger)
 	}
 	slg := slog.With(slog.String("s.Name", s.Name))
 	slg.Debug("scrape.GQSelection()")
@@ -1269,35 +1252,21 @@ func extractJsonField(p string, s string) (string, error) {
 	return extractedString, nil
 }
 
-// func (c *Scraper) ExtendGQDocumentsItems(fname string, itemMaps output.ItemMaps, gqdocs []*goquery.Document) error {
-// 	for i, gqdoc := range gqdocs {
-// 		subIMs, err := c.GQDocumentItems(gqdoc, true)
-// 		if err != nil {
-// 			return fmt.Errorf("error scraping subpage for field %q: %v", fname, err)
-// 		}
-// 		// if len(subIMs) > 1 {
-// 		// 	slog.Debug("error scraping subpage: expected no more than one item map", "fname", fname, "len(subIMs)", len(subIMs))
-// 		// 	continue
-// 		// }
-// 		// The subpage may not have had a valid ItemMap.
-// 		if len(subIMs) != 1 {
-// 			slog.Debug("error scraping subpage: expected exactly one item map", "fname", fname, "len(subIMs)", len(subIMs))
-// 			continue
-// 		}
-// 		for k, v := range subIMs[0] {
-// 			itemMaps[i][fname+"__"+k] = v
-// 		}
-// 	}
-// 	return nil
-// }
+var SkipSubURLExt = map[string]bool{
+	".gif":  true,
+	".jfif": true,
+	".jpeg": true,
+	".jpg":  true,
+	".png":  true,
+}
 
 func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (*goquery.Document, error)) error {
-	if writeSeparateLogFiles {
-		prevLogger, err := setDefaultLogger("/tmp/goskyr/main/scrape_Subpages_log.txt")
+	if output.WriteSeparateLogFiles {
+		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.String() + "_scrape_Subpages_log.txt")
 		if err != nil {
 			return err
 		}
-		defer slog.SetDefault(prevLogger)
+		defer output.RestoreDefaultLogger(prevLogger)
 	}
 	slg := slog.With(slog.String("s.Name", s.Name))
 	slg.Debug("scrape.Subpages()")
@@ -1309,7 +1278,12 @@ func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (
 	}
 
 	for i, im := range ims {
-		rel, err := url.Parse(im[c.ID.Field].(string))
+		relStr := im[c.ID.Field].(string)
+		if SkipSubURLExt[filepath.Ext(relStr)] || strings.HasPrefix(relStr, "mailto:") {
+			continue
+		}
+
+		rel, err := url.Parse(relStr)
 		if err != nil {
 			return fmt.Errorf("error parsing subpage url %q: %v", c.ID.Field, err)
 		}
@@ -1333,12 +1307,12 @@ func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (
 }
 
 func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc *goquery.Document) error {
-	if writeSeparateLogFiles {
-		prevLogger, err := setDefaultLogger("/tmp/goskyr/main/scrape_SubGQDocument_log.txt")
+	if output.WriteSeparateLogFiles {
+		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.String() + "_scrape_SubGQDocument_log.txt")
 		if err != nil {
 			return err
 		}
-		defer slog.SetDefault(prevLogger)
+		defer output.RestoreDefaultLogger(prevLogger)
 	}
 	slg := slog.With(slog.String("s.Name", s.Name))
 	slg.Debug("scrape.SubGQDocument()", "fname", fname)
@@ -1350,7 +1324,9 @@ func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc
 	}
 	// The subpage may not have had a valid ItemMap.
 	if len(subIMs) != 1 {
-		return fmt.Errorf("error scraping subpage: expected exactly one item map for configID: %q, fname %q, got %d instead", c.ID.String(), fname, len(subIMs))
+		// return fmt.Errorf("error scraping subpage: expected exactly one item map for configID: %q, fname %q, got %d instead", c.ID.String(), fname, len(subIMs))
+		// fmt.Printf("error scraping subpage: expected exactly one item map for configID: %q, fname %q, got %d instead", c.ID.String(), fname, len(subIMs))
+		return nil
 	}
 	for k, v := range subIMs[0] {
 		im[fname+"__"+k] = v

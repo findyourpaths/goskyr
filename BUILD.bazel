@@ -20,12 +20,13 @@ go_library(
     importpath = "github.com/findyourpaths/goskyr",
     visibility = ["//visibility:public"],
     deps = [
+        "//fetch:go_default_library",
         "//generate:go_default_library",
         "//ml:go_default_library",
-        "//output:go_default_library",
         "//scrape:go_default_library",
         "//utils:go_default_library",
         "@com_github_alecthomas_kong//:go_default_library",
+        "@com_github_puerkitobio_goquery//:go_default_library",
     ],
 )
 
@@ -41,12 +42,13 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":go_default_library"],
     deps = [
+        "//fetch:go_default_library",
         "//generate:go_default_library",
         "//output:go_default_library",
         "//scrape:go_default_library",
         "//utils:go_default_library",
         "@com_github_nsf_jsondiff//:go_default_library",
-        "@com_github_sergi_go_diff//:go_default_library",
+        "@com_github_puerkitobio_goquery//:go_default_library",
         "@com_github_sergi_go_diff//diffmatchpatch:go_default_library",
     ],
 )
