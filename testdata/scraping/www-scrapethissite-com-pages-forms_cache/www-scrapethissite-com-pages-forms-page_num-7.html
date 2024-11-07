@@ -1,0 +1,1422 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Hockey Teams: Forms, Searching and Pagination | Scrape This Site | A public sandbox for learning web scraping</title>
+    <link rel="icon" type="image/png" href="/static/images/scraper-icon.png">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Browse through a database of NHL team stats since 1990. Practice building a scraper that handles common website interface components.">
+
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-MfvZlkHCEqatNoGiOXveE8FIwMzZg4W85qfrfIFBfYc= sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Lato:400,700" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" type="text/css" href="/static/css/styles.css">
+
+    
+<meta name="robots" content="noindex">
+
+
+  </head>
+
+  <body>
+    <nav id="site-nav">
+            <div class="container">
+                <div class="col-md-12">
+                    <ul class="nav nav-tabs">
+                        <li id="nav-homepage">
+                            <a href="/" class="nav-link hidden-sm hidden-xs">
+                                <img src="/static/images/scraper-icon.png" id="nav-logo">
+                                Scrape This Site
+                            </a>
+                        </li>
+                        <li id="nav-sandbox" class="active">
+                            <a href="/pages/" class="nav-link">
+                                <i class="glyphicon glyphicon-console hidden-sm hidden-xs"></i>
+                                Sandbox
+                            </a>
+                        </li>
+                        <li id="nav-lessons">
+                            <a href="/lessons/" class="nav-link">
+                                <i class="glyphicon glyphicon-education hidden-sm hidden-xs"></i>
+                                Lessons
+                            </a>
+                        </li>
+                        <li id="nav-faq">
+                            <a href="/faq/" class="nav-link">
+                                <i class="glyphicon glyphicon-flag hidden-sm hidden-xs"></i>
+                                FAQ
+                            </a>
+                        </li>
+                        
+                        <li id="nav-login" class="pull-right">
+                            <a href="/login/" class="nav-link">
+                                Login
+                            </a>
+                        </li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-09N5RQCFG4&amp;cx=c&amp;_slc=1"></script><script src="https://connect.facebook.net/signals/config/764287443701341?v=2.9.174&amp;r=stable&amp;domain=www.scrapethissite.com&amp;hme=ead923021ccd3483ef3b9b04703d0a78b943fbdc01e8d7cec21c5059f1f4a5e9&amp;ex_m=70%2C121%2C107%2C111%2C61%2C4%2C100%2C69%2C16%2C97%2C89%2C51%2C54%2C172%2C175%2C187%2C183%2C184%2C186%2C29%2C101%2C53%2C77%2C185%2C167%2C170%2C180%2C181%2C188%2C131%2C41%2C189%2C190%2C34%2C143%2C15%2C50%2C194%2C193%2C133%2C18%2C40%2C1%2C43%2C65%2C66%2C67%2C71%2C93%2C17%2C14%2C96%2C92%2C91%2C108%2C52%2C110%2C39%2C109%2C30%2C94%2C26%2C168%2C171%2C140%2C86%2C56%2C84%2C33%2C73%2C0%2C95%2C32%2C28%2C82%2C83%2C88%2C47%2C46%2C87%2C37%2C11%2C12%2C13%2C6%2C7%2C25%2C22%2C23%2C57%2C62%2C64%2C75%2C102%2C27%2C76%2C9%2C8%2C80%2C48%2C21%2C104%2C103%2C105%2C98%2C10%2C20%2C3%2C38%2C74%2C19%2C5%2C90%2C81%2C44%2C35%2C85%2C2%2C36%2C63%2C42%2C106%2C45%2C79%2C68%2C112%2C60%2C59%2C31%2C99%2C58%2C55%2C49%2C78%2C72%2C24%2C113" async=""></script><script async="" src="https://connect.facebook.net/en_US/fbevents.js"></script><script async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript">
+            var path = document.location.pathname;
+            var tab = undefined;
+            if (path === "/"){
+                tab = document.querySelector("#nav-homepage");
+            } else if (path.indexOf("/faq/") === 0){
+                tab = document.querySelector("#nav-faq");
+            } else if (path.indexOf("/lessons/") === 0){
+                tab = document.querySelector("#nav-lessons");
+            } else if (path.indexOf("/pages/") === 0) {
+                tab = document.querySelector("#nav-sandbox");
+            } else if (path.indexOf("/login/") === 0) {
+                tab = document.querySelector("#nav-login");
+            }
+            tab.classList.add("active")
+        </script>
+
+    
+
+    <div id="page">
+
+        <section id="hockey">
+            <div class="container">
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <h1>
+                            Hockey Teams: Forms, Searching and Pagination
+                            <small>25 items</small>
+                        </h1>
+                        <hr>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <p class="lead">
+                            Browse through a database of NHL team stats since 1990. Practice building a scraper that handles common website interface components.
+                            Take a look at how pagination and search elements change the URL as your browse. Build a web scraper that can conduct searches and paginate through the results.
+                        </p>
+                        <hr>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>
+                            <i class="glyphicon glyphicon-education"></i> There are <a href="/lessons/">8 video lessons</a> that show you how to scrape this page.
+                        </p>
+                        <hr>
+                    </div>
+                    <div class="col-md-6 text-right">
+                        <p>
+                            
+                                Data via
+                                <a href="http://www.opensourcesports.com/hockey/" class="data-attribution" target="_blank">http://www.opensourcesports.com/hockey/</a>
+                            
+                        </p>
+                        <hr>
+                    </div>
+                </div>
+
+                <div class="row search-area">
+                    <div class="col-md-12 text-center">
+                        <form method="GET" action="/pages/forms/" class="form form-inline">
+                            <label for="q">
+                                Search for Teams: &nbsp;
+                            </label>
+                            <input type="text" class="form-control" name="q" id="q" placeholder="Search for Teams">
+                            
+                            <input type="submit" class="btn btn-primary" value="Search">
+                        </form>
+                        <hr>
+                    </div>
+                </div><!--.row.search-area-->
+
+
+                <table class="table">
+                    <tbody><tr>
+                        <th>
+                            Team Name
+                        </th>
+                        <th>
+                            Year
+                        </th>
+                        <th>
+                            Wins
+                        </th>
+                        <th>
+                            Losses
+                        </th>
+                        <th>
+                            OT Losses
+                        </th>
+                        <th>
+                            Win %
+                        </th>
+                        <th>
+                            Goals For (GF)
+                        </th>
+                        <th>
+                            Goals Against (GA)
+                        </th>
+                        <th>
+                            + / -
+                        </th>
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Colorado Avalanche
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            49
+                        </td>
+                        <td class="losses">
+                            24
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-success">
+                            0.598
+                        </td>
+                        
+                        <td class="gf">
+                            277
+                        </td>
+                        <td class="ga">
+                            205
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            72
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Dallas Stars
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            48
+                        </td>
+                        <td class="losses">
+                            26
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-success">
+                            0.585
+                        </td>
+                        
+                        <td class="gf">
+                            252
+                        </td>
+                        <td class="ga">
+                            198
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            54
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Detroit Red Wings
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            38
+                        </td>
+                        <td class="losses">
+                            26
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.463
+                        </td>
+                        
+                        <td class="gf">
+                            253
+                        </td>
+                        <td class="ga">
+                            197
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            56
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Edmonton Oilers
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            36
+                        </td>
+                        <td class="losses">
+                            37
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.439
+                        </td>
+                        
+                        <td class="gf">
+                            252
+                        </td>
+                        <td class="ga">
+                            247
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            5
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Florida Panthers
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            35
+                        </td>
+                        <td class="losses">
+                            28
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.427
+                        </td>
+                        
+                        <td class="gf">
+                            221
+                        </td>
+                        <td class="ga">
+                            201
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            20
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Hartford Whalers
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            32
+                        </td>
+                        <td class="losses">
+                            39
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.39
+                        </td>
+                        
+                        <td class="gf">
+                            226
+                        </td>
+                        <td class="ga">
+                            256
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -30
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Los Angeles Kings
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            28
+                        </td>
+                        <td class="losses">
+                            43
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.341
+                        </td>
+                        
+                        <td class="gf">
+                            214
+                        </td>
+                        <td class="ga">
+                            268
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -54
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Montreal Canadiens
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            31
+                        </td>
+                        <td class="losses">
+                            36
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.378
+                        </td>
+                        
+                        <td class="gf">
+                            249
+                        </td>
+                        <td class="ga">
+                            276
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -27
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            New Jersey Devils
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            45
+                        </td>
+                        <td class="losses">
+                            23
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-success">
+                            0.549
+                        </td>
+                        
+                        <td class="gf">
+                            231
+                        </td>
+                        <td class="ga">
+                            182
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            49
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            New York Islanders
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            29
+                        </td>
+                        <td class="losses">
+                            41
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.354
+                        </td>
+                        
+                        <td class="gf">
+                            240
+                        </td>
+                        <td class="ga">
+                            250
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -10
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            New York Rangers
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            38
+                        </td>
+                        <td class="losses">
+                            34
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.463
+                        </td>
+                        
+                        <td class="gf">
+                            258
+                        </td>
+                        <td class="ga">
+                            231
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            27
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Ottawa Senators
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            31
+                        </td>
+                        <td class="losses">
+                            36
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.378
+                        </td>
+                        
+                        <td class="gf">
+                            226
+                        </td>
+                        <td class="ga">
+                            234
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -8
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Philadelphia Flyers
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            45
+                        </td>
+                        <td class="losses">
+                            24
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-success">
+                            0.549
+                        </td>
+                        
+                        <td class="gf">
+                            274
+                        </td>
+                        <td class="ga">
+                            217
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            57
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Phoenix Coyotes
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            38
+                        </td>
+                        <td class="losses">
+                            37
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.463
+                        </td>
+                        
+                        <td class="gf">
+                            240
+                        </td>
+                        <td class="ga">
+                            243
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -3
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Pittsburgh Penguins
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            38
+                        </td>
+                        <td class="losses">
+                            36
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.463
+                        </td>
+                        
+                        <td class="gf">
+                            285
+                        </td>
+                        <td class="ga">
+                            280
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            5
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            San Jose Sharks
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            27
+                        </td>
+                        <td class="losses">
+                            47
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.329
+                        </td>
+                        
+                        <td class="gf">
+                            211
+                        </td>
+                        <td class="ga">
+                            278
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -67
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            St. Louis Blues
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            36
+                        </td>
+                        <td class="losses">
+                            35
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.439
+                        </td>
+                        
+                        <td class="gf">
+                            236
+                        </td>
+                        <td class="ga">
+                            239
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -3
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Tampa Bay Lightning
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            32
+                        </td>
+                        <td class="losses">
+                            40
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.39
+                        </td>
+                        
+                        <td class="gf">
+                            217
+                        </td>
+                        <td class="ga">
+                            247
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -30
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Toronto Maple Leafs
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            30
+                        </td>
+                        <td class="losses">
+                            44
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.366
+                        </td>
+                        
+                        <td class="gf">
+                            230
+                        </td>
+                        <td class="ga">
+                            273
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -43
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Vancouver Canucks
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            35
+                        </td>
+                        <td class="losses">
+                            40
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.427
+                        </td>
+                        
+                        <td class="gf">
+                            257
+                        </td>
+                        <td class="ga">
+                            273
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -16
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Washington Capitals
+                        </td>
+                        <td class="year">
+                            1996
+                        </td>
+                        <td class="wins">
+                            33
+                        </td>
+                        <td class="losses">
+                            40
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.402
+                        </td>
+                        
+                        <td class="gf">
+                            214
+                        </td>
+                        <td class="ga">
+                            231
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -17
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Mighty Ducks of Anaheim
+                        </td>
+                        <td class="year">
+                            1997
+                        </td>
+                        <td class="wins">
+                            26
+                        </td>
+                        <td class="losses">
+                            43
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.317
+                        </td>
+                        
+                        <td class="gf">
+                            205
+                        </td>
+                        <td class="ga">
+                            261
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -56
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Boston Bruins
+                        </td>
+                        <td class="year">
+                            1997
+                        </td>
+                        <td class="wins">
+                            39
+                        </td>
+                        <td class="losses">
+                            30
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.476
+                        </td>
+                        
+                        <td class="gf">
+                            221
+                        </td>
+                        <td class="ga">
+                            194
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            27
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Buffalo Sabres
+                        </td>
+                        <td class="year">
+                            1997
+                        </td>
+                        <td class="wins">
+                            36
+                        </td>
+                        <td class="losses">
+                            29
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.439
+                        </td>
+                        
+                        <td class="gf">
+                            211
+                        </td>
+                        <td class="ga">
+                            187
+                        </td>
+                        
+                        
+                        <td class="diff text-success">
+                            24
+                        </td>
+                        
+                    </tr>
+                    
+                    <tr class="team">
+                        <td class="name">
+                            Calgary Flames
+                        </td>
+                        <td class="year">
+                            1997
+                        </td>
+                        <td class="wins">
+                            26
+                        </td>
+                        <td class="losses">
+                            41
+                        </td>
+                        <td class="ot-losses">
+                            
+                        </td>
+                        
+                        
+                        <td class="pct text-danger">
+                            0.317
+                        </td>
+                        
+                        <td class="gf">
+                            217
+                        </td>
+                        <td class="ga">
+                            252
+                        </td>
+                        
+                        
+                        <td class="diff text-danger">
+                            -35
+                        </td>
+                        
+                    </tr>
+                    
+                </tbody></table>
+
+
+
+                <div class="row pagination-area">
+                    <div class="col-md-10 text-center">
+                        <ul class="pagination">
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=6" aria-label="Previous">
+                                    <span aria-hidden="true">«</span>
+                                </a>
+                            </li>
+                            
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=1">
+                                    
+                                    1
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=2">
+                                    
+                                    2
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=3">
+                                    
+                                    3
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=4">
+                                    
+                                    4
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=5">
+                                    
+                                    5
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=6">
+                                    
+                                    6
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=7">
+                                    <strong>
+                                    7
+                                    </strong>
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=8">
+                                    
+                                    8
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=9">
+                                    
+                                    9
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=10">
+                                    
+                                    10
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=11">
+                                    
+                                    11
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=12">
+                                    
+                                    12
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=13">
+                                    
+                                    13
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=14">
+                                    
+                                    14
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=15">
+                                    
+                                    15
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=16">
+                                    
+                                    16
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=17">
+                                    
+                                    17
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=18">
+                                    
+                                    18
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=19">
+                                    
+                                    19
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=20">
+                                    
+                                    20
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=21">
+                                    
+                                    21
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=22">
+                                    
+                                    22
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=23">
+                                    
+                                    23
+                                    
+                                </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=24">
+                                    
+                                    24
+                                    
+                                </a>
+                            </li>
+                            
+                            
+                            <li>
+                                <a href="/pages/forms/?page_num=8" aria-label="Next">
+                                    <span aria-hidden="true">»</span>
+                                </a>
+                            </li>
+                            
+                        </ul>
+                    </div><!--.col-->
+                    <div class="col-md-1" style="padding:20px 0">
+                        <strong>Per Page</strong>
+                    </div>
+                    <div class="col-md-1" style="padding:20px 0">
+                        <select class="form-control col-md-3" id="per_page">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div><!--.col-->
+                </div><!--.row.pagination-area-->
+
+
+            </div><!--.container-->
+        </section>
+
+    </div><!--#page-->
+
+
+    <section id="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12 text-center text-muted">
+                    Lessons and Videos © Hartley Brody 2023
+                </div><!--.col-->
+            </div><!--.row-->
+        </div><!--.container-->
+    </section>
+  
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js" integrity="sha256-Sk3nkD6mLTMOF0EOpNtsIry+s1CsaqQC1rVLTAy+0yc= sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
+
+  
+    <script type="text/javascript">
+        $(document).ready( function(){
+            $("#per_page").change(function(){
+                prot = document.location.protocol
+                host = 'www.scrapethissite.com'
+                path = document.location.pathname
+                args = {
+                    "per_page": $("#per_page").val(),
+                }
+                search_val = $("#q").val()
+                if (search_val){
+                    args["q"] = search_val;
+                }
+                document.location = prot + '//' + host + path + '?' + $.param(args);
+            })
+        });
+    </script>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pnotify/2.1.0/pnotify.core.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/pnotify/2.1.0/pnotify.core.min.css" rel="stylesheet" type="text/css">
+
+  <!-- pnotify messages -->
+  <script type="text/javascript">
+    
+    PNotify.prototype.options.styling = "bootstrap3";
+    $(function(){
+      
+    });
+    
+
+    $(function () {
+      $('[data-toggle="tooltip"]').tooltip()
+    })
+  </script>
+
+  <!-- golbal video controls -->
+  <script type="text/javascript">
+    $("video").hover(function() {
+        $(this).prop("controls", true);
+    }, function() {
+        $(this).prop("controls", false);
+    });
+
+    $("video").click(function() {
+        if( this.paused){
+            this.play();
+        }
+        else {
+            this.pause();
+        }
+    });
+    </script>
+
+  <!-- insert google analytics here -->
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-41551755-8', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+  <!-- Facebook Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+
+  fbq('init', '764287443701341');
+  fbq('track', "PageView");</script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=764287443701341&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Facebook Pixel Code -->
+
+  <!-- Google Code for Remarketing Tag -->
+  <script type="text/javascript">
+    /* <![CDATA[ */
+    var google_conversion_id = 950945448;
+    var google_custom_params = window.google_tag_params;
+    var google_remarketing_only = true;
+    /* ]]> */
+    </script>
+    <script type="text/javascript" src="//www.googleadservices.com/pagead/conversion.js">
+    </script><script type="text/javascript" async="" src="https://googleads.g.doubleclick.net/pagead/viewthroughconversion/950945448/?random=1730217013241&amp;cv=9&amp;fst=1730217013241&amp;num=1&amp;guid=ON&amp;resp=GooglemKTybQhCsO&amp;eid=375603260%2C466465926%2C512247838&amp;u_h=1107&amp;u_w=1710&amp;u_ah=1068&amp;u_aw=1658&amp;u_cd=30&amp;u_his=2&amp;u_tz=-300&amp;u_java=false&amp;u_nplug=5&amp;u_nmime=2&amp;sendb=1&amp;ig=1&amp;frm=0&amp;url=https%3A%2F%2Fwww.scrapethissite.com%2Fpages%2Fforms%2F%3Fpage_num%3D7&amp;tiba=Hockey%20Teams%3A%20Forms%2C%20Searching%20and%20Pagination%20%7C%20Scrape%20This%20Site%20%7C%20A%20public%20sandbox%20for%20learning%20web%20scraping&amp;hn=www.googleadservices.com&amp;rfmt=3&amp;fmt=4"></script>
+    <noscript>
+    <div style="display:inline;">
+    <img height="1" width="1" style="border-style:none;" alt="" src="//googleads.g.doubleclick.net/pagead/viewthroughconversion/950945448/?guid=ON&amp;script=0"/>
+    </div>
+  </noscript>
+
+  <!-- Global site tag (gtag.js) - Google AdWords: 950945448 -->
+  <script async="" src="https://www.googletagmanager.com/gtag/js?id=AW-950945448"></script>
+  <script>
+   window.dataLayer = window.dataLayer || [];
+   function gtag(){dataLayer.push(arguments);}
+   gtag('js', new Date());
+
+   gtag('config', 'AW-950945448');
+  </script>
+
+<iframe allow="join-ad-interest-group" data-tagging-id="AW-950945448" data-load-time="1730217013263" height="0" width="0" src="https://td.doubleclick.net/td/rul/950945448?random=1730217013257&amp;cv=11&amp;fst=1730217013257&amp;fmt=3&amp;bg=ffffff&amp;guid=ON&amp;async=1&amp;gtm=45be4ao0h1za200&amp;gcd=13l3l3l3l1l1&amp;dma=0&amp;tag_exp=101533421~101823848~101925629&amp;u_w=1710&amp;u_h=1107&amp;url=https%3A%2F%2Fwww.scrapethissite.com%2Fpages%2Fforms%2F%3Fpage_num%3D7&amp;hn=www.googleadservices.com&amp;frm=0&amp;tiba=Hockey%20Teams%3A%20Forms%2C%20Searching%20and%20Pagination%20%7C%20Scrape%20This%20Site%20%7C%20A%20public%20sandbox%20for%20learning%20web%20scraping&amp;npa=0&amp;pscdl=noapi&amp;auid=664690251.1730217013&amp;uaa=arm&amp;uab=64&amp;uafvl=Chromium%3B130.0.6723.70%7CGoogle%2520Chrome%3B130.0.6723.70%7CNot%253FA_Brand%3B99.0.0.0&amp;uamb=0&amp;uam=&amp;uap=macOS&amp;uapv=15.0.1&amp;uaw=0&amp;fledge=1&amp;data=event%3Dgtag.config" style="display: none; visibility: hidden;"></iframe><iframe height="0" width="0" style="display: none; visibility: hidden;"></iframe><script type="text/javascript" async="" src="https://googleads.g.doubleclick.net/pagead/viewthroughconversion/950945448/?random=1730217013257&amp;cv=11&amp;fst=1730217013257&amp;bg=ffffff&amp;guid=ON&amp;async=1&amp;gtm=45be4ao0h1za200&amp;gcd=13l3l3l3l1l1&amp;dma=0&amp;tag_exp=101533421~101823848~101925629&amp;u_w=1710&amp;u_h=1107&amp;url=https%3A%2F%2Fwww.scrapethissite.com%2Fpages%2Fforms%2F%3Fpage_num%3D7&amp;hn=www.googleadservices.com&amp;frm=0&amp;tiba=Hockey%20Teams%3A%20Forms%2C%20Searching%20and%20Pagination%20%7C%20Scrape%20This%20Site%20%7C%20A%20public%20sandbox%20for%20learning%20web%20scraping&amp;npa=0&amp;pscdl=noapi&amp;auid=664690251.1730217013&amp;uaa=arm&amp;uab=64&amp;uafvl=Chromium%3B130.0.6723.70%7CGoogle%2520Chrome%3B130.0.6723.70%7CNot%253FA_Brand%3B99.0.0.0&amp;uamb=0&amp;uam=&amp;uap=macOS&amp;uapv=15.0.1&amp;uaw=0&amp;fledge=1&amp;data=event%3Dgtag.config&amp;rfmt=3&amp;fmt=4"></script></body></html>

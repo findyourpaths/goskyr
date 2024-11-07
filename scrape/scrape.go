@@ -28,9 +28,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var doDebug = true
+// var doDebug = true
 
-// var doDebug = false
+var doDebug = false
 
 // GlobalConfig is used for storing global configuration parameters that
 // are needed across all scrapers
@@ -340,16 +340,19 @@ type Scraper struct {
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
 func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.ItemMaps, error) {
-	if output.WriteSeparateLogFiles {
-		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_Page_log.txt")
-		if err != nil {
-			return nil, err
+	var slg *slog.Logger
+	if doDebug {
+		if output.WriteSeparateLogFiles {
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_Page_log.txt")
+			if err != nil {
+				return nil, err
+			}
+			defer output.RestoreDefaultLogger(prevLogger)
 		}
-		defer output.RestoreDefaultLogger(prevLogger)
+		slg = slog.With(slog.String("s.Name", s.Name))
+		slg.Debug("scrape.Page()")
+		defer slg.Debug("scrape.Page() returning")
 	}
-	slg := slog.With(slog.String("s.Name", s.Name))
-	slg.Debug("scrape.Page()")
-	defer slg.Debug("scrape.Page() returning")
 
 	// // slog.Debug("Scraper.Page(globalConfig: %#v, rawDyn: %t)", globalConfig, rawDyn)
 	// scrLogger := slog.With(slog.String("name", s.Name))
@@ -372,7 +375,9 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 
 	rs := output.ItemMaps{}
 
-	slg.Debug("initializing filters")
+	if doDebug {
+		slg.Debug("initializing filters")
+	}
 	if err := s.initializeFilters(); err != nil {
 		return nil, err
 	}
@@ -390,10 +395,10 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 	for hasNextPage {
 		baseUrl := getBaseURL(pageURL, doc)
 
-		// if doDebug {
-		slg.Debug("in scrape.Page()", "c.Item", s.Item)
-		slg.Debug("in scrape.Page()", "len(doc.Find(c.Item).Nodes)", len(doc.Find(s.Item).Nodes))
-		// }
+		if doDebug {
+			slg.Debug("in scrape.Page()", "c.Item", s.Item)
+			slg.Debug("in scrape.Page()", "len(doc.Find(c.Item).Nodes)", len(doc.Find(s.Item).Nodes))
+		}
 
 		// if len(doc.Find(c.Item).Nodes) == 0 {
 		// 	slog.Debug("in Scraper.Page(), no items found, shortening selector to find the longest prefix that selects items")
@@ -415,9 +420,14 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 		doc.Find(s.Item).Each(func(i int, sel *goquery.Selection) {
 			item, err := GQSelection(s, sel, baseUrl, rawDyn)
 			if err != nil {
-				slg.Error(err.Error())
+				if doDebug {
+					slg.Error(err.Error())
+				}
+				return
 			}
-			slg.Debug("in scrape.Page(), looking at sel item", "item", item)
+			if doDebug {
+				slg.Debug("in scrape.Page(), looking at sel item", "item", item)
+			}
 			if item != nil {
 				rs = append(rs, item)
 			}
@@ -432,7 +442,9 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 
 	s.guessYear(rs, time.Now())
 
-	slg.Debug("in scrape.Page()", "len(rs)", len(rs), "items.TotalFields()", rs.TotalFields())
+	if doDebug {
+		slg.Debug("in scrape.Page()", "len(rs)", len(rs), "items.TotalFields()", rs.TotalFields())
+	}
 	return rs, nil
 }
 
@@ -443,29 +455,35 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
 func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMaps, error) {
-	if output.WriteSeparateLogFiles {
-		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQDocument_log.txt")
-		if err != nil {
-			return nil, err
+	var slg *slog.Logger
+	if doDebug {
+		if output.WriteSeparateLogFiles {
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQDocument_log.txt")
+			if err != nil {
+				return nil, err
+			}
+			defer output.RestoreDefaultLogger(prevLogger)
 		}
-		defer output.RestoreDefaultLogger(prevLogger)
+		slg = slog.With(slog.String("s.Name", s.Name))
+		slg.Debug("scrape.GQDocument()")
+		defer slg.Debug("scrape.GQDocument() returning")
 	}
-	slg := slog.With(slog.String("s.Name", s.Name))
-	slg.Debug("scrape.GQDocument()")
-	defer slg.Debug("scrape.GQDocument() returning")
 
 	rs := output.ItemMaps{}
 	baseUrl := getBaseURL(s.URL, gqdoc)
 
-	// if doDebug {
-	slg.Debug("in scrape.GQDocumentItems()", "s.Item", s.Item)
-	slg.Debug("in scrape.GQDocumentItems()", "len(doc.Find(s.Item).Nodes)", len(gqdoc.Find(s.Item).Nodes))
-	// }
+	if doDebug {
+		slg.Debug("in scrape.GQDocumentItems()", "s.Item", s.Item)
+		slg.Debug("in scrape.GQDocumentItems()", "len(doc.Find(s.Item).Nodes)", len(gqdoc.Find(s.Item).Nodes))
+	}
 
 	gqdoc.Find(s.Item).Each(func(i int, sel *goquery.Selection) {
 		item, err := GQSelection(s, sel, baseUrl, rawDyn)
 		if err != nil {
-			slg.Warn("in scrape.GQDocumentItems()", "err", err.Error())
+			if doDebug {
+				slg.Warn("in scrape.GQDocumentItems()", "err", err.Error())
+			}
+			return
 		}
 		if item != nil {
 			rs = append(rs, item)
@@ -474,7 +492,9 @@ func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMa
 
 	s.guessYear(rs, time.Now())
 
-	slg.Debug("in scrape.GQDocumentItems()", "len(rs)", len(rs), "items.TotalFields()", rs.TotalFields())
+	if doDebug {
+		slg.Debug("in scrape.GQDocumentItems()", "len(rs)", len(rs), "items.TotalFields()", rs.TotalFields())
+	}
 	return rs, nil
 }
 
@@ -485,16 +505,19 @@ func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMa
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not subpages). This is used by the ML feature generation.
 func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
-	if output.WriteSeparateLogFiles {
-		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQSelection_log.txt")
-		if err != nil {
-			return nil, err
+	var slg *slog.Logger
+	if doDebug {
+		if output.WriteSeparateLogFiles {
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQSelection_log.txt")
+			if err != nil {
+				return nil, err
+			}
+			defer output.RestoreDefaultLogger(prevLogger)
 		}
-		defer output.RestoreDefaultLogger(prevLogger)
+		slg = slog.With(slog.String("s.Name", s.Name))
+		slg.Debug("scrape.GQSelection()")
+		defer slg.Debug("scrape.GQSelection() returning")
 	}
-	slg := slog.With(slog.String("s.Name", s.Name))
-	slg.Debug("scrape.GQSelection()")
-	defer slg.Debug("scrape.GQSelection() returning")
 
 	// slog.Debug("Scraper.GQSelection()", "s", sel, "baseUrl", baseUrl, "rawDyn", rawDyn)
 	// for i, node := range s.Nodes {
@@ -505,7 +528,9 @@ func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool
 
 	rs := output.ItemMap{}
 	for _, f := range s.Fields {
-		slg.Debug("in scrape.GQSelection(), looking at field", "f.Name", f.Name)
+		if doDebug {
+			slg.Debug("in scrape.GQSelection(), looking at field", "f.Name", f.Name)
+		}
 		if f.Value != "" {
 			if !rawDyn {
 				// add static fields
@@ -581,7 +606,9 @@ func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool
 	}
 
 	rs = s.removeHiddenFields(rs)
-	slg.Debug("in scrape.GQSelection()", "rs", rs)
+	if doDebug {
+		slg.Debug("in scrape.GQSelection()", "rs", rs)
+	}
 	return rs, nil
 }
 
@@ -1261,16 +1288,19 @@ var SkipSubURLExt = map[string]bool{
 }
 
 func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (*goquery.Document, error)) error {
-	if output.WriteSeparateLogFiles {
-		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.String() + "_scrape_Subpages_log.txt")
-		if err != nil {
-			return err
-		}
-		defer output.RestoreDefaultLogger(prevLogger)
+	var slg *slog.Logger
+	if doDebug {
+		// if output.WriteSeparateLogFiles {
+		// 	prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.Slug + "_configs/" + c.ID.String() + "_scrape_Subpages_log.txt")
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	defer output.RestoreDefaultLogger(prevLogger)
+		// }
+		slg = slog.With(slog.String("s.Name", s.Name))
+		slg.Debug("scrape.Subpages()")
+		defer slg.Debug("scrape.Subpages() returning")
 	}
-	slg := slog.With(slog.String("s.Name", s.Name))
-	slg.Debug("scrape.Subpages()")
-	defer slg.Debug("scrape.Subpages() returning")
 
 	uBase, err := url.Parse(s.URL)
 	if err != nil {
@@ -1288,7 +1318,9 @@ func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (
 			return fmt.Errorf("error parsing subpage url %q: %v", c.ID.Field, err)
 		}
 		subURL := uBase.ResolveReference(rel).String()
-		slg.Debug("in scrape.Subpages()", "i", i, "subURL", subURL)
+		if doDebug {
+			slg.Debug("in scrape.Subpages()", "i", i, "subURL", subURL)
+		}
 		var subGQDoc *goquery.Document
 		if fetchFn != nil {
 			subGQDoc, err = fetchFn(subURL)
@@ -1307,16 +1339,19 @@ func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (
 }
 
 func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc *goquery.Document) error {
-	if output.WriteSeparateLogFiles {
-		prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.String() + "_scrape_SubGQDocument_log.txt")
-		if err != nil {
-			return err
+	var slg *slog.Logger
+	if doDebug {
+		if output.WriteSeparateLogFiles {
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.String() + "_scrape_SubGQDocument_log.txt")
+			if err != nil {
+				return err
+			}
+			defer output.RestoreDefaultLogger(prevLogger)
 		}
-		defer output.RestoreDefaultLogger(prevLogger)
+		slg = slog.With(slog.String("s.Name", s.Name))
+		slg.Debug("scrape.SubGQDocument()", "fname", fname)
+		defer slg.Debug("scrape.SubGQDocument() returning")
 	}
-	slg := slog.With(slog.String("s.Name", s.Name))
-	slg.Debug("scrape.SubGQDocument()", "fname", fname)
-	defer slg.Debug("scrape.SubGQDocument() returning")
 
 	subIMs, err := GQDocument(s, gqdoc, true)
 	if err != nil {

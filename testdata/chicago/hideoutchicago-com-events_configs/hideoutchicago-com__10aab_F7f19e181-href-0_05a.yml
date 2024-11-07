@@ -135,6 +135,11 @@ scrapers:
             - selector: div > div.description.row > div > a
               attr: href
           can_be_empty: true
+        - name: Fb2bbe865--0
+          type: text
+          location:
+            - selector: div > div.description.row > div > div > div > strong
+          can_be_empty: true
         - name: Fb3bf06d3--0
           type: text
           location:

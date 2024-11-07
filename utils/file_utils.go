@@ -9,6 +9,19 @@ import (
 	"strings"
 )
 
+// CopyStringFile
+func CopyStringFile(src string, dest string) (string, error) {
+	str, err := ReadStringFile(src)
+	if err != nil {
+		return "", err
+	}
+	err = WriteStringFile(dest, str)
+	if err != nil {
+		return "", err
+	}
+	return str, nil
+}
+
 // ReadStringFile returns a string with the data at the given path declared in a
 // "data" attribute of a BUILD.bazel rule.
 func ReadStringFile(path string) (string, error) {

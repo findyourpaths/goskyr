@@ -19,8 +19,10 @@ type node struct {
 	pseudoClasses []string
 }
 
+var nodeStringsCache map[*node]string
+
 func (n node) string() string {
-	nodeString := n.tagName
+	r := n.tagName
 	for _, cl := range n.classes {
 		// https://www.itsupportguides.com/knowledge-base/website-tips/css-colon-in-id/
 		cl = strings.ReplaceAll(cl, ":", "\\:")
@@ -29,12 +31,12 @@ func (n node) string() string {
 		if unicode.IsDigit(rune(cl[0])) {
 			cl = fmt.Sprintf(`\3%s `, string(cl[1:]))
 		}
-		nodeString += fmt.Sprintf(".%s", cl)
+		r += fmt.Sprintf(".%s", cl)
 	}
 	if len(n.pseudoClasses) > 0 {
-		nodeString += fmt.Sprintf(":%s", strings.Join(n.pseudoClasses, ":"))
+		r += fmt.Sprintf(":%s", strings.Join(n.pseudoClasses, ":"))
 	}
-	return nodeString
+	return r
 }
 
 func (n node) equals(n2 node) bool {

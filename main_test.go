@@ -26,8 +26,6 @@ var configSuffix = ".yml"
 var jsonSuffix = ".json"
 
 var writeActualTestOutputs = true
-var testOutputDir = "/tmp/goskyr/main_test/"
-var testInputDir = "testdata/"
 
 func TestGenerate(t *testing.T) {
 	f, err := os.Create("test-generate.prof")
@@ -68,43 +66,47 @@ func TGenerateAllDirConfigs(t *testing.T, dir string) {
 func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	inputDir := testInputDir + dir
 	outputDir := testOutputDir + dir
-	_, err := os.Stat(filepath.Join(inputDir, testname+"_subpages"))
-	doSubpages := err == nil
+
+	glob := filepath.Join(inputDir, testname+"_cache", "*")
+	// fmt.Printf("glob: %q\n", glob)
+	paths, err := filepath.Glob(glob)
+	if err != nil {
+		t.Fatalf("error getting cache input paths with glob %q: %v", glob, err)
+	}
+	doSubpages := len(paths) > 1
 	fmt.Printf("in test %q, doing subpages: %t\n", testname, doSubpages)
 
 	opts, err := generate.InitOpts(generate.ConfigOptions{
-		Batch:       true,
-		DoSubpages:  doSubpages,
-		File:        filepath.Join(inputDir, testname+".html"),
-		InputDir:    inputDir,
-		MinOccs:     []int{5, 10, 20},
-		OnlyVarying: true,
-		OutputDir:   outputDir,
-		RenderJS:    true,
-		URL:         urlsForTestnamesByDir[dir][testname],
+		Batch:         true,
+		CacheInputDir: inputDir,
+		DoSubpages:    doSubpages,
+		MinOccs:       []int{5, 10, 20},
+		OnlyVarying:   true,
+		RenderJS:      true,
+		URL:           urlsForTestnamesByDir[dir][testname],
 	})
 	if err != nil {
 		t.Fatalf("error initializing page options: %v", err)
 	}
 
-	pageConfigs, err := generate.ConfigurationsForPage(opts)
+	cs, gqdocsByURL, err := generate.ConfigurationsForPage(opts, nil)
 	if err != nil {
-		t.Fatalf("error generating config: %v", err)
+		t.Fatalf("error generating page configs: %v", err)
 	}
-	TGenerateConfigs(t, testname, pageConfigs, inputDir, outputDir)
+	TGenerateConfigs(t, testname, cs, inputDir, outputDir)
 
 	if doSubpages {
-		subPageConfigs, err := generate.ConfigurationsForAllSubpages(opts, pageConfigs)
+		subCs, _, err := generate.ConfigurationsForAllSubpages(opts, cs, gqdocsByURL)
 		if err != nil {
-			t.Fatalf("error generating config: %v", err)
+			t.Fatalf("error generating subpage configs: %v", err)
 		}
-		TGenerateConfigs(t, testname, subPageConfigs, inputDir, outputDir)
+		TGenerateConfigs(t, testname, subCs, inputDir, outputDir)
 	}
 }
 
-func TGenerateConfigs(t *testing.T, testname string, configs map[string]*scrape.Config, inputDir string, outputDir string) {
+func TGenerateConfigs(t *testing.T, testname string, cs map[string]*scrape.Config, inputDir string, outputDir string) {
 	ids := []string{}
-	for id := range configs {
+	for id := range cs {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
@@ -119,7 +121,7 @@ func TGenerateConfigs(t *testing.T, testname string, configs map[string]*scrape.
 			t.Fatal(err)
 		}
 		t.Run(id, func(t *testing.T) {
-			TGenerateConfig(t, testname, configs[id], outputDir, exp)
+			TGenerateConfig(t, testname, cs[id], outputDir, exp)
 		})
 	}
 }
