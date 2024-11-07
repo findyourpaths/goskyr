@@ -62,11 +62,11 @@ func (p path) string() string {
 	}
 
 	last := p[len(p)-1]
-	str := pathStringsCache[&last]
-	if str != "" {
+	if str := pathStringsCache[&last]; str != "" {
 		return str
 	}
-	str = last.string()
+
+	str := last.string()
 	if prefix := p[0 : len(p)-1].string(); prefix != "" {
 		str = prefix + " > " + str
 	}

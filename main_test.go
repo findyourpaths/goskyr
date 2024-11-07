@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime/pprof"
@@ -35,6 +36,8 @@ func TestGenerate(t *testing.T) {
 	defer f.Close()
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
+
+	output.SetDefaultLogger(filepath.Join(testOutputDir, "test-generate_log.txt"), slog.LevelWarn)
 
 	dirs := []string{}
 	for dir := range urlsForTestnamesByDir {
@@ -74,7 +77,7 @@ func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
 		t.Fatalf("error getting cache input paths with glob %q: %v", glob, err)
 	}
 	doSubpages := len(paths) > 1
-	fmt.Printf("in test %q, doing subpages: %t\n", testname, doSubpages)
+	// fmt.Printf("in test %q, doing subpages: %t\n", testname, doSubpages)
 
 	opts, err := generate.InitOpts(generate.ConfigOptions{
 		Batch:         true,

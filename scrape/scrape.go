@@ -343,7 +343,7 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 	var slg *slog.Logger
 	if doDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_Page_log.txt")
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_Page_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -458,7 +458,7 @@ func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMa
 	var slg *slog.Logger
 	if doDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQDocument_log.txt")
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQDocument_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -508,7 +508,7 @@ func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool
 	var slg *slog.Logger
 	if doDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQSelection_log.txt")
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQSelection_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -1291,7 +1291,7 @@ func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (
 	var slg *slog.Logger
 	if doDebug {
 		// if output.WriteSeparateLogFiles {
-		// 	prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.Slug + "_configs/" + c.ID.String() + "_scrape_Subpages_log.txt")
+		// 	prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.Slug + "_configs/" + c.ID.String() + "_scrape_Subpages_log.txt", slog.LevelDebug)
 		// 	if err != nil {
 		// 		return err
 		// 	}
@@ -1342,7 +1342,7 @@ func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc
 	var slg *slog.Logger
 	if doDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.String() + "_scrape_SubGQDocument_log.txt")
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
 			if err != nil {
 				return err
 			}

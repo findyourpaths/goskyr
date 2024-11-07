@@ -16,7 +16,7 @@ type logState struct {
 	logF       *os.File
 }
 
-func SetDefaultLogger(logPath string) (*logState, error) {
+func SetDefaultLogger(logPath string, level slog.Level) (*logState, error) {
 	prevLogger := slog.Default()
 	if err := os.MkdirAll(filepath.Dir(logPath), 0770); err != nil {
 		return nil, fmt.Errorf("error creating parent directories for log output file %q: %v", logPath, err)
@@ -26,7 +26,7 @@ func SetDefaultLogger(logPath string) (*logState, error) {
 		return nil, fmt.Errorf("error opening log output file %q: %v", logPath, err)
 	}
 	// defer logF.Close()
-	slog.SetDefault(slog.New(slog.NewTextHandler(logF, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	slog.SetDefault(slog.New(slog.NewTextHandler(logF, &slog.HandlerOptions{Level: level})))
 	return &logState{prevLogger: prevLogger, logF: logF}, nil
 }
 
