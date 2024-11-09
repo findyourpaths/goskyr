@@ -28,9 +28,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// var doDebug = true
+var doDebug = true
 
-var doDebug = false
+// var doDebug = false
 
 // GlobalConfig is used for storing global configuration parameters that
 // are needed across all scrapers

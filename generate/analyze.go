@@ -3,17 +3,29 @@ package generate
 import (
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/findyourpaths/goskyr/date"
+	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 	"golang.org/x/net/html"
 )
 
 func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationProps, []*locationProps, error) {
+	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
+		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_analyzePage_log.txt"), slog.LevelDebug)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer output.RestoreDefaultLogger(prevLogger)
+	}
+	slog.Debug("analyzePage()", "opts", opts)
+	defer slog.Debug("analyzePage() returning")
+
 	a := &Analyzer{
 		Tokenizer:   html.NewTokenizer(strings.NewReader(htmlStr)),
 		NumChildren: map[string]int{},

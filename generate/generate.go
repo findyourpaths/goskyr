@@ -256,7 +256,7 @@ func findClusters(lps []*locationProps, rootSelector path) map[string][]*locatio
 	// maxCount := 0
 	// var maxPath path
 	for _, lp := range lps {
-		slog.Debug("in filterAllButLargestCluster(), looking at lp", "lp.count", lp.count, "lp.path.string()", lp.path.string())
+		slog.Debug("in findClusters(), looking at lp", "lp.count", lp.count, "lp.path.string()", lp.path.string())
 		// check whether we reached the end.
 		if newLen > len(lp.path) {
 			return locationPropsByPath
