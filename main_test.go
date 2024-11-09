@@ -164,7 +164,17 @@ func TGenerateConfig(t *testing.T, testname string, config *scrape.Config, outpu
 	}
 }
 
-func TScrape(t *testing.T) {
+func TestScrape(t *testing.T) {
+	f, err := os.Create("test-generate.prof")
+	if err != nil {
+		t.Fatalf("error initializing pprof: %v", err)
+	}
+	defer f.Close()
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
+	output.SetDefaultLogger(filepath.Join(testOutputDir, "test-generate_log.txt"), slog.LevelWarn)
+
 	dirs := []string{}
 	for dir := range urlsForTestnamesByDir {
 		dirs = append(dirs, dir)
@@ -222,24 +232,25 @@ func TScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
 }
 
 func getItems(dir string, testname string, config *scrape.Config) (output.ItemMaps, error) {
+	// fmt.Printf("getItems(dir: %q, testname: %q, config)\n", dir, testname)
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
 		// We're looking at an event list page scraper. Scrape the page in the outer directory.
-		htmlPath := filepath.Join(testInputDir, dir, testname+htmlSuffix)
+		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", testname+htmlSuffix)
 		return scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
 	} else if config.ID.ID == "" && config.ID.Field != "" && config.ID.SubID != "" {
 		// We're looking at an event page scraper. Scrape the page in this directory.
-		htmlPath := filepath.Join(testInputDir, dir, testname+"_configs", config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
+		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
 		return scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
 	} else {
 		// We're looking at a combined event list and page scraper. Scrape both pages.
-		htmlPath := filepath.Join(testInputDir, dir, testname+htmlSuffix)
+		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", testname+htmlSuffix)
 		itemMaps, err := scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
 		if err != nil {
 			return nil, err
 		}
 		f := &fetch.FileFetcher{}
 		fetchFn := func(u string) (*goquery.Document, error) {
-			u = "file://" + filepath.Join(testInputDir, dir, testname+"_subpages", fetch.MakeURLStringSlug(u)+".html")
+			u = "file://" + filepath.Join(testInputDir, dir, testname+"_cache", fetch.MakeURLStringSlug(u)+".html")
 			return fetch.GQDocument(f, u, nil)
 		}
 		err = scrape.Subpages(config, &config.Scrapers[1], itemMaps, fetchFn)
