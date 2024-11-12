@@ -327,4 +327,4 @@ var urlsForTestnamesByDir = map[string]map[string]string{
 }
 
 var testOutputDir = "/tmp/goskyr/main/"
-var testInputDir = "testdata/"
+var testInputDir = "../../testdata/"
