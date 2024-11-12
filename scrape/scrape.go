@@ -1342,7 +1342,7 @@ func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc
 	var slg *slog.Logger
 	if doDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
 			if err != nil {
 				return err
 			}

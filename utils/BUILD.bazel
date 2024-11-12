@@ -1,12 +1,12 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "utils",
     srcs = [
         "file_utils.go",
         "utils.go",
     ],
     importpath = "github.com/findyourpaths/goskyr/utils",
     visibility = ["//visibility:public"],
-    deps = ["@org_golang_x_exp//constraints:go_default_library"],
+    deps = ["@org_golang_x_exp//constraints"],
 )
