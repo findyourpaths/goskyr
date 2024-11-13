@@ -1,0 +1,23 @@
+id:
+    slug: basic-fields-com
+    id: 10a
+    field: ""
+    subid: ""
+scrapers:
+    - name: basic-fields-com__10a
+      url: https://basic-fields.com
+      item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
+      fields:
+        - name: F3d82c580-href-0
+          type: url
+          location:
+            - selector: div:nth-child(2) > a
+              attr: href
+          can_be_empty: true
+        - name: Fa5ccda70--0
+          type: text
+          location:
+            - selector: div
+          can_be_empty: true
+      render_js: true
+itemmaps: []

@@ -305,9 +305,7 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 
 // urlsForTestnames stores the live URLs used to create tests. They are needed to resolve relative paths for event pages that appear in event-list pages. To add new tests, run:
 //
-//	go run main.go --debug generate https://books.toscrape.com --fields-vary --batch --do-subpages --output-dir /tmp/goskyr/main/
-//
-// and copy the new directory within /tmp/goskyr/main/ to testdata.
+//	go run ./cmd/goskyr --debug generate 'https://basic-field.com' --cache-input-dir testdata/regression --cache-output-dir testdata/regression --config-output-dir testdata/regression --do-subpages=false
 //
 // regenerate with
 //
@@ -315,6 +313,11 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 var urlsForTestnamesByDir = map[string]map[string]string{
 	"chicago": {
 		"hideoutchicago-com-events": "https://hideoutchicago.com/events",
+	},
+	"regression": {
+		"basic-field-com":    "https://basic-field.com",
+		"basic-fields-com":   "https://basic-fields.com",
+		"basic-subpages-com": "https://basic-subpages.com",
 	},
 	"scraping": {
 		"books-toscrape-com":             "https://books.toscrape.com",

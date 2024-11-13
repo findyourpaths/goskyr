@@ -1,0 +1,14 @@
+time=2024-11-13T10:20:23.768-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:23.769-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"
+time=2024-11-13T10:20:23.769-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:23.769-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(locPropsSel)=1
+time=2024-11-13T10:20:23.769-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(pagProps)=0
+time=2024-11-13T10:20:23.769-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-field-com__10a
+time=2024-11-13T10:20:23.769-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:23.769-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:23.770-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=11
+time=2024-11-13T10:20:23.770-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2"
+time=2024-11-13T10:20:23.770-06:00 level=DEBUG msg="in ConfigurationsForGQDocument()" len(rs)=1
+time=2024-11-13T10:20:23.770-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"
+time=2024-11-13T10:20:23.770-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:23.771-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"

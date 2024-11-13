@@ -1,0 +1,90 @@
+time=2024-11-13T10:20:33.889-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:33.891-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(locPropsSel)=2
+time=2024-11-13T10:20:33.891-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(pagProps)=1
+time=2024-11-13T10:20:33.891-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__05a
+time=2024-11-13T10:20:33.891-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:33.891-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=1 lp.count=11
+time=2024-11-13T10:20:33.891-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:33.892-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=22
+time=2024-11-13T10:20:33.892-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a"
+time=2024-11-13T10:20:33.892-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div"
+time=2024-11-13T10:20:33.892-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__05aa
+time=2024-11-13T10:20:33.892-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:33.892-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:33.893-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=22 items.TotalFields()=11
+time=2024-11-13T10:20:33.893-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div"
+time=2024-11-13T10:20:33.893-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__05ab
+time=2024-11-13T10:20:33.893-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:33.893-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:33.894-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=11
+time=2024-11-13T10:20:33.894-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a"
+time=2024-11-13T10:20:33.894-06:00 level=DEBUG msg="in ConfigurationsForGQDocument()" len(rs)=3
+time=2024-11-13T10:20:33.894-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"
+time=2024-11-13T10:20:33.894-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:33.895-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(locPropsSel)=2
+time=2024-11-13T10:20:33.895-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(pagProps)=1
+time=2024-11-13T10:20:33.895-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__10a
+time=2024-11-13T10:20:33.895-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:33.895-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=1 lp.count=11
+time=2024-11-13T10:20:33.895-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:33.896-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=22
+time=2024-11-13T10:20:33.896-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a"
+time=2024-11-13T10:20:33.896-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div"
+time=2024-11-13T10:20:33.896-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__10aa
+time=2024-11-13T10:20:33.896-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:33.896-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=22 items.TotalFields()=11
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div"
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__10ab
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=11
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a"
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="in ConfigurationsForGQDocument()" len(rs)=3
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"
+time=2024-11-13T10:20:33.897-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:33.899-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"
+time=2024-11-13T10:20:42.552-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:42.553-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(locPropsSel)=2
+time=2024-11-13T10:20:42.553-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(pagProps)=1
+time=2024-11-13T10:20:42.553-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__05a
+time=2024-11-13T10:20:42.553-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:42.553-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=1 lp.count=11
+time=2024-11-13T10:20:42.553-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=22
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a"
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div"
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__05aa
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:42.555-06:00 level=WARN msg="a subpage URL field is required but none were found, ending early" opts.configID=basic-subpages-com__05aa opts="{Batch:true CacheInputDir:testdata/regression/basic-subpages-com_cache CacheOutputDir:testdata/regression/basic-subpages-com_cache ConfigOutputDir:testdata/regression/basic-subpages-com_configs DoSubpages:true MinOccs:[5 10 20] ModelName: Offline:false OnlyVarying:true RenderJS:true URL:https://basic-subpages.com WordsDir:word-lists configID:{Slug:basic-subpages-com ID:05aa Field: SubID:} configPrefix:}"
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__05ab
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:42.555-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:42.556-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=11
+time=2024-11-13T10:20:42.556-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a"
+time=2024-11-13T10:20:42.556-06:00 level=DEBUG msg="in ConfigurationsForGQDocument()" len(rs)=2
+time=2024-11-13T10:20:42.556-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"
+time=2024-11-13T10:20:42.556-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(locPropsSel)=2
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in ConfigurationsForGQDocument, before expanding" len(pagProps)=1
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__10a
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=1 lp.count=11
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=22
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a"
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div"
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__10aa
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:42.557-06:00 level=WARN msg="a subpage URL field is required but none were found, ending early" opts.configID=basic-subpages-com__10aa opts="{Batch:true CacheInputDir:testdata/regression/basic-subpages-com_cache CacheOutputDir:testdata/regression/basic-subpages-com_cache ConfigOutputDir:testdata/regression/basic-subpages-com_configs DoSubpages:true MinOccs:[5 10 20] ModelName: Offline:false OnlyVarying:true RenderJS:true URL:https://basic-subpages.com WordsDir:word-lists configID:{Slug:basic-subpages-com ID:10aa Field: SubID:} configPrefix:}"
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" opts.configID=basic-subpages-com__10ab
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" i=0 lp.count=11
+time=2024-11-13T10:20:42.557-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" pags=[]
+time=2024-11-13T10:20:42.558-06:00 level=DEBUG msg="in expandAllPossibleConfigs()" len(items)=11 items.TotalFields()=11
+time=2024-11-13T10:20:42.558-06:00 level=DEBUG msg="in findClusters(), looking at lp" lp.count=11 lp.path.string()="body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a"
+time=2024-11-13T10:20:42.558-06:00 level=DEBUG msg="in ConfigurationsForGQDocument()" len(rs)=2
+time=2024-11-13T10:20:42.558-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"
+time=2024-11-13T10:20:42.558-06:00 level=DEBUG msg=ConfigurationsForGQDocument()
+time=2024-11-13T10:20:42.559-06:00 level=DEBUG msg="ConfigurationsForGQDocument() returning"

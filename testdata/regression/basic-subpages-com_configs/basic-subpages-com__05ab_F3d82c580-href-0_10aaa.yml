@@ -1,0 +1,27 @@
+id:
+    slug: basic-subpages-com
+    id: 05ab
+    field: F3d82c580-href-0
+    subid: 10aaa
+scrapers:
+    - name: basic-subpages-com__05ab
+      url: https://basic-subpages.com
+      item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div:nth-child(2) > a
+      fields:
+        - name: F3d82c580-href-0
+          type: url
+          location:
+            - attr: href
+          can_be_empty: true
+      render_js: true
+    - name: basic-subpages-com__F3d82c580-href-0_10aaa
+      url: https://basic-subpages.com
+      item: div.x-0.x-0 > div.y-1.y-1 > div.z-2.z-2 > div
+      fields:
+        - name: F300156d8--0
+          type: text
+          location:
+            - {}
+          can_be_empty: true
+      render_js: true
+itemmaps: []

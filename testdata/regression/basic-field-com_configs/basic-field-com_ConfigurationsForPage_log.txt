@@ -1,0 +1,12 @@
+time=2024-11-13T10:20:23.767-06:00 level=DEBUG msg=ConfigurationsForPage() opts="{Batch:true CacheInputDir:testdata/regression/basic-field-com_cache CacheOutputDir:testdata/regression/basic-field-com_cache ConfigOutputDir:testdata/regression/basic-field-com_configs DoSubpages:false MinOccs:[5 10 20] ModelName: Offline:false OnlyVarying:true RenderJS:true URL:https://basic-field.com WordsDir:word-lists configID:{Slug:basic-field-com ID: Field: SubID:} configPrefix:}"
+time=2024-11-13T10:20:23.767-06:00 level=DEBUG msg=fetchGQDocument() u=basic-field.com
+time=2024-11-13T10:20:23.767-06:00 level=DEBUG msg=fetchGQDocument() len(gqdocsByURL)=0
+time=2024-11-13T10:20:23.768-06:00 level=DEBUG msg="fetchGQDocument(), disk cache hit" len(str)=811
+time=2024-11-13T10:20:23.768-06:00 level=DEBUG msg=fetchGQDocument() len(str)=811
+time=2024-11-13T10:20:23.768-06:00 level=DEBUG msg="fetchGQDocument(), already written to disk cache" cacheOutPath=testdata/regression/basic-field-com_cache/basic-field-com.html
+time=2024-11-13T10:20:23.768-06:00 level=DEBUG msg="fetchGQDocument() returning"
+time=2024-11-13T10:20:23.768-06:00 level=DEBUG msg="calling ConfigurationsForGQDocument()" minOcc=5
+time=2024-11-13T10:20:23.769-06:00 level=DEBUG msg="calling ConfigurationsForGQDocument()" minOcc=10
+time=2024-11-13T10:20:23.770-06:00 level=DEBUG msg="calling ConfigurationsForGQDocument()" minOcc=20
+time=2024-11-13T10:20:23.771-06:00 level=DEBUG msg="in ConfigurationsForPage()" len(rs)=1
+time=2024-11-13T10:20:23.771-06:00 level=DEBUG msg="ConfigurationsForPage() returning"
