@@ -1,7 +1,0 @@
-time=2024-11-13T10:20:42.559-06:00 level=DEBUG msg=ConfigurationsForAllSubpages()
-time=2024-11-13T10:20:42.559-06:00 level=DEBUG msg="in ConfigurationsForAllSubpages()" opts.URL=https://basic-subpages.com
-time=2024-11-13T10:20:42.559-06:00 level=DEBUG msg="in ConfigurationsForAllSubPages()" opts.ConfigOutputDir=testdata/regression/basic-subpages-com_configs
-time=2024-11-13T10:20:42.559-06:00 level=DEBUG msg="in ConfigurationsForAllSubpages()" opts="{Batch:true CacheInputDir:testdata/regression/basic-subpages-com_cache CacheOutputDir:testdata/regression/basic-subpages-com_cache ConfigOutputDir:testdata/regression/basic-subpages-com_configs DoSubpages:true MinOccs:[5 10 20] ModelName: Offline:false OnlyVarying:true RenderJS:true URL:https://basic-subpages.com WordsDir:word-lists configID:{Slug:basic-subpages-com ID: Field: SubID:} configPrefix:}"
-time=2024-11-13T10:20:42.559-06:00 level=DEBUG msg="in ConfigurationsForAllSubpages()" opts.CacheInputDir=testdata/regression/basic-subpages-com_cache
-time=2024-11-13T10:20:42.635-06:00 level=DEBUG msg="in ConfigurationsForAllSubpages()" len(rs)=40
-time=2024-11-13T10:20:42.635-06:00 level=DEBUG msg="ConfigurationsForAllSubpages() returning"
