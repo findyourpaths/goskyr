@@ -8,15 +8,15 @@ scrapers:
       url: https://basic-subpages.com
       item: body > htmls
       fields:
-        - name: F300156d8--0
+        - name: F3a07a60f--0
           type: text
           location:
-            - selector: div.x-0.x-0 > div.y-1.y-1 > div.z-2.z-2 > div
+            - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div:nth-child(2)
           can_be_empty: true
-        - name: F3d40cb96--0
+        - name: F87acd308--0
           type: text
           location:
-            - selector: div.x-0.x-0 > div.y-1.y-1 > div.z-2.z-2 > div:nth-child(2)
+            - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div
           can_be_empty: true
         - name: Fd179bb67--0
           type: text
