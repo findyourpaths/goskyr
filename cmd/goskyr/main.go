@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/alecthomas/kong"
@@ -37,11 +38,14 @@ func main() {
 		})
 
 	var logLevel slog.Level
-	if cli.Globals.Debug {
+	switch strings.ToLower(cli.Globals.LogLevel) {
+	case "debug":
 		logLevel = slog.LevelDebug
 		scrape.DoDebug = true
-	} else {
+	case "info":
 		logLevel = slog.LevelInfo
+	case "warn":
+		logLevel = slog.LevelWarn
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
@@ -61,7 +65,7 @@ type CLI struct {
 }
 
 type Globals struct {
-	Debug bool `short:"d" help:"Enable debug mode"`
+	LogLevel string `short:"l" default:"info" help:"Control log level: debug, info, or warn"`
 }
 
 type ExtractFeaturesCmd struct {
@@ -96,6 +100,7 @@ type GenerateCmd struct {
 	Offline             bool   `default:false help:"Run offline and don't fetch pages."`
 	PretrainedModelPath string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
 	RenderJs            bool   `short:"r" long:"renderjs" default:true help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
+	RequireString       string `long:"require-string" help:"Require a candidate configuration to extract the given text in order for it to be generated."`
 	WordsDir            string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
 }
 
@@ -118,14 +123,15 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		CacheInputDir:   cmd.CacheInputDir,
 		CacheOutputDir:  cmd.CacheOutputDir,
 		ConfigOutputDir: cmd.ConfigOutputDir,
+		DoSubpages:      cmd.DoSubpages,
 		URL:             cmd.URL,
+		MinOccs:         minOccs,
 		ModelName:       cmd.PretrainedModelPath,
 		Offline:         cmd.Offline,
 		OnlyVarying:     cmd.FieldsVary,
 		RenderJS:        cmd.RenderJs,
-		DoSubpages:      cmd.DoSubpages,
+		RequireString:   cmd.RequireString,
 		WordsDir:        cmd.WordsDir,
-		MinOccs:         minOccs,
 	})
 	if err != nil {
 		return fmt.Errorf("error initializing page options: %v", err)
@@ -175,7 +181,7 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 	defer pprof.StopCPUProfile()
 
 	for dir, urlsForTestnames := range urlsForTestnamesByDir {
-		for testname, url := range urlsForTestnames {
+		for testname, urlAndReq := range urlsForTestnames {
 			fmt.Printf("Regenerating test %q\n", testname)
 
 			cacheInDir := filepath.Join("testdata", dir)
@@ -186,6 +192,7 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 			}
 			doSubpages := len(paths) > 1
 
+			url := urlAndReq[0]
 			cmd := GenerateCmd{
 				Batch:           true,
 				DoSubpages:      doSubpages,
@@ -195,6 +202,7 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 				ConfigOutputDir: cmd.ConfigOutputDir,
 				Offline:         true,
 				RenderJs:        true,
+				RequireString:   urlAndReq[1],
 				URL:             url,
 			}
 			if err := cmd.Run(globals); err != nil {
@@ -311,22 +319,22 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 // regenerate with
 //
 //	go run main.go --debug regenerate
-var urlsForTestnamesByDir = map[string]map[string]string{
+var urlsForTestnamesByDir = map[string]map[string][]string{
 	"chicago": {
-		"hideoutchicago-com-events": "https://hideoutchicago.com/events",
+		"hideoutchicago-com-events": []string{"https://hideoutchicago.com/events", ""},
 	},
 	"regression": {
-		"basic-field-com":    "https://basic-field.com",
-		"basic-fields-com":   "https://basic-fields.com",
-		"basic-subpages-com": "https://basic-subpages.com",
+		"basic-field-com":    []string{"https://basic-field.com", ""},
+		"basic-fields-com":   []string{"https://basic-fields.com", ""},
+		"basic-subpages-com": []string{"https://basic-subpages.com", ""},
 	},
 	"scraping": {
-		"books-toscrape-com":             "https://books.toscrape.com",
-		"quotes-toscrape-com":            "https://quotes.toscrape.com",
-		"realpython-github-io-fake-jobs": "https://realpython.github.io/fake-jobs/",
-		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets",
-		"www-scrapethissite-com-pages-forms":                             "https://www.scrapethissite.com/pages/forms",
-		"www-scrapethissite-com-pages-simple":                            "https://www.scrapethissite.com/pages/simple",
+		"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},
+		"quotes-toscrape-com":            []string{"https://quotes.toscrape.com", ""},
+		"realpython-github-io-fake-jobs": []string{"https://realpython.github.io/fake-jobs/", ""},
+		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", ""},
+		"www-scrapethissite-com-pages-forms":                             []string{"https://www.scrapethissite.com/pages/forms", ""},
+		"www-scrapethissite-com-pages-simple":                            []string{"https://www.scrapethissite.com/pages/simple", ""},
 	},
 }
 

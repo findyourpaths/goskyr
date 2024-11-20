@@ -28,6 +28,7 @@ type ConfigOptions struct {
 	ModelName       string
 	Offline         bool
 	OnlyVarying     bool
+	RequireString   string
 	RenderJS        bool
 	URL             string
 	WordsDir        string
@@ -198,7 +199,7 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 	s.Item = rootSelector.string()
 	s.Fields = processFields(locPropsSel, rootSelector)
 	if opts.DoSubpages && len(s.GetSubpageURLFields()) == 0 {
-		slog.Warn("a subpage URL field is required but none were found, ending early", "opts.configID", opts.configID, "opts", opts)
+		slog.Info("candidate configuration didn't find a subpage URL field which is required, excluding", "opts.configID", opts.configID)
 		return nil
 	}
 
@@ -206,22 +207,12 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 	if err != nil {
 		return err
 	}
-	itemsStr := items.String()
-	if scrape.DoPruning && itemsStr == parentItemsStr {
-		slog.Debug("generate produced same items as its parent, ending early", "opts.configID", opts.configID)
-		return nil
-	}
 
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		slog.Debug("in expandAllPossibleConfigs()", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
 	}
 
-	results[opts.configID.String()] = &scrape.Config{
-		ID:       opts.configID,
-		Scrapers: []scrape.Scraper{s},
-		ItemMaps: items,
-	}
-
+	itemsStr := items.String()
 	clusters := findClusters(locPropsSel, rootSelector)
 	clusterIDs := []string{}
 	for clusterID := range clusters {
@@ -241,6 +232,28 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 			return err
 		}
 		lastID++
+	}
+
+	if scrape.DoPruning && itemsStr == parentItemsStr {
+		slog.Info("candidate configuration produced same items as its parent, excluding", "opts.configID", opts.configID)
+		return nil
+	}
+
+	// fmt.Printf("strings.Index(itemsStr, opts.RequireString): %d\n", strings.Index(itemsStr, opts.RequireString))
+	if opts.RequireString != "" && strings.Index(itemsStr, opts.RequireString) == -1 {
+		slog.Info("candidate configuration didn't extract the required string, excluding", "opts.configID", opts.configID)
+		return nil
+	}
+
+	if opts.DoSubpages && len(s.GetSubpageURLFields()) == 0 {
+		slog.Info("candidate configuration didn't find a subpage URL field which is required, excluding", "opts.configID", opts.configID)
+		return nil
+	}
+
+	results[opts.configID.String()] = &scrape.Config{
+		ID:       opts.configID,
+		Scrapers: []scrape.Scraper{s},
+		ItemMaps: items,
 	}
 
 	return nil
@@ -531,7 +544,9 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL 
 	if err != nil {
 		return nil, nil, err
 	}
+	// Prepare for calling general page generator.
 	opts.DoSubpages = false
+	opts.RequireString = ""
 	cs, gqdocsByURL, err := ConfigurationsForPageWithMinOccurrences(opts, gqdoc, gqdocsByURL)
 	if err != nil {
 		return nil, nil, err

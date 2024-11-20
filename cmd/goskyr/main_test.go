@@ -79,6 +79,7 @@ func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	doSubpages := len(paths) > 1
 	// fmt.Printf("in test %q, doing subpages: %t\n", testname, doSubpages)
 
+	urlAndReq := urlsForTestnamesByDir[dir][testname]
 	opts, err := generate.InitOpts(generate.ConfigOptions{
 		Batch:         true,
 		CacheInputDir: inputDir,
@@ -86,7 +87,8 @@ func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
 		MinOccs:       []int{5, 10, 20},
 		OnlyVarying:   true,
 		RenderJS:      true,
-		URL:           urlsForTestnamesByDir[dir][testname],
+		RequireString: urlAndReq[1],
+		URL:           urlAndReq[0],
 	})
 	if err != nil {
 		t.Fatalf("error initializing page options: %v", err)
