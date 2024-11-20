@@ -39,6 +39,7 @@ func main() {
 	var logLevel slog.Level
 	if cli.Globals.Debug {
 		logLevel = slog.LevelDebug
+		scrape.DoDebug = true
 	} else {
 		logLevel = slog.LevelInfo
 	}
