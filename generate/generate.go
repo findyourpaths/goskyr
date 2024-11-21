@@ -105,6 +105,13 @@ func ConfigurationsForPageWithMinOccurrences(opts ConfigOptions, gqdoc *goquery.
 }
 
 func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, minOcc int, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+	minOccStr := fmt.Sprintf("%02da", minOcc)
+	if opts.configID.Field != "" {
+		opts.configID.SubID = minOccStr
+	} else {
+		opts.configID.ID = minOccStr
+	}
+
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForGQDocument_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -132,13 +139,6 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, mi
 	// slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(a.LocMan)", len(a.LocMan))
 	slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(locPropsSel)", len(locPropsSel))
 	slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(pagProps)", len(pagProps))
-
-	minOccStr := fmt.Sprintf("%02da", minOcc)
-	if opts.configID.Field != "" {
-		opts.configID.SubID = minOccStr
-	} else {
-		opts.configID.ID = minOccStr
-	}
 	rs := map[string]*scrape.Config{}
 
 	// FIXME
@@ -155,23 +155,20 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, mi
 }
 
 func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPropsSel []*locationProps, parentRootSelector path, parentItemsStr string, pagProps []*locationProps, results map[string]*scrape.Config) error {
-	// if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
-	// 	prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	defer output.RestoreDefaultLogger(prevLogger)
-	// }
-	// slog.Debug("expandAllPossibleConfigs()")
-	// defer slog.Debug("expandAllPossibleConfigs() returning")
+	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
+		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
+		if err != nil {
+			return err
+		}
+		defer output.RestoreDefaultLogger(prevLogger)
+	}
+	slog.Info("expandAllPossibleConfigs()")
+	defer slog.Info("expandAllPossibleConfigs() returning")
 
-	slog.Info("in expandAllPossibleConfigs()", "opts.configID", opts.configID.String())
-
-	// fmt.Printf("generating Config %#v", opts.configID)
-	// slog.Debug("in expandAllPossibleConfigs()", "opts.configID", opts.configID)
+	slog.Info("in expandAllPossibleConfigs()", "opts.configID", opts.configID.String(), "len(locPropsSel)", len(locPropsSel))
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		for i, lp := range locPropsSel {
-			slog.Debug("in expandAllPossibleConfigs()", "i", i, "lp.count", lp.count)
+			slog.Debug("in expandAllPossibleConfigs()", "i", i, "lp", lp.DebugString())
 		}
 	}
 

@@ -3,28 +3,26 @@ package generate
 import (
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/findyourpaths/goskyr/date"
-	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 	"golang.org/x/net/html"
 )
 
 func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationProps, []*locationProps, error) {
-	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
-		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_analyzePage_log.txt"), slog.LevelDebug)
-		if err != nil {
-			return nil, nil, err
-		}
-		defer output.RestoreDefaultLogger(prevLogger)
-	}
-	slog.Info("analyzePage()", "opts", opts)
-	defer slog.Info("analyzePage() returning")
+	// if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
+	// 	prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_analyzePage_log.txt"), slog.LevelDebug)
+	// 	if err != nil {
+	// 		return nil, nil, err
+	// 	}
+	// 	defer output.RestoreDefaultLogger(prevLogger)
+	// }
+	// slog.Info("analyzePage()", "opts", opts)
+	// defer slog.Info("analyzePage() returning")
 
 	a := &Analyzer{
 		Tokenizer:   html.NewTokenizer(strings.NewReader(htmlStr)),
@@ -112,21 +110,21 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 }
 
 func findSharedRootSelector(locPropsSel []*locationProps) path {
-	// slog.Debug("findSharedRootSelector()", "len(locPropsSel)", len(locPropsSel))
+	slog.Debug("findSharedRootSelector()", "len(locPropsSel)", len(locPropsSel))
 	if len(locPropsSel) == 1 {
-		// slog.Debug("in findSharedRootSelector(), found singleton, returning", "locPropsSel[0].path.string()", locPropsSel[0].path.string())
+		slog.Debug("in findSharedRootSelector(), found singleton, returning", "locPropsSel[0].path.string()", locPropsSel[0].path.string())
 		return locPropsSel[0].path
 	}
-	// for j, lp := range locPropsSel {
-	// slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
-	// }
+	for j, lp := range locPropsSel {
+		slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
+	}
 	for i := 0; ; i++ {
-		// slog.Debug("in findSharedRootSelector()", "i", i)
+		slog.Debug("in findSharedRootSelector()", "i", i)
 		var n node
 		for j, lp := range locPropsSel {
-			// slog.Debug("in findSharedRootSelector()", "  j", j, "len(lp.path)", len(lp.path), "lp.isText", lp.isText, "lp.path[:i].string()", lp.path[:i].string())
+			slog.Debug("in findSharedRootSelector()", "  j", j, "lp", lp.DebugString())
 			if i+1 == len(lp.path) {
-				// slog.Debug("in findSharedRootSelector(), returning 1", "lp.path[:i].string()", lp.path[:i].string())
+				slog.Debug("in findSharedRootSelector(), returning end", "lp.path[:i].string()", lp.path[:i].string())
 				return lp.path[:i]
 			}
 
@@ -144,13 +142,13 @@ func findSharedRootSelector(locPropsSel []*locationProps) path {
 			} else {
 				// Look for divergence and if found, return what we have so far.
 				if !n.equals(lp.path[i]) {
-					// slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
+					slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
 					return lp.path[:i]
 				}
 			}
 		}
 	}
-	// slog.Debug("in findSharedRootSelector(), returning nil")
+	slog.Debug("in findSharedRootSelector(), returning nil")
 	return []node{}
 }
 
@@ -394,14 +392,11 @@ func filterStaticFields(lps []*locationProps) locationManager {
 // Go one element beyond the root selector length and find the cluster with the largest number of fields.
 // Filter out all of the other fields.
 func findClusters(lps []*locationProps, rootSelector path) map[string][]*locationProps {
-	slog.Debug("findClusters()", "len(lps)", len(lps), "rootSelector.string()", rootSelector.string())
-	// slog.Debug("filterAllButLargestCluster(lps (%d), rootSelector.string(): %q)", len(lps), rootSelector.string())
+	slog.Debug("findClusters()", "len(lps)", len(lps), "len(rootSelector)", len(rootSelector), "rootSelector.string()", rootSelector.string())
+
 	locationPropsByPath := map[string][]*locationProps{}
-	// clusterCounts := map[path]int{}
 	newLen := len(rootSelector) + 1
 	slog.Debug("in findClusters()", "newLen", newLen)
-	// maxCount := 0
-	// var maxPath path
 	for _, lp := range lps {
 		slog.Debug("in findClusters()", "lp", lp.DebugString())
 		// Check whether we reached the end.
@@ -410,15 +405,9 @@ func findClusters(lps []*locationProps, rootSelector path) map[string][]*locatio
 			continue
 			// return locationPropsByPath
 		}
-		p := lp.path[0:newLen]
-		pStr := p.string()
-		locationPropsByPath[pStr] = append(locationPropsByPath[pStr], lp)
-		//
-		// clusterCounts[p] += lp.count
-		// if clusterCounts[pStr] > maxCount {
-		// 	maxCount = clusterCounts[pStr]
-		// 	maxPath = p
-		// }
+		lpStr := lp.path[0:newLen].string()
+		locationPropsByPath[lpStr] = append(locationPropsByPath[lpStr], lp)
+		slog.Debug("in findClusters(), added lp", "lpStr", lpStr)
 	}
 	for pStr, pByP := range locationPropsByPath {
 		slog.Debug("in findClusters()", "pStr", pStr, "len(pByP)", len(pByP))
