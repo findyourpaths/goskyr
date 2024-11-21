@@ -90,38 +90,37 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 		return nil, nil, nil
 	}
 
-	var locPropsSel []*locationProps
+	var lps []*locationProps
 	if !opts.Batch {
 		a.LocMan.setColors()
 		a.LocMan.selectFieldsTable()
 		for _, lm := range a.LocMan {
 			if lm.selected {
-				locPropsSel = append(locPropsSel, lm)
+				lps = append(lps, lm)
 			}
 		}
 	} else {
-		locPropsSel = a.LocMan
+		lps = a.LocMan
 	}
-	if len(locPropsSel) == 0 {
+	if len(lps) == 0 {
 		return nil, nil, fmt.Errorf("no fields selected")
 	}
-
-	return locPropsSel, append(a.NextPaths, a.PagMan...), nil
+	return lps, append(a.NextPaths, a.PagMan...), nil
 }
 
-func findSharedRootSelector(locPropsSel []*locationProps) path {
-	slog.Debug("findSharedRootSelector()", "len(locPropsSel)", len(locPropsSel))
-	if len(locPropsSel) == 1 {
-		slog.Debug("in findSharedRootSelector(), found singleton, returning", "locPropsSel[0].path.string()", locPropsSel[0].path.string())
-		return locPropsSel[0].path
+func findSharedRootSelector(lps []*locationProps) path {
+	slog.Debug("findSharedRootSelector()", "len(lps)", len(lps))
+	if len(lps) == 1 {
+		slog.Debug("in findSharedRootSelector(), found singleton, returning", "lps[0].path.string()", lps[0].path.string())
+		return lps[0].path
 	}
-	for j, lp := range locPropsSel {
+	for j, lp := range lps {
 		slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
 	}
 	for i := 0; ; i++ {
 		slog.Debug("in findSharedRootSelector()", "i", i)
 		var n node
-		for j, lp := range locPropsSel {
+		for j, lp := range lps {
 			slog.Debug("in findSharedRootSelector()", "  j", j, "lp", lp.DebugString())
 			if i+1 == len(lp.path) {
 				slog.Debug("in findSharedRootSelector(), returning end", "lp.path[:i].string()", lp.path[:i].string())
@@ -167,7 +166,8 @@ func shortenRootSelector(p path) path {
 }
 
 // for now we assume that there will only be one date field
-func processFields(locPropsSel []*locationProps, rootSelector path) []scrape.Field {
+func processFields(lps []*locationProps, rootSelector path) []scrape.Field {
+	slog.Debug("processFields()", "len(lps)", len(lps))
 	zone, _ := time.Now().Zone()
 	zone = strings.Replace(zone, "CEST", "CET", 1) // quick hack for issue #209
 	dateField := scrape.Field{
@@ -177,25 +177,25 @@ func processFields(locPropsSel []*locationProps, rootSelector path) []scrape.Fie
 	}
 	fields := []scrape.Field{}
 
-	slog.Debug("in processFields()", "len(rootSelector)", len(rootSelector), "rootSelector.string()", rootSelector.string())
-	for _, e := range locPropsSel {
-		// slog.Debug("in processFields()", "e.path.string()", e.path.string())
-		// slog.Debug("in processFields()", "e.path[len(rootSelector):].string()", e.path[len(rootSelector):].string())
+	slog.Debug("in processFields()", "len(rootSelector)", len(rootSelector), "rootSelector", rootSelector.string())
+	for _, lp := range lps {
+		// slog.Debug("in processFields()", "e.path", e.path.string())
+		// slog.Debug("in processFields()", "e.path[len(rootSelector):]", e.path[len(rootSelector):].string())
 		loc := scrape.ElementLocation{
-			Selector:   e.path[len(rootSelector):].string(),
-			ChildIndex: e.textIndex,
-			Attr:       e.attr,
+			Selector:   lp.path[len(rootSelector):].string(),
+			ChildIndex: lp.textIndex,
+			Attr:       lp.attr,
 		}
 		fieldType := "text"
 
-		if strings.HasPrefix(e.name, "date-component") {
+		if strings.HasPrefix(lp.name, "date-component") {
 			cd := date.CoveredDateParts{
-				Day:   strings.Contains(e.name, "day"),
-				Month: strings.Contains(e.name, "month"),
-				Year:  strings.Contains(e.name, "year"),
-				Time:  strings.Contains(e.name, "time"),
+				Day:   strings.Contains(lp.name, "day"),
+				Month: strings.Contains(lp.name, "month"),
+				Year:  strings.Contains(lp.name, "year"),
+				Time:  strings.Contains(lp.name, "time"),
 			}
-			format, lang := date.GetDateFormatMulti(e.examples, cd)
+			format, lang := date.GetDateFormatMulti(lp.examples, cd)
 			dateField.Components = append(dateField.Components, scrape.DateComponent{
 				ElementLocation: loc,
 				Covers:          cd,
@@ -212,7 +212,7 @@ func processFields(locPropsSel []*locationProps, rootSelector path) []scrape.Fie
 			fieldType = "url"
 		}
 		d := scrape.Field{
-			Name:             e.name,
+			Name:             lp.name,
 			Type:             fieldType,
 			ElementLocations: []scrape.ElementLocation{loc},
 			CanBeEmpty:       true,
@@ -223,6 +223,7 @@ func processFields(locPropsSel []*locationProps, rootSelector path) []scrape.Fie
 	if len(dateField.Components) > 0 {
 		fields = append(fields, dateField)
 	}
+	slog.Debug("processFields() returning", "len(fields)", len(fields))
 	return fields
 }
 
@@ -254,7 +255,7 @@ func squashLocationManager(l locationManager, minOcc int) locationManager {
 // different paths but if all paths' base paths look differently (because their
 // nodes have different nth-child pseudo classes) there won't be a common
 // base path.
-func stripNthChild(lp *locationProps, minOcc int) {
+func stripNthChild(lps *locationProps, minOcc int) {
 	iStrip := 0
 	// every node in lp.path with index < than iStrip needs no be stripped
 	// of its pseudo classes. iStrip changes during the execution of
@@ -270,17 +271,17 @@ func stripNthChild(lp *locationProps, minOcc int) {
 	if minOcc < 6 {
 		sub = 2
 	}
-	for i := len(lp.path) - sub; i >= 0; i-- {
+	for i := len(lps.path) - sub; i >= 0; i-- {
 		if i < iStrip {
-			lp.path[i].pseudoClasses = []string{}
-		} else if len(lp.path[i].pseudoClasses) > 0 {
+			lps.path[i].pseudoClasses = []string{}
+		} else if len(lps.path[i].pseudoClasses) > 0 {
 			// nth-child(x)
-			ncIndex, _ := strconv.Atoi(strings.Replace(strings.Split(lp.path[i].pseudoClasses[0], "(")[1], ")", "", 1))
+			ncIndex, _ := strconv.Atoi(strings.Replace(strings.Split(lps.path[i].pseudoClasses[0], "(")[1], ")", "", 1))
 			if ncIndex >= minOcc {
-				lp.path[i].pseudoClasses = []string{}
+				lps.path[i].pseudoClasses = []string{}
 				iStrip = i
 				// we need to pass iStrip to the locationProps too to be used by checkAndUpdateLocProps
-				lp.iStrip = iStrip
+				lps.iStrip = iStrip
 			}
 		}
 	}
@@ -359,7 +360,7 @@ func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
 	var kept []*locationProps
 	for _, lp := range lps {
 		if lp.count < minCount {
-			slog.Debug("in filterBelowMinCount dropping", "minCount", minCount, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+			slog.Debug("in filterBelowMinCount dropping", "minCount", minCount, "lp.count", lp.count, "lp.path", lp.path.string())
 			continue
 		}
 		kept = append(kept, lp)
@@ -392,7 +393,7 @@ func filterStaticFields(lps []*locationProps) locationManager {
 // Go one element beyond the root selector length and find the cluster with the largest number of fields.
 // Filter out all of the other fields.
 func findClusters(lps []*locationProps, rootSelector path) map[string][]*locationProps {
-	slog.Debug("findClusters()", "len(lps)", len(lps), "len(rootSelector)", len(rootSelector), "rootSelector.string()", rootSelector.string())
+	slog.Debug("findClusters()", "len(lps)", len(lps), "len(rootSelector)", len(rootSelector), "rootSelector", rootSelector.string())
 
 	locationPropsByPath := map[string][]*locationProps{}
 	newLen := len(rootSelector) + 1

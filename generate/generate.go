@@ -127,17 +127,17 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, mi
 		return nil, nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
 	}
 
-	locPropsSel, pagProps, err := analyzePage(opts, htmlStr, minOcc)
+	lps, pagProps, err := analyzePage(opts, htmlStr, minOcc)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
 	}
-	if len(locPropsSel) == 0 {
+	if len(lps) == 0 {
 		// No fields were found, so just return.
 		return nil, gqdocsByURL, nil
 	}
 
 	// slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(a.LocMan)", len(a.LocMan))
-	slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(locPropsSel)", len(locPropsSel))
+	slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(lps)", len(lps))
 	slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(pagProps)", len(pagProps))
 	rs := map[string]*scrape.Config{}
 
@@ -146,7 +146,7 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, mi
 	pagProps = []*locationProps{}
 	// }
 
-	if err := expandAllPossibleConfigs(gqdoc, opts, locPropsSel, nil, "", pagProps, rs); err != nil {
+	if err := expandAllPossibleConfigs(gqdoc, opts, lps, nil, "", pagProps, rs); err != nil {
 		return nil, nil, err
 	}
 
@@ -154,7 +154,7 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, mi
 	return rs, gqdocsByURL, nil
 }
 
-func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPropsSel []*locationProps, parentRootSelector path, parentItemsStr string, pagProps []*locationProps, results map[string]*scrape.Config) error {
+func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, parentRootSelector path, parentItemsStr string, pagProps []*locationProps, results map[string]*scrape.Config) error {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -165,9 +165,9 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 	slog.Info("expandAllPossibleConfigs()")
 	defer slog.Info("expandAllPossibleConfigs() returning")
 
-	slog.Info("in expandAllPossibleConfigs()", "opts.configID", opts.configID.String(), "len(locPropsSel)", len(locPropsSel))
+	slog.Info("in expandAllPossibleConfigs()", "opts.configID", opts.configID.String(), "len(lps)", len(lps))
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range locPropsSel {
+		for i, lp := range lps {
 			slog.Debug("in expandAllPossibleConfigs()", "i", i, "lp", lp.DebugString())
 		}
 	}
@@ -192,10 +192,10 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 		Paginators: pags,
 	}
 
-	rootSelector := findSharedRootSelector(locPropsSel)
+	rootSelector := findSharedRootSelector(lps)
 	// s.Item = shortenRootSelector(rootSelector).string()
 	s.Item = rootSelector.string()
-	s.Fields = processFields(locPropsSel, rootSelector)
+	s.Fields = processFields(lps, rootSelector)
 	if opts.DoSubpages && len(s.GetSubpageURLFields()) == 0 {
 		slog.Info("candidate configuration failed to find a subpage URL field, excluding", "opts.configID", opts.configID)
 		return nil
@@ -217,7 +217,7 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 	}
 
 	itemsStr := items.String()
-	clusters := findClusters(locPropsSel, rootSelector)
+	clusters := findClusters(lps, rootSelector)
 	clusterIDs := []string{}
 	for clusterID := range clusters {
 		clusterIDs = append(clusterIDs, clusterID)
@@ -537,7 +537,7 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL 
 		subScraper.Item = strings.TrimPrefix(subScraper.Item, "body > htmls > ")
 
 		for _, pj := range pjs {
-			slog.Debug("looking at", "pj.config.ID.String()", pj.config.ID.String())
+			slog.Debug("looking at", "pj.config.ID", pj.config.ID.String())
 
 			mergedC := pj.config.Copy()
 			mergedC.ID.Field = opts.configID.Field
