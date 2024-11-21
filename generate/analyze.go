@@ -390,3 +390,38 @@ func filterStaticFields(lps []*locationProps) locationManager {
 	}
 	return kept
 }
+
+// Go one element beyond the root selector length and find the cluster with the largest number of fields.
+// Filter out all of the other fields.
+func findClusters(lps []*locationProps, rootSelector path) map[string][]*locationProps {
+	slog.Debug("findClusters()", "len(lps)", len(lps), "rootSelector.string()", rootSelector.string())
+	// slog.Debug("filterAllButLargestCluster(lps (%d), rootSelector.string(): %q)", len(lps), rootSelector.string())
+	locationPropsByPath := map[string][]*locationProps{}
+	// clusterCounts := map[path]int{}
+	newLen := len(rootSelector) + 1
+	slog.Debug("in findClusters()", "newLen", newLen)
+	// maxCount := 0
+	// var maxPath path
+	for _, lp := range lps {
+		slog.Debug("in findClusters()", "lp", lp.DebugString())
+		// Check whether we reached the end.
+		// If our new root selector is longer or equal to the length of this path, return.
+		if newLen >= len(lp.path) {
+			break
+			// return locationPropsByPath
+		}
+		p := lp.path[0:newLen]
+		pStr := p.string()
+		locationPropsByPath[pStr] = append(locationPropsByPath[pStr], lp)
+		//
+		// clusterCounts[p] += lp.count
+		// if clusterCounts[pStr] > maxCount {
+		// 	maxCount = clusterCounts[pStr]
+		// 	maxPath = p
+		// }
+	}
+	for pStr, pByP := range locationPropsByPath {
+		slog.Debug("in findClusters()", "pStr", pStr, "len(pByP)", len(pByP))
+	}
+	return locationPropsByPath
+}
