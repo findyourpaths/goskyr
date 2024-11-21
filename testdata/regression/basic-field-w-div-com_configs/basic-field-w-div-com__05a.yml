@@ -1,11 +1,11 @@
 id:
-    slug: basic-fields-com
-    id: 05aa
+    slug: basic-field-w-div-com
+    id: 05a
     field: ""
     subid: ""
 scrapers:
-    - name: basic-fields-com__05aa
-      url: https://basic-fields.com
+    - name: basic-field-w-div-com__05a
+      url: https://basic-field-w-div.com
       item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div
       fields:
         - name: Fa5ccda70--0
