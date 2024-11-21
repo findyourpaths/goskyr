@@ -112,21 +112,21 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 }
 
 func findSharedRootSelector(locPropsSel []*locationProps) path {
-	slog.Debug("findSharedRootSelector()", "len(locPropsSel)", len(locPropsSel))
+	// slog.Debug("findSharedRootSelector()", "len(locPropsSel)", len(locPropsSel))
 	if len(locPropsSel) == 1 {
-		slog.Debug("in findSharedRootSelector(), found singleton, returning", "locPropsSel[0].path.string()", locPropsSel[0].path.string())
+		// slog.Debug("in findSharedRootSelector(), found singleton, returning", "locPropsSel[0].path.string()", locPropsSel[0].path.string())
 		return locPropsSel[0].path
 	}
-	for j, lp := range locPropsSel {
-		slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
-	}
+	// for j, lp := range locPropsSel {
+	// slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
+	// }
 	for i := 0; ; i++ {
-		slog.Debug("in findSharedRootSelector()", "i", i)
+		// slog.Debug("in findSharedRootSelector()", "i", i)
 		var n node
 		for j, lp := range locPropsSel {
-			slog.Debug("in findSharedRootSelector()", "  j", j, "len(lp.path)", len(lp.path), "lp.isText", lp.isText, "lp.path[:i].string()", lp.path[:i].string())
+			// slog.Debug("in findSharedRootSelector()", "  j", j, "len(lp.path)", len(lp.path), "lp.isText", lp.isText, "lp.path[:i].string()", lp.path[:i].string())
 			if i+1 == len(lp.path) {
-				slog.Debug("in findSharedRootSelector(), returning 1", "lp.path[:i].string()", lp.path[:i].string())
+				// slog.Debug("in findSharedRootSelector(), returning 1", "lp.path[:i].string()", lp.path[:i].string())
 				return lp.path[:i]
 			}
 
@@ -144,13 +144,13 @@ func findSharedRootSelector(locPropsSel []*locationProps) path {
 			} else {
 				// Look for divergence and if found, return what we have so far.
 				if !n.equals(lp.path[i]) {
-					slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
+					// slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
 					return lp.path[:i]
 				}
 			}
 		}
 	}
-	slog.Debug("in findSharedRootSelector(), returning nil")
+	// slog.Debug("in findSharedRootSelector(), returning nil")
 	return []node{}
 }
 
@@ -181,8 +181,8 @@ func processFields(locPropsSel []*locationProps, rootSelector path) []scrape.Fie
 
 	slog.Debug("in processFields()", "len(rootSelector)", len(rootSelector), "rootSelector.string()", rootSelector.string())
 	for _, e := range locPropsSel {
-		slog.Debug("in processFields()", "e.path.string()", e.path.string())
-		slog.Debug("in processFields()", "e.path[len(rootSelector):].string()", e.path[len(rootSelector):].string())
+		// slog.Debug("in processFields()", "e.path.string()", e.path.string())
+		// slog.Debug("in processFields()", "e.path[len(rootSelector):].string()", e.path[len(rootSelector):].string())
 		loc := scrape.ElementLocation{
 			Selector:   e.path[len(rootSelector):].string(),
 			ChildIndex: e.textIndex,
@@ -407,7 +407,7 @@ func findClusters(lps []*locationProps, rootSelector path) map[string][]*locatio
 		// Check whether we reached the end.
 		// If our new root selector is longer or equal to the length of this path, return.
 		if newLen >= len(lp.path) {
-			break
+			continue
 			// return locationPropsByPath
 		}
 		p := lp.path[0:newLen]

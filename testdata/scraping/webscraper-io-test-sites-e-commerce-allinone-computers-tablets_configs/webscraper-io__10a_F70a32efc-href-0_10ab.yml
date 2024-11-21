@@ -66,6 +66,11 @@ scrapers:
           location:
             - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > p.card-text.description
           can_be_empty: true
+        - name: F41fd3820--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4.card-title.float-end.price.pull-right
+          can_be_empty: true
         - name: F49df913a--0
           type: text
           location:
@@ -75,6 +80,17 @@ scrapers:
           type: text
           location:
             - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > h4.float-end.price.pull-right
+          can_be_empty: true
+        - name: F72216910--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4 > a.title
+          can_be_empty: true
+        - name: F72216910-href-0
+          type: url
+          location:
+            - selector: div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4 > a.title
+              attr: href
           can_be_empty: true
         - name: F80e20a96--0
           type: text
@@ -86,10 +102,20 @@ scrapers:
           location:
             - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.swatches > button.btn.swatch
           can_be_empty: true
+        - name: Fd105cac1--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > p.card-text.description
+          can_be_empty: true
         - name: Ff33aaba9--0
           type: text
           location:
             - selector: div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > h4.card-title.title
+          can_be_empty: true
+        - name: Ff467be2a--0
+          type: text
+          location:
+            - selector: div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.ratings > p.float-end.review-count
           can_be_empty: true
       render_js: true
 itemmaps: []

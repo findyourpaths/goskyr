@@ -117,5 +117,15 @@ scrapers:
             - selector: div.content > div > article.product_page > div.row > div.col-sm-6 > div.carousel > div.thumbnail > div.carousel-inner > div.active.item > img
               attr: src
           can_be_empty: true
+        - name: Fdcf92592--0
+          type: text
+          location:
+            - selector: div.content > div > article.product_page > div.sub-header > h2
+          can_be_empty: true
+        - name: Fe1f8e6d7--0
+          type: text
+          location:
+            - selector: div.content > div > article.product_page > div.row > div.col-sm-6.product_main > p.price_color
+          can_be_empty: true
       render_js: true
 itemmaps: []
