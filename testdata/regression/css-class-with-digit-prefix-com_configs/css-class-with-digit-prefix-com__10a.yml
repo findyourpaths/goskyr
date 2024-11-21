@@ -1,0 +1,17 @@
+id:
+    slug: css-class-with-digit-prefix-com
+    id: 10a
+    field: ""
+    subid: ""
+scrapers:
+    - name: css-class-with-digit-prefix-com__10a
+      url: https://css-class-with-digit-prefix.com
+      item: body > div.a-0.b-0 > div.\31-1.a-1.b-1 > div.a-2.b-2
+      fields:
+        - name: F84428c4e--0
+          type: text
+          location:
+            - {}
+          can_be_empty: true
+      render_js: true
+itemmaps: []

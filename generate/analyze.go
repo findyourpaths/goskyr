@@ -23,8 +23,8 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 		}
 		defer output.RestoreDefaultLogger(prevLogger)
 	}
-	slog.Debug("analyzePage()", "opts", opts)
-	defer slog.Debug("analyzePage() returning")
+	slog.Info("analyzePage()", "opts", opts)
+	defer slog.Info("analyzePage() returning")
 
 	a := &Analyzer{
 		Tokenizer:   html.NewTokenizer(strings.NewReader(htmlStr)),
@@ -82,7 +82,7 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 	slog.Debug("in ConfigurationsForGQDocument, final", "len(a.PagMan)", len(a.PagMan))
 
 	if len(a.LocMan) == 0 {
-		slog.Warn("no fields found", "opts", opts, "minOcc", minOcc)
+		slog.Info("no fields found", "opts", opts, "minOcc", minOcc)
 		return nil, nil, nil
 	}
 	if err := a.LocMan.setFieldNames(opts.ModelName, opts.WordsDir); err != nil {

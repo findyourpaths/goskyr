@@ -324,9 +324,10 @@ var urlsForTestnamesByDir = map[string]map[string][]string{
 		"hideoutchicago-com-events": []string{"https://hideoutchicago.com/events", ""},
 	},
 	"regression": {
-		"basic-field-com":    []string{"https://basic-field.com", ""},
-		"basic-fields-com":   []string{"https://basic-fields.com", ""},
-		"basic-subpages-com": []string{"https://basic-subpages.com", ""},
+		"basic-field-com":                 []string{"https://basic-field.com", ""},
+		"basic-fields-com":                []string{"https://basic-fields.com", ""},
+		"basic-subpages-com":              []string{"https://basic-subpages.com", ""},
+		"css-class-with-digit-prefix-com": []string{"https://css-class-with-digit-prefix.com", ""},
 	},
 	"scraping": {
 		"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},

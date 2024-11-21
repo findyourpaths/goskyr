@@ -88,7 +88,7 @@ func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, error) {
 	// log.Printf("StaticFetcher.Fetch(url: %q, opts: %#v)", url, opts)
 	// s.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 	s.UserAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
-	slog.Debug("fetching page", slog.String("fetcher", "static"), slog.String("url", url), slog.String("user-agent", s.UserAgent))
+	slog.Info("fetching page", slog.String("fetcher", "static"), slog.String("url", url), slog.String("user-agent", s.UserAgent))
 	var resString string
 
 	// See: https://stackoverflow.com/questions/64272533/get-request-returns-403-status-code-parsing
@@ -171,7 +171,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 
 	// log.Printf("DynamicFetcher.Fetch(urlStr: %q, opts: %#v)", urlStr, opts)
 	slg := slog.With(slog.String("fetcher", "dynamic"), slog.String("url", urlStr))
-	slg.Debug("fetching page", slog.String("user-agent", d.UserAgent))
+	slg.Info("fetching page", slog.String("user-agent", d.UserAgent))
 	// start := time.Now()
 	ctx, cancel := chromedp.NewContext(d.allocContext)
 	// ctx, cancel := chromedp.NewContext(d.allocContext,

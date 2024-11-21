@@ -481,7 +481,7 @@ func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMa
 		item, err := GQSelection(s, sel, baseUrl, rawDyn)
 		if err != nil {
 			if DoDebug {
-				slg.Warn("in scrape.GQDocumentItems()", "err", err.Error())
+				slg.Warn("while scraping document got error", "baseUrl", baseUrl, "err", err.Error())
 			}
 			return
 		}
