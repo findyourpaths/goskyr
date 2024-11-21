@@ -6,28 +6,27 @@ id:
 scrapers:
     - name: www-scrapethissite-com__20aa
       url: https://www.scrapethissite.com/pages/simple
-      item: body > div > section > div.container > div.row > div.col-md-4.country
+      item: body > div > section > div.container > div.row > div.col-md-4.country > div.country-info
       fields:
+        - name: F4a72abfd--0
+          type: text
+          location:
+            - selector: strong
+          can_be_empty: true
         - name: F4b66d070--0
           type: text
           location:
-            - selector: div.country-info > span.country-area
+            - selector: span.country-area
           can_be_empty: true
         - name: F53eebc28--0
           type: text
           location:
-            - selector: div.country-info > span.country-population
+            - selector: span.country-population
           can_be_empty: true
         - name: F9a2a5663--0
           type: text
           location:
-            - selector: div.country-info > span.country-capital
-          can_be_empty: true
-        - name: Ffd69cf0e--2
-          type: text
-          location:
-            - selector: h3.country-name
-              child_index: 2
+            - selector: span.country-capital
           can_be_empty: true
       render_js: true
 itemmaps: []

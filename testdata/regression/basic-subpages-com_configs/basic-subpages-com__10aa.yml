@@ -6,12 +6,12 @@ id:
 scrapers:
     - name: basic-subpages-com__10aa
       url: https://basic-subpages.com
-      item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div
+      item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div > a
       fields:
-        - name: Fa5ccda70--0
-          type: text
+        - name: F2a60128b-href-0
+          type: url
           location:
-            - {}
+            - attr: href
           can_be_empty: true
       render_js: true
 itemmaps: []

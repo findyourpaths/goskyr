@@ -1,68 +1,35 @@
 [
   {
-    "Fa5ccda70--0": "Alice"
+    "F2a60128b-href-0": "/alice-address"
   },
   {
-    "Fa5ccda70--0": ""
+    "F2a60128b-href-0": "/bob-address"
   },
   {
-    "Fa5ccda70--0": "Bob"
+    "F2a60128b-href-0": "/carol-address"
   },
   {
-    "Fa5ccda70--0": ""
+    "F2a60128b-href-0": "/dan-address"
   },
   {
-    "Fa5ccda70--0": "Carol"
+    "F2a60128b-href-0": "/eve-address"
   },
   {
-    "Fa5ccda70--0": ""
+    "F2a60128b-href-0": "/frank-address"
   },
   {
-    "Fa5ccda70--0": "Dan"
+    "F2a60128b-href-0": "/grace-address"
   },
   {
-    "Fa5ccda70--0": ""
+    "F2a60128b-href-0": "/heidi-address"
   },
   {
-    "Fa5ccda70--0": "Eve"
+    "F2a60128b-href-0": "/ivan-address"
   },
   {
-    "Fa5ccda70--0": ""
+    "F2a60128b-href-0": "/judy-address"
   },
   {
-    "Fa5ccda70--0": "Frank"
-  },
-  {
-    "Fa5ccda70--0": ""
-  },
-  {
-    "Fa5ccda70--0": "Grace"
-  },
-  {
-    "Fa5ccda70--0": ""
-  },
-  {
-    "Fa5ccda70--0": "Heidi"
-  },
-  {
-    "Fa5ccda70--0": ""
-  },
-  {
-    "Fa5ccda70--0": "Ivan"
-  },
-  {
-    "Fa5ccda70--0": ""
-  },
-  {
-    "Fa5ccda70--0": "Judy"
-  },
-  {
-    "Fa5ccda70--0": ""
-  },
-  {
-    "Fa5ccda70--0": "Kate"
-  },
-  {
-    "Fa5ccda70--0": ""
+    "F2a60128b-href-0": "/kate-address"
   }
 ]

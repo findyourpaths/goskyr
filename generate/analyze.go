@@ -36,10 +36,10 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		for i, lp := range a.LocMan {
-			slog.Debug("raw", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+			slog.Debug("raw", "i", i, "lp", lp.DebugString())
 		}
 		for i, lp := range a.PagMan {
-			slog.Debug("raw pags", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+			slog.Debug("raw pags", "i", i, "lp", lp.DebugString())
 		}
 	}
 
@@ -47,49 +47,51 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 	a.PagMan = squashLocationManager(a.PagMan, 3)
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		for i, lp := range a.LocMan {
-			slog.Debug("squashed", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+			slog.Debug("after squashing", "i", i, "lp", lp.DebugString())
 		}
 		for i, lp := range a.PagMan {
-			slog.Debug("squashed pags", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+			slog.Debug("after squashing pags", "i", i, "lp", lp.DebugString())
 		}
+	}
+
+	// Set the field names now and log what gets filtered out.
+	if err := a.LocMan.setFieldNames(opts.ModelName, opts.WordsDir); err != nil {
+		return nil, nil, err
 	}
 
 	a.LocMan = filterBelowMinCount(a.LocMan, minOcc)
 	a.PagMan = filterBelowMinCount(a.PagMan, 3)
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		for i, lp := range a.LocMan {
-			slog.Debug("filtered min count", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+			slog.Debug("after filtering min count", "i", i, "lp", lp.DebugString())
 		}
 		for i, lp := range a.PagMan {
-			slog.Debug("filtered min count pags", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+			slog.Debug("after filtering min count pags", "i", i, "lp", lp.DebugString())
 		}
 	}
 
+	slog.Debug("in analyzePage()", "opts.OnlyVarying", opts.OnlyVarying)
 	if opts.OnlyVarying {
 		a.LocMan = filterStaticFields(a.LocMan)
 		a.PagMan = filterStaticFields(a.PagMan)
-	}
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range a.LocMan {
-			slog.Debug("filtered static", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
-		}
-		for i, lp := range a.PagMan {
-			slog.Debug("filtered static pags", "i", i, "lp.count", lp.count, "lp.path.string()", lp.path.string())
+		if slog.Default().Enabled(nil, slog.LevelDebug) {
+			for i, lp := range a.LocMan {
+				slog.Debug("after filtering static", "i", i, "lp", lp.DebugString())
+			}
+			for i, lp := range a.PagMan {
+				slog.Debug("after filtering static pags", "i", i, "lp", lp.DebugString())
+			}
 		}
 	}
 
-	slog.Debug("in ConfigurationsForGQDocument, final", "len(a.LocMan)", len(a.LocMan))
-	slog.Debug("in ConfigurationsForGQDocument, final", "len(a.PagMan)", len(a.PagMan))
+	slog.Debug("in analyzePage(), final", "len(a.LocMan)", len(a.LocMan))
+	slog.Debug("in analyzePage(), final", "len(a.PagMan)", len(a.PagMan))
 
 	if len(a.LocMan) == 0 {
 		slog.Info("no fields found", "opts", opts, "minOcc", minOcc)
 		return nil, nil, nil
 	}
-	if err := a.LocMan.setFieldNames(opts.ModelName, opts.WordsDir); err != nil {
-		return nil, nil, err
-	}
 
-	slog.Debug("in ConfigurationsForGQDocument", "opts", opts)
 	var locPropsSel []*locationProps
 	if !opts.Batch {
 		a.LocMan.setColors()
@@ -110,28 +112,45 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 }
 
 func findSharedRootSelector(locPropsSel []*locationProps) path {
+	slog.Debug("findSharedRootSelector()", "len(locPropsSel)", len(locPropsSel))
+	if len(locPropsSel) == 1 {
+		slog.Debug("in findSharedRootSelector(), found singleton, returning", "locPropsSel[0].path.string()", locPropsSel[0].path.string())
+		return locPropsSel[0].path
+	}
+	for j, lp := range locPropsSel {
+		slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
+	}
 	for i := 0; ; i++ {
-		// slog.Debug("i: %d", i)
+		slog.Debug("in findSharedRootSelector()", "i", i)
 		var n node
-		for j, e := range locPropsSel {
-			// slog.Debug("  j: %d", j)
-			// slog.Debug("  len(e.path): %d", len(e.path))
-			// slog.Debug("  e.path[:i].string(): %#v", e.path[:i].string())
-			// slog.Debug("  n: %#v", n)
-			if i >= len(e.path) {
-				return e.path[:i]
+		for j, lp := range locPropsSel {
+			slog.Debug("in findSharedRootSelector()", "  j", j, "len(lp.path)", len(lp.path), "lp.isText", lp.isText, "lp.path[:i].string()", lp.path[:i].string())
+			if i+1 == len(lp.path) {
+				slog.Debug("in findSharedRootSelector(), returning 1", "lp.path[:i].string()", lp.path[:i].string())
+				return lp.path[:i]
 			}
-			// slog.Debug("  e.path[i]: %#v", e.path[i])
+
+			// if lp.isText && i == len(lp.path) {
+			// 	slog.Debug("in findSharedRootSelector(), returning 2", "lp.path[:i].string()", lp.path[:i].string())
+			// 	return lp.path[:i]
+			// }
+			// if !lp.isText && i == len(lp.path)-1 {
+			// 	slog.Debug("in findSharedRootSelector(), returning 2", "lp.path[:i].string()", lp.path[:i].string())
+			// 	return lp.path[:i]
+			// }
+
 			if j == 0 {
-				n = e.path[i]
+				n = lp.path[i]
 			} else {
 				// Look for divergence and if found, return what we have so far.
-				if !n.equals(e.path[i]) {
-					return e.path[:i]
+				if !n.equals(lp.path[i]) {
+					slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
+					return lp.path[:i]
 				}
 			}
 		}
 	}
+	slog.Debug("in findSharedRootSelector(), returning nil")
 	return []node{}
 }
 
@@ -160,7 +179,10 @@ func processFields(locPropsSel []*locationProps, rootSelector path) []scrape.Fie
 	}
 	fields := []scrape.Field{}
 
+	slog.Debug("in processFields()", "len(rootSelector)", len(rootSelector), "rootSelector.string()", rootSelector.string())
 	for _, e := range locPropsSel {
+		slog.Debug("in processFields()", "e.path.string()", e.path.string())
+		slog.Debug("in processFields()", "e.path[len(rootSelector):].string()", e.path[len(rootSelector):].string())
 		loc := scrape.ElementLocation{
 			Selector:   e.path[len(rootSelector):].string(),
 			ChildIndex: e.textIndex,
@@ -352,12 +374,16 @@ func filterStaticFields(lps []*locationProps) locationManager {
 	var kept []*locationProps
 	for _, lp := range lps {
 		varied := false
-		for _, ex := range lp.examples {
+		slog.Debug("in filterStaticFields", "lp", lp.DebugString())
+		slog.Debug("in filterStaticFields", "len(lp.examples)", len(lp.examples), "lp.examples[0]", lp.examples[0])
+		for i, ex := range lp.examples {
+			slog.Debug("in filterStaticFields, looking for varying", "i", i, "ex", ex)
 			if ex != lp.examples[0] {
 				varied = true
-				break
+				// break
 			}
 		}
+		slog.Debug("in filterStaticFields", "varied", varied)
 		if varied {
 			kept = append(kept, lp)
 		}

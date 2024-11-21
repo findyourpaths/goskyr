@@ -3,6 +3,7 @@ package generate
 import (
 	"fmt"
 	"hash/crc32"
+	"log/slog"
 	"sort"
 
 	"github.com/findyourpaths/goskyr/ml"
@@ -22,16 +23,23 @@ type locationProps struct {
 	distance  float64
 	name      string
 	iStrip    int // this is needed for the squashLocationManager function
+	isText    bool
 }
 
-func makeLocationProps(nodePath []node, example string) locationProps {
+func makeLocationProps(nodePath path, example string, isText bool) locationProps {
+	slog.Debug("makeLocationProps()", "nodePath.actualstring()", nodePath.string(), "example", example)
 	p := make([]node, len(nodePath))
 	copy(p, nodePath)
 	return locationProps{
 		path:     p,
 		examples: []string{example},
 		count:    1,
+		isText:   isText,
 	}
+}
+
+func (lp locationProps) DebugString() string {
+	return fmt.Sprintf("{count: %d, name: %q, path.string(): %q, attr: %q}", lp.count, lp.name, lp.path.string(), lp.attr)
 }
 
 type locationManager []*locationProps

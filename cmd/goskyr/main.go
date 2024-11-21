@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"sort"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -94,7 +95,7 @@ type GenerateCmd struct {
 	DoSubpages          bool   `short:"s" long:"subpages" default:true help:"Whether to generate configurations for subpages as well."`
 	FieldsVary          bool   `long:"fieldsvary" default:true help:"Only show fields that have varying values across the list of items."`
 	MinOcc              int    `short:"m" long:"min" help:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
-	CacheInputDir       string `help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
+	CacheInputDir       string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
 	CacheOutputDir      string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will receive cached copies of the html page and linked pages."`
 	ConfigOutputDir     string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will recieve configuration files."`
 	Offline             bool   `default:false help:"Run offline and don't fetch pages."`
@@ -180,8 +181,21 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
-	for dir, urlsForTestnames := range urlsForTestnamesByDir {
-		for testname, urlAndReq := range urlsForTestnames {
+	dirs := []string{}
+	for dir := range urlsForTestnamesByDir {
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+
+	for _, dir := range dirs {
+		testnames := []string{}
+		for testname := range urlsForTestnamesByDir[dir] {
+			testnames = append(testnames, testname)
+		}
+		sort.Strings(testnames)
+
+		for _, testname := range testnames {
+			urlAndReq := urlsForTestnamesByDir[dir][testname]
 			fmt.Printf("Regenerating test %q\n", testname)
 
 			cacheInDir := filepath.Join("testdata", dir)
@@ -210,7 +224,8 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 			}
 
 			// Copy updated config files to testdata config dir.
-			cGlob := filepath.Join(testInputDir, dir, testname+"_configs", "*")
+			cGlob := filepath.Join(strings.TrimPrefix(testInputDir, "../../"), dir, testname+"_configs", "*")
+			fmt.Printf("cGlob: %s\n", cGlob)
 			cPaths, err := filepath.Glob(cGlob)
 			if err != nil {
 				return fmt.Errorf("error getting config input paths with glob %q: %v", cGlob, err)
@@ -218,7 +233,7 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 			for _, cPath := range cPaths {
 				outPath := filepath.Join(cmd.ConfigOutputDir, testname+"_configs", filepath.Base(cPath))
 				if _, err := utils.CopyStringFile(outPath, cPath); err != nil {
-					return fmt.Errorf("error copying %q to %q: %v", outPath, cPath, err)
+					fmt.Printf("error copying %q to %q: %v\n", outPath, cPath, err)
 				}
 			}
 			fmt.Printf("Copied %d config files for test %q\n", len(cPaths), testname)
@@ -258,7 +273,7 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 }
 
 type ScrapeCmd struct {
-	ConfigFile string `arg:"" description:"The location of the configuration. Can be a directory containing config files or a single config file."` // . In case of generation, it should be a directory."`
+	ConfigFile string `arg:"" description:"The location of the configuration file."` // . In case of generation, it should be a directory."`
 	File       string `help:"skip retrieving from the URL and use this saved copy of the page instead"`
 	OutputDir  string `default:"/tmp/goskyr/main/" help:"The output directory."`
 	ToStdout   bool   `short:"o" long:"stdout" default:"true" help:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
@@ -271,7 +286,7 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error reading config: %v", err)
 	}
 
-	itemMaps, err := scrape.Page(&conf.Scrapers[0], &conf.Global, true, cmd.File)
+	itemMaps, err := scrape.Page(conf, &conf.Scrapers[0], &conf.Global, true, cmd.File)
 	if err != nil {
 		return err
 	}
@@ -320,19 +335,26 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 //
 //	go run main.go --debug regenerate
 var urlsForTestnamesByDir = map[string]map[string][]string{
-	"chicago": {
-		"hideoutchicago-com-events": []string{"https://hideoutchicago.com/events", ""},
-	},
+	// "chicago": {
+	// 	"hideoutchicago-com-events": []string{"https://hideoutchicago.com/events", ""},
+	// },
 	"regression": {
-		"basic-field-com":                 []string{"https://basic-field.com", ""},
-		"basic-fields-com":                []string{"https://basic-fields.com", ""},
+		"basic-field-com":        []string{"https://basic-field.com", ""},
+		"basic-field-w-div-com":  []string{"https://basic-field-w-div.com", ""},
+		"basic-fields-com":       []string{"https://basic-fields.com", ""},
+		"basic-fields-w-div-com": []string{"https://basic-fields-w-div.com", ""},
+		// "basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},      // broken
+		"basic-fields-w-div-w-divc-com":     []string{"https://basic-fields-w-div-w-div.com", ""},
+		"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
+		// "basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},       // broken
+		"basic-fields-w-style-com":        []string{"https://basic-fields-w-style.com", ""},
 		"basic-subpages-com":              []string{"https://basic-subpages.com", ""},
 		"css-class-with-digit-prefix-com": []string{"https://css-class-with-digit-prefix.com", ""},
 	},
 	"scraping": {
-		"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},
-		"quotes-toscrape-com":            []string{"https://quotes.toscrape.com", ""},
-		"realpython-github-io-fake-jobs": []string{"https://realpython.github.io/fake-jobs/", ""},
+		"books-toscrape-com":  []string{"https://books.toscrape.com", "Soumission"},
+		"quotes-toscrape-com": []string{"https://quotes.toscrape.com", ""},
+		// "realpython-github-io-fake-jobs": []string{"https://realpython.github.io/fake-jobs", ""},
 		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", ""},
 		"www-scrapethissite-com-pages-forms":                             []string{"https://www.scrapethissite.com/pages/forms", ""},
 		"www-scrapethissite-com-pages-simple":                            []string{"https://www.scrapethissite.com/pages/simple", ""},

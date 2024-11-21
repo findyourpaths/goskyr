@@ -5,19 +5,13 @@ id:
     subid: ""
 scrapers:
     - name: realpython-github-io__05a
-      url: https://realpython.github.io/fake-jobs/
+      url: https://realpython.github.io/fake-jobs
       item: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content
       fields:
         - name: F1647d85c--0
           type: text
           location:
             - selector: div.media > div.media-content > h2.is-5.title
-          can_be_empty: true
-        - name: Fa5cc6819-href-0
-          type: url
-          location:
-            - selector: footer.card-footer > a.card-footer-item:nth-child(2)
-              attr: href
           can_be_empty: true
         - name: Fbf7d68fd--0
           type: text
@@ -28,6 +22,17 @@ scrapers:
           type: text
           location:
             - selector: div.content > p.location
+          can_be_empty: true
+        - name: Ffee3e7f9--0
+          type: text
+          location:
+            - selector: footer.card-footer > a.card-footer-item
+          can_be_empty: true
+        - name: Ffee3e7f9-href-0
+          type: url
+          location:
+            - selector: footer.card-footer > a.card-footer-item
+              attr: href
           can_be_empty: true
       render_js: true
 itemmaps: []

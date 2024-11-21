@@ -238,15 +238,15 @@ func getItems(dir string, testname string, config *scrape.Config) (output.ItemMa
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
 		// We're looking at an event list page scraper. Scrape the page in the outer directory.
 		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", testname+htmlSuffix)
-		return scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
+		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
 	} else if config.ID.ID == "" && config.ID.Field != "" && config.ID.SubID != "" {
 		// We're looking at an event page scraper. Scrape the page in this directory.
 		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
-		return scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
+		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
 	} else {
 		// We're looking at a combined event list and page scraper. Scrape both pages.
 		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", testname+htmlSuffix)
-		itemMaps, err := scrape.Page(&config.Scrapers[0], &config.Global, true, htmlPath)
+		itemMaps, err := scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
 		if err != nil {
 			return nil, err
 		}

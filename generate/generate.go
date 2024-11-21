@@ -196,17 +196,24 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 	}
 
 	rootSelector := findSharedRootSelector(locPropsSel)
+	// s.Item = shortenRootSelector(rootSelector).string()
 	s.Item = rootSelector.string()
 	s.Fields = processFields(locPropsSel, rootSelector)
-	// if opts.DoSubpages && len(s.GetSubpageURLFields()) == 0 {
-	// 	slog.Info("candidate configuration failed to find a subpage URL field is required, excluding", "opts.configID", opts.configID)
-	// 	return nil
-	// }
+	if opts.DoSubpages && len(s.GetSubpageURLFields()) == 0 {
+		slog.Info("candidate configuration failed to find a subpage URL field, excluding", "opts.configID", opts.configID)
+		return nil
+	}
 
-	items, err := scrape.GQDocument(&s, gqdoc, true)
+	c := &scrape.Config{
+		ID:       opts.configID,
+		Scrapers: []scrape.Scraper{s},
+	}
+
+	items, err := scrape.GQDocument(c, &s, gqdoc, true)
 	if err != nil {
 		return err
 	}
+	c.ItemMaps = items
 
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		slog.Debug("in expandAllPossibleConfigs()", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
@@ -235,44 +242,38 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, locPr
 	}
 
 	if scrape.DoPruning && itemsStr == parentItemsStr {
-		slog.Info("candidate configuration produced same items as its parent, excluding", "opts.configID", opts.configID)
+		slog.Info("candidate configuration failed to produce different items from parent, excluding", "opts.configID", opts.configID)
 		return nil
 	}
 
 	// fmt.Printf("strings.Index(itemsStr, opts.RequireString): %d\n", strings.Index(itemsStr, opts.RequireString))
 	if opts.RequireString != "" && strings.Index(itemsStr, opts.RequireString) == -1 {
-		slog.Info("candidate configuration failed to extract the required string, excluding", "opts.configID", opts.configID)
+		slog.Info("candidate configuration failed to extract the required string, excluding", "opts.configID", opts.configID, "opts.RequireString", opts.RequireString, "itemsStr", itemsStr)
 		return nil
 	}
 
-	if opts.DoSubpages && len(s.GetSubpageURLFields()) == 0 {
-		slog.Info("candidate configuration failed to find a subpage URL field, excluding", "opts.configID", opts.configID)
-		return nil
-	}
-
-	results[opts.configID.String()] = &scrape.Config{
-		ID:       opts.configID,
-		Scrapers: []scrape.Scraper{s},
-		ItemMaps: items,
-	}
-
+	results[opts.configID.String()] = c
 	return nil
 }
 
 // Go one element beyond the root selector length and find the cluster with the largest number of fields.
 // Filter out all of the other fields.
 func findClusters(lps []*locationProps, rootSelector path) map[string][]*locationProps {
+	slog.Debug("findClusters()", "len(lps)", len(lps), "rootSelector.string()", rootSelector.string())
 	// slog.Debug("filterAllButLargestCluster(lps (%d), rootSelector.string(): %q)", len(lps), rootSelector.string())
 	locationPropsByPath := map[string][]*locationProps{}
 	// clusterCounts := map[path]int{}
 	newLen := len(rootSelector) + 1
+	slog.Debug("in findClusters()", "newLen", newLen)
 	// maxCount := 0
 	// var maxPath path
 	for _, lp := range lps {
-		slog.Debug("in findClusters(), looking at lp", "lp.count", lp.count, "lp.path.string()", lp.path.string())
-		// check whether we reached the end.
-		if newLen > len(lp.path) {
-			return locationPropsByPath
+		slog.Debug("in findClusters()", "lp", lp.DebugString())
+		// Check whether we reached the end.
+		// If our new root selector is longer or equal to the length of this path, return.
+		if newLen >= len(lp.path) {
+			break
+			// return locationPropsByPath
 		}
 		p := lp.path[0:newLen]
 		pStr := p.string()
@@ -283,6 +284,9 @@ func findClusters(lps []*locationProps, rootSelector path) map[string][]*locatio
 		// 	maxCount = clusterCounts[pStr]
 		// 	maxPath = p
 		// }
+	}
+	for pStr, pByP := range locationPropsByPath {
+		slog.Debug("in findClusters()", "pStr", pStr, "len(pByP)", len(pByP))
 	}
 	return locationPropsByPath
 }
@@ -382,7 +386,7 @@ func extendPageConfigItemsWithNext(opts ConfigOptions, pageC *scrape.Config, sel
 
 		// fmt.Printf("read next page: %q\n", u)
 
-		items, err := scrape.GQDocument(&pageS, nextGQDoc, true)
+		items, err := scrape.GQDocument(pageC, &pageS, nextGQDoc, true)
 		if err != nil {
 			return err
 		}
@@ -617,6 +621,7 @@ func fetchGQDocument(opts ConfigOptions, u string, gqdocsByURL map[string]*goque
 	} else {
 		// Not in memory, so check if it's in our cache on disk.
 		cacheInPath := filepath.Join(opts.CacheInputDir, fetch.MakeURLStringSlug(u)+".html")
+		slog.Debug("fetchGQDocument(), looking on disk at", "cacheInPath", cacheInPath)
 		str, err = utils.ReadStringFile(cacheInPath)
 		if err == nil {
 			slog.Debug("fetchGQDocument(), disk cache hit", "len(str)", len(str))

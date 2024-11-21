@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 	"unicode"
@@ -56,22 +57,34 @@ type path []node
 
 var pathStringsCache map[*node]string
 
-func (p path) string() string {
+func (p path) last() *node {
+	return &p[len(p)-1]
+}
+
+func (p path) memoString() string {
 	if len(p) == 0 {
 		return ""
 	}
 
-	last := p[len(p)-1]
-	if str := pathStringsCache[&last]; str != "" {
+	last := p.last()
+	if str := pathStringsCache[last]; str != "" {
 		return str
 	}
 
 	str := last.string()
-	if prefix := p[0 : len(p)-1].string(); prefix != "" {
+	if prefix := p[0 : len(p)-1].memoString(); prefix != "" {
 		str = prefix + " > " + str
 	}
-	pathStringsCache[&last] = str
+	pathStringsCache[last] = str
 	return str
+}
+
+func (p path) string() string {
+	rs := []string{}
+	for _, n := range p {
+		rs = append(rs, n.string())
+	}
+	return strings.Join(rs, " > ")
 }
 
 // distance calculates the levenshtein distance between the string represention
@@ -105,6 +118,7 @@ func (a *Analyzer) Parse() {
 var currentAAttrs map[string]string
 var currentAText *strings.Builder
 
+// ParseToken returns whether to keep going with the parsing.
 func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 	switch tt {
 	case html.ErrorToken:
@@ -115,13 +129,20 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			return true
 		}
 
-		p := a.NodePath.string()
+		name := a.NodePath.last().tagName
+		if scrape.DoPruning && scrape.SkipTag[name] {
+			slog.Debug("in generate.Analyzer.ParseToken(), skipping", "name", name)
+			return true
+		}
+
+		p := a.NodePath.memoString()
 		// fmt.Printf("path: %q\n", p)
 		text := string(a.Tokenizer.Text())
 		// fmt.Printf("in Analyzer.ParseToken(tt: %s), text: %q\n", tt, text)
 		textTrimmed := strings.TrimSpace(text)
 		if len(textTrimmed) > 0 {
-			lp := makeLocationProps(a.NodePath, textTrimmed)
+			// lp := makeLocationProps(a.NodePath[:len(a.NodePath)-1], textTrimmed)
+			lp := makeLocationProps(a.NodePath, textTrimmed, true)
 			lp.textIndex = a.NumChildren[p]
 			a.LocMan = append(a.LocMan, &lp)
 		}
@@ -134,22 +155,21 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 	case html.StartTagToken, html.EndTagToken:
 
 		tn, _ := a.Tokenizer.TagName()
-		tagNameStr := string(tn)
-		if tagNameStr == "body" {
+		name := string(tn)
+		if name == "body" {
 			a.InBody = !a.InBody
 		}
 		if !a.InBody {
 			return true
 		}
-		if scrape.DoPruning && scrape.SkipTag[tagNameStr] {
-			return true
-		}
+
+		p := a.NodePath.memoString()
 
 		// fmt.Printf("in Analyzer.ParseToken(tt: %s), tag name: %q\n", tt, tagNameStr)
 		// br can also be self closing tag, see later case statement
-		if tagNameStr == "br" || tagNameStr == "input" {
-			a.NumChildren[a.NodePath.string()] += 1
-			a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr})
+		if name == "br" || name == "input" {
+			a.NumChildren[p] += 1
+			a.ChildNodes[p] = append(a.ChildNodes[p], node{tagName: name})
 			return true
 		}
 
@@ -157,7 +177,7 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			if currentAAttrs != nil {
 				// fmt.Printf("looking for pagination candidate %q, %#v\n", tagNameStr, currentAAttrs) //, a.NodePath)
 				href := currentAAttrs["href"]
-				lp := makeLocationProps(a.NodePath, href)
+				lp := makeLocationProps(a.NodePath, href, false)
 				if strings.ToLower(currentAAttrs["aria-label"]) == "next" {
 					// fmt.Printf("found pagination candidate %q, %#v\n", tagNameStr, attrs) // , a.NodePath)
 					a.NextPaths = append(a.NextPaths, &lp)
@@ -173,43 +193,43 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 
 			n := true
 			for n && a.Depth > 0 {
-				if a.NodePath[len(a.NodePath)-1].tagName == tagNameStr {
-					if tagNameStr == "body" {
+				if a.NodePath[len(a.NodePath)-1].tagName == name {
+					if name == "body" {
 						return false
 					}
 					n = false
 				}
-				delete(a.NumChildren, a.NodePath.string())
-				delete(a.ChildNodes, a.NodePath.string())
+				delete(a.NumChildren, p)
+				delete(a.ChildNodes, p)
 				a.NodePath = a.NodePath[:len(a.NodePath)-1]
 				a.Depth--
 			}
 			return true
 		}
 
-		attrs, cls, pCls := getTagMetadata(tagNameStr, a.Tokenizer, a.ChildNodes[a.NodePath.string()])
-		a.NumChildren[a.NodePath.string()] += 1
-		a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr, classes: cls})
+		attrs, cls, pCls := getTagMetadata(name, a.Tokenizer, a.ChildNodes[p])
+		a.NumChildren[p] += 1
+		a.ChildNodes[p] = append(a.ChildNodes[p], node{tagName: name, classes: cls})
 
 		newNode := node{
-			tagName:       tagNameStr,
+			tagName:       name,
 			classes:       cls,
 			pseudoClasses: pCls,
 		}
 		// fmt.Printf("newNode: %#v\n", newNode)
 		a.NodePath = append(a.NodePath, newNode)
 		a.Depth++
-		a.ChildNodes[a.NodePath.string()] = []node{}
+		a.ChildNodes[p] = []node{}
 
 		for attrKey, attrValue := range attrs {
-			lp := makeLocationProps(a.NodePath, attrValue)
+			lp := makeLocationProps(a.NodePath, attrValue, false)
 			lp.attr = attrKey
 			// fmt.Printf("lp: %#v\n", lp)
 			a.LocMan = append(a.LocMan, &lp)
 		}
 
 		if a.FindNext {
-			if tagNameStr == "a" && attrs["href"] != "" {
+			if name == "a" && attrs["href"] != "" {
 				currentAAttrs = attrs
 				currentAText = &strings.Builder{}
 			}
@@ -240,9 +260,10 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			return true
 		}
 
-		attrs, cls, pCls := getTagMetadata(tagNameStr, a.Tokenizer, a.ChildNodes[a.NodePath.string()])
-		a.NumChildren[a.NodePath.string()] += 1
-		a.ChildNodes[a.NodePath.string()] = append(a.ChildNodes[a.NodePath.string()], node{tagName: tagNameStr, classes: cls})
+		p := a.NodePath.memoString()
+		attrs, cls, pCls := getTagMetadata(tagNameStr, a.Tokenizer, a.ChildNodes[p])
+		a.NumChildren[p] += 1
+		a.ChildNodes[p] = append(a.ChildNodes[p], node{tagName: tagNameStr, classes: cls})
 		if len(attrs) == 0 {
 			return true
 		}
@@ -257,7 +278,7 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 		tmpNodePath = append(tmpNodePath, newNode)
 
 		for attrKey, attrValue := range attrs {
-			lp := makeLocationProps(tmpNodePath, attrValue)
+			lp := makeLocationProps(tmpNodePath, attrValue, false)
 			lp.attr = attrKey
 			a.LocMan = append(a.LocMan, &lp)
 		}

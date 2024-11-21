@@ -54,6 +54,11 @@ scrapers:
           location:
             - selector: div.caption > h4.float-end.price.pull-right
           can_be_empty: true
+        - name: F80e20a96--0
+          type: text
+          location:
+            - selector: div.dropdown > select > option.dropdown-item
+          can_be_empty: true
         - name: Fc859c220--0
           type: text
           location:

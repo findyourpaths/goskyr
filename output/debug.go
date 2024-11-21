@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 )
 
-// var WriteSeparateLogFiles = true
+var WriteSeparateLogFiles = true
 
-var WriteSeparateLogFiles = false
+// var WriteSeparateLogFiles = false
 
 type logState struct {
 	prevLogger *slog.Logger

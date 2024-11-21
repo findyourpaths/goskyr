@@ -28,5 +28,10 @@ scrapers:
           location:
             - selector: p > span.author-born-location
           can_be_empty: true
+        - name: Fd0a1d96f--0
+          type: text
+          location:
+            - selector: p > strong
+          can_be_empty: true
       render_js: true
 itemmaps: []

@@ -24,17 +24,6 @@ scrapers:
             - selector: div.row > div.col-md-8 > div.quote > div.tags > a.tag
               attr: href
           can_be_empty: true
-        - name: F1da3cf45--0
-          type: text
-          location:
-            - selector: div.row > div.col-md-8 > div.quote > div.tags > a.tag:nth-child(2)
-          can_be_empty: true
-        - name: F1da3cf45-href-0
-          type: url
-          location:
-            - selector: div.row > div.col-md-8 > div.quote > div.tags > a.tag:nth-child(2)
-              attr: href
-          can_be_empty: true
         - name: F35b9f648--0
           type: text
           location:
@@ -44,17 +33,6 @@ scrapers:
           type: url
           location:
             - selector: div.row > div.col-md-4.tags-box > span.tag-item > a.tag
-              attr: href
-          can_be_empty: true
-        - name: F4b8fe04--0
-          type: text
-          location:
-            - selector: div.row > div.col-md-8 > div.quote > div.tags > a.tag:nth-child(3)
-          can_be_empty: true
-        - name: F4b8fe04-href-0
-          type: url
-          location:
-            - selector: div.row > div.col-md-8 > div.quote > div.tags > a.tag:nth-child(3)
               attr: href
           can_be_empty: true
         - name: F50c6f8d1--0
@@ -87,6 +65,11 @@ scrapers:
           type: text
           location:
             - selector: div.author-details > p > span.author-born-location
+          can_be_empty: true
+        - name: Fd0a1d96f--0
+          type: text
+          location:
+            - selector: div.author-details > p > strong
           can_be_empty: true
       render_js: true
 itemmaps: []

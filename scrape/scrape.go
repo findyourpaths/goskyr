@@ -32,6 +32,12 @@ import (
 
 var DoDebug = false
 
+func init() {
+	utils.WriteStringFile("/tmp/goskyr/main/scrape_Page_log.txt", "")
+	utils.WriteStringFile("/tmp/goskyr/main/scrape_GQDocument_log.txt", "")
+	utils.WriteStringFile("/tmp/goskyr/main/scrape_GQSelection_log.txt", "")
+}
+
 // GlobalConfig is used for storing global configuration parameters that
 // are needed across all scrapers
 type GlobalConfig struct {
@@ -339,19 +345,18 @@ type Scraper struct {
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
-func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.ItemMaps, error) {
-	var slg *slog.Logger
+func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.ItemMaps, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_Page_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_GQPage_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
 			defer output.RestoreDefaultLogger(prevLogger)
 		}
-		slg = slog.With(slog.String("s.Name", s.Name))
-		slg.Debug("scrape.Page()")
-		defer slg.Debug("scrape.Page() returning")
+		// slog = slog.With(slog.String("s.Name", s.Name))
+		slog.Debug("scrape.Page()")
+		defer slog.Debug("scrape.Page() returning")
 	}
 
 	// // slog.Debug("Scraper.Page(globalConfig: %#v, rawDyn: %t)", globalConfig, rawDyn)
@@ -375,9 +380,7 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 
 	rs := output.ItemMaps{}
 
-	if DoDebug {
-		slg.Debug("initializing filters")
-	}
+	slog.Debug("initializing filters")
 	if err := s.initializeFilters(); err != nil {
 		return nil, err
 	}
@@ -394,11 +397,6 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 
 	for hasNextPage {
 		baseUrl := getBaseURL(pageURL, doc)
-
-		if DoDebug {
-			slg.Debug("in scrape.Page()", "c.Item", s.Item)
-			slg.Debug("in scrape.Page()", "len(doc.Find(c.Item).Nodes)", len(doc.Find(s.Item).Nodes))
-		}
 
 		// if len(doc.Find(c.Item).Nodes) == 0 {
 		// 	slog.Debug("in Scraper.Page(), no items found, shortening selector to find the longest prefix that selects items")
@@ -417,17 +415,15 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 		// 	}
 		// }
 
+		slog.Debug("in scrape.Page()", "s.Item", s.Item)
+		slog.Debug("in scrape.Page()", "len(doc.Find(s.Item).Nodes)", len(doc.Find(s.Item).Nodes))
 		doc.Find(s.Item).Each(func(i int, sel *goquery.Selection) {
-			item, err := GQSelection(s, sel, baseUrl, rawDyn)
+			item, err := GQSelection(c, s, sel, baseUrl, rawDyn)
 			if err != nil {
-				if DoDebug {
-					slg.Error(err.Error())
-				}
+				slog.Error(err.Error())
 				return
 			}
-			if DoDebug {
-				slg.Debug("in scrape.Page(), looking at sel item", "item", item)
-			}
+			slog.Debug("in scrape.Page(), looking at sel item", "item", item)
 			if item != nil {
 				rs = append(rs, item)
 			}
@@ -442,47 +438,42 @@ func Page(s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (out
 
 	s.guessYear(rs, time.Now())
 
-	if DoDebug {
-		slg.Debug("in scrape.Page()", "len(rs)", len(rs), "items.TotalFields()", rs.TotalFields())
-	}
+	slog.Debug("in scrape.Page()", "len(rs)", len(rs), "items.TotalFields()", rs.TotalFields())
 	return rs, nil
 }
 
-// GQDocumentItems fetches and returns all items from a website according to the
+// GQDocument fetches and returns all items from a website according to the
 // Scraper's paramaters. When rawDyn is set to true the items returned are
 // not processed according to their type but instead the raw values based
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not subpages). This is used by the ML feature generation.
-func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMaps, error) {
-	var slg *slog.Logger
+func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMaps, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQDocument_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_GQDocument_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
 			defer output.RestoreDefaultLogger(prevLogger)
 		}
-		slg = slog.With(slog.String("s.Name", s.Name))
-		slg.Debug("scrape.GQDocument()")
-		defer slg.Debug("scrape.GQDocument() returning")
+		// slog = slog.With(slog.String("s.Name", s.Name))
+		slog.Debug("scrape.GQDocument()")
+		defer slog.Debug("scrape.GQDocument() returning")
 	}
 
 	rs := output.ItemMaps{}
 	baseUrl := getBaseURL(s.URL, gqdoc)
 
-	if DoDebug {
-		slg.Debug("in scrape.GQDocumentItems()", "s.Item", s.Item)
-		slg.Debug("in scrape.GQDocumentItems()", "len(doc.Find(s.Item).Nodes)", len(gqdoc.Find(s.Item).Nodes))
-	}
-
-	gqdoc.Find(s.Item).Each(func(i int, sel *goquery.Selection) {
-		item, err := GQSelection(s, sel, baseUrl, rawDyn)
+	// itemElts := strings.Split(s.Item, " > ")
+	// gqdoc.Find(strings.Join(itemElts[0:len(itemElts)-1], " > ")).Each(func(i int, sel *goquery.Selection) {
+	slog.Debug("in scrape.GQDocument()", "s.Item", s.Item)
+	slog.Debug("in scrape.GQDocument()", "len(doc.Find(s.Item).Nodes)", len(gqdoc.Find(s.Item).Nodes))
+	gqdoc.Find(s.Item).Filter(s.Item).Each(func(i int, sel *goquery.Selection) {
+		// slog.Debug("in scrape.GQDocument()", "i", i, "sel.Nodes", printHTMLNodes(sel.Nodes))
+		item, err := GQSelection(c, s, sel, baseUrl, rawDyn)
 		if err != nil {
-			if DoDebug {
-				slg.Warn("while scraping document got error", "baseUrl", baseUrl, "err", err.Error())
-			}
+			slog.Warn("while scraping document got error", "baseUrl", baseUrl, "err", err.Error())
 			return
 		}
 		if item != nil {
@@ -492,9 +483,7 @@ func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMa
 
 	s.guessYear(rs, time.Now())
 
-	if DoDebug {
-		slg.Debug("in scrape.GQDocumentItems()", "len(rs)", len(rs), "items.TotalFields()", rs.TotalFields())
-	}
+	slog.Debug("in scrape.GQDocument()", "len(rs)", len(rs), "items.TotalFields()", rs.TotalFields())
 	return rs, nil
 }
 
@@ -504,19 +493,18 @@ func GQDocument(s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.ItemMa
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not subpages). This is used by the ML feature generation.
-func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
-	var slg *slog.Logger
+func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.ItemMap, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/scrape_GQSelection_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
 			defer output.RestoreDefaultLogger(prevLogger)
 		}
-		slg = slog.With(slog.String("s.Name", s.Name))
-		slg.Debug("scrape.GQSelection()")
-		defer slg.Debug("scrape.GQSelection() returning")
+		// slog = slog.With(slog.String("s.Name", s.Name))
+		slog.Debug("scrape.GQSelection()")
+		defer slog.Debug("scrape.GQSelection() returning")
 	}
 
 	// slog.Debug("Scraper.GQSelection()", "s", sel, "baseUrl", baseUrl, "rawDyn", rawDyn)
@@ -528,9 +516,7 @@ func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool
 
 	rs := output.ItemMap{}
 	for _, f := range s.Fields {
-		if DoDebug {
-			slg.Debug("in scrape.GQSelection(), looking at field", "f.Name", f.Name)
-		}
+		slog.Debug("in scrape.GQSelection(), looking at field", "f.Name", f.Name)
 		if f.Value != "" {
 			if !rawDyn {
 				// add static fields
@@ -538,6 +524,7 @@ func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool
 			}
 			continue
 		}
+		slog.Debug("in scrape.GQSelection(), before extract", "f", f)
 
 		// handle all dynamic fields on the main page
 		if f.OnSubpage == "" {
@@ -551,6 +538,7 @@ func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool
 				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping item %v.", f.Name, err, rs)
 			}
 		}
+		slog.Debug("in scrape.GQSelection(), after extract", "f", f)
 
 		// to speed things up we check the filter after each field.
 		// Like that we safe time if we already know for sure that
@@ -606,9 +594,7 @@ func GQSelection(s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool
 	}
 
 	rs = s.removeHiddenFields(rs)
-	if DoDebug {
-		slg.Debug("in scrape.GQSelection()", "rs", rs)
-	}
+	slog.Debug("in scrape.GQSelection()", "rs", rs)
 	return rs, nil
 }
 
@@ -787,17 +773,21 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 }
 
 func extractField(field *Field, event output.ItemMap, sel *goquery.Selection, baseURL string) error {
-	// slog.Debug("Scraper.extractField()", "field", field, "event", event, "s", sel, "baseURL", baseURL)
+	slog.Debug("scrape.extractField()", "field", field, "event", event, "sel", sel, "baseURL", baseURL)
 	switch field.Type {
 	case "text", "": // the default, ie when type is not configured, is 'text'
 		parts := []string{}
-		for _, p := range field.ElementLocations {
-			ts, err := getTextString(&p, sel)
-			if err != nil {
-				return err
-			}
-			if ts != "" {
-				parts = append(parts, ts)
+		if len(field.ElementLocations) == 0 {
+			slog.Debug("in scrape.extractField(), empty field.ElementLocations")
+		} else {
+			for _, p := range field.ElementLocations {
+				ts, err := getTextString(&p, sel)
+				if err != nil {
+					return err
+				}
+				if ts != "" {
+					parts = append(parts, ts)
+				}
 			}
 		}
 		t := strings.Join(parts, field.Separator)
@@ -853,13 +843,24 @@ func extractRawField(field *Field, event output.ItemMap, sel *goquery.Selection)
 	switch field.Type {
 	case "text", "":
 		parts := []string{}
-		for _, p := range field.ElementLocations {
-			ts, err := getTextString(&p, sel)
+		if len(field.ElementLocations) == 0 {
+			slog.Debug("in scrape.extractField(), empty field.ElementLocations")
+			ts, err := getTextString(&ElementLocation{}, sel)
 			if err != nil {
 				return err
 			}
 			if ts != "" {
 				parts = append(parts, ts)
+			}
+		} else {
+			for _, p := range field.ElementLocations {
+				ts, err := getTextString(&p, sel)
+				if err != nil {
+					return err
+				}
+				if ts != "" {
+					parts = append(parts, ts)
+				}
 			}
 		}
 		t := strings.Join(parts, field.Separator)
@@ -1288,7 +1289,6 @@ var SkipSubURLExt = map[string]bool{
 }
 
 func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (*goquery.Document, error)) error {
-	var slg *slog.Logger
 	if DoDebug {
 		// if output.WriteSeparateLogFiles {
 		// 	prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.Slug + "_configs/" + c.ID.String() + "_scrape_Subpages_log.txt", slog.LevelDebug)
@@ -1297,9 +1297,9 @@ func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (
 		// 	}
 		// 	defer output.RestoreDefaultLogger(prevLogger)
 		// }
-		slg = slog.With(slog.String("s.Name", s.Name))
-		slg.Debug("scrape.Subpages()")
-		defer slg.Debug("scrape.Subpages() returning")
+		// slog = slog.With(slog.String("s.Name", s.Name))
+		slog.Debug("scrape.Subpages()")
+		defer slog.Debug("scrape.Subpages() returning")
 	}
 
 	uBase, err := url.Parse(s.URL)
@@ -1318,9 +1318,7 @@ func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (
 			return fmt.Errorf("error parsing subpage url %q: %v", c.ID.Field, err)
 		}
 		subURL := uBase.ResolveReference(rel).String()
-		if DoDebug {
-			slg.Debug("in scrape.Subpages()", "i", i, "subURL", subURL)
-		}
+		slog.Debug("in scrape.Subpages()", "i", i, "subURL", subURL)
 		var subGQDoc *goquery.Document
 		if fetchFn != nil {
 			subGQDoc, err = fetchFn(subURL)
@@ -1339,7 +1337,6 @@ func Subpages(c *Config, s *Scraper, ims output.ItemMaps, fetchFn func(string) (
 }
 
 func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc *goquery.Document) error {
-	var slg *slog.Logger
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
@@ -1348,12 +1345,12 @@ func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc
 			}
 			defer output.RestoreDefaultLogger(prevLogger)
 		}
-		slg = slog.With(slog.String("s.Name", s.Name))
-		slg.Debug("scrape.SubGQDocument()", "fname", fname)
-		defer slg.Debug("scrape.SubGQDocument() returning")
+		// slog = slog.With(slog.String("s.Name", s.Name))
+		slog.Debug("scrape.SubGQDocument()", "fname", fname)
+		defer slog.Debug("scrape.SubGQDocument() returning")
 	}
 
-	subIMs, err := GQDocument(s, gqdoc, true)
+	subIMs, err := GQDocument(c, s, gqdoc, true)
 	if err != nil {
 		return fmt.Errorf("error scraping subpage for field %q: %v", fname, err)
 	}
@@ -1367,4 +1364,15 @@ func SubGQDocument(c *Config, s *Scraper, im output.ItemMap, fname string, gqdoc
 		im[fname+"__"+k] = v
 	}
 	return nil
+}
+
+func printHTMLNodes(ns []*html.Node) string {
+	var r strings.Builder
+	for _, n := range ns {
+		r.WriteString(n.Data)
+		if len(n.Attr) > 0 {
+			r.WriteString(fmt.Sprintf("%#v", n.Attr))
+		}
+	}
+	return r.String()
 }
