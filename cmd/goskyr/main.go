@@ -329,7 +329,12 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 
 // urlsForTestnames stores the live URLs used to create tests. They are needed to resolve relative paths for event pages that appear in event-list pages. To add new tests, run:
 //
-//	go run ./cmd/goskyr --debug generate 'https://basic-field.com' --cache-input-dir testdata/regression --cache-output-dir testdata/regression --config-output-dir testdata/regression --do-subpages=false
+//		go run ./cmd/goskyr --debug generate 'https://basic-field.com' --cache-input-dir testdata/regression --cache-output-dir testdata/regression --config-output-dir testdata/regression --do-subpages=false
+//
+//	 or
+//
+//	 rm -r /tmp/goskyr/main/basic-fields-w-link-com_configs/; \
+//	 time go run ./cmd/goskyr --log-level=debug generate 'https://basic-fields-w-link.com' --cache-input-dir testdata/regression --do-subpages=false
 //
 // regenerate with
 //
@@ -342,12 +347,12 @@ var urlsForTestnamesByDir = map[string]map[string][]string{
 		"basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
 		"basic-fields-w-div-w-divc-com":     []string{"https://basic-fields-w-div-w-div.com", ""},
 		"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
-		// "basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},     // broken
-		"basic-fields-w-link-div-com":     []string{"https://basic-fields-w-link-div.com", ""},
-		"basic-fields-w-style-com":        []string{"https://basic-fields-w-style.com", ""},
-		"basic-subpages-com":              []string{"https://basic-subpages.com", ""},
-		"css-class-with-digit-prefix-com": []string{"https://css-class-with-digit-prefix.com", ""},
-		"fields-w-a-com_cache":            []string{"https://fields-w-a.com", ""},
+		"basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},
+		"basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},
+		"basic-fields-w-style-com":          []string{"https://basic-fields-w-style.com", ""},
+		"basic-subpages-com":                []string{"https://basic-subpages.com", ""},
+		"css-class-with-digit-prefix-com":   []string{"https://css-class-with-digit-prefix.com", ""},
+		"fields-w-a-com_cache":              []string{"https://fields-w-a.com", ""},
 	},
 	"scraping": {
 		"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},
