@@ -146,7 +146,7 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, mi
 	pagProps = []*locationProps{}
 	// }
 
-	if err := expandAllPossibleConfigs(gqdoc, opts, lps, nil, "", pagProps, rs); err != nil {
+	if err := expandAllPossibleConfigs(gqdoc, opts, lps, findSharedRootSelector(lps), "", pagProps, rs); err != nil {
 		return nil, nil, err
 	}
 
@@ -154,7 +154,7 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, mi
 	return rs, gqdocsByURL, nil
 }
 
-func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, parentRootSelector path, parentItemsStr string, pagProps []*locationProps, results map[string]*scrape.Config) error {
+func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, parentItemsStr string, pagProps []*locationProps, results map[string]*scrape.Config) error {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -192,7 +192,6 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 		Paginators: pags,
 	}
 
-	rootSelector := findSharedRootSelector(lps)
 	// s.Item = shortenRootSelector(rootSelector).string()
 	s.Item = rootSelector.string()
 	s.Fields = processFields(lps, rootSelector)
@@ -232,7 +231,9 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 		} else {
 			nextOpts.configID.ID += string(lastID)
 		}
-		if err := expandAllPossibleConfigs(gqdoc, nextOpts, clusters[clusterID], rootSelector, itemsStr, pagProps, results); err != nil {
+		nextLPs := clusters[clusterID]
+		nextRootSel := clusters[clusterID][0].path[0 : len(rootSelector)+1]
+		if err := expandAllPossibleConfigs(gqdoc, nextOpts, nextLPs, nextRootSel, itemsStr, pagProps, results); err != nil {
 			return err
 		}
 		lastID++

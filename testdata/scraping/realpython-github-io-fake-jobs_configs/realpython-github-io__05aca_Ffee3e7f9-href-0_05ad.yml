@@ -1,0 +1,53 @@
+id:
+    slug: realpython-github-io
+    id: 05aca
+    field: Ffee3e7f9-href-0
+    subid: 05ad
+scrapers:
+    - name: realpython-github-io__05aca
+      url: https://realpython.github.io/fake-jobs
+      item: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content > footer.card-footer > a.card-footer-item
+      fields:
+        - name: Ffee3e7f9--0
+          type: text
+          location:
+            - {}
+          can_be_empty: true
+        - name: Ffee3e7f9-href-0
+          type: url
+          location:
+            - attr: href
+          can_be_empty: true
+      render_js: true
+    - name: realpython-github-io__Ffee3e7f9-href-0_05ad
+      url: https://realpython.github.io/fake-jobs
+      item: section.section
+      fields:
+        - name: F2cb76ac--0
+          type: text
+          location:
+            - selector: div.container > div.columns.is-multiline > div.box > h1.is-2.title
+          can_be_empty: true
+        - name: F70e76b46--0
+          type: text
+          location:
+            - selector: div.container > div.columns.is-multiline > div.box > div.content > p
+          can_be_empty: true
+        - name: F70e76b46--1
+          type: text
+          location:
+            - selector: div.container > div.columns.is-multiline > div.box > div.content > p
+              child_index: 1
+          can_be_empty: true
+        - name: Ff1f2f0c9--0
+          type: text
+          location:
+            - selector: div.container > div.columns.is-multiline > div.box > h2.company.is-4.subtitle
+          can_be_empty: true
+        - name: Ffddfd25e--0
+          type: text
+          location:
+            - selector: div.container > div.columns.is-multiline > div.box > div.content > p > strong
+          can_be_empty: true
+      render_js: true
+itemmaps: []

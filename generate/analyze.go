@@ -402,7 +402,7 @@ func findClusters(lps []*locationProps, rootSelector path) map[string][]*locatio
 		slog.Debug("in findClusters()", "lp", lp.DebugString())
 		// Check whether we reached the end.
 		// If our new root selector is longer or equal to the length of this path, return.
-		if newLen >= len(lp.path) {
+		if newLen > len(lp.path) {
 			continue
 			// return locationPropsByPath
 		}

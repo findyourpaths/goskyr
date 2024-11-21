@@ -6,12 +6,18 @@ id:
 scrapers:
     - name: basic-subpages-com__05aa
       url: https://basic-subpages.com
-      item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div > a
+      item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div
       fields:
         - name: F2a60128b-href-0
           type: url
           location:
-            - attr: href
+            - selector: a
+              attr: href
+          can_be_empty: true
+        - name: Fa5ccda70--0
+          type: text
+          location:
+            - {}
           can_be_empty: true
       render_js: true
     - name: basic-subpages-com__F2a60128b-href-0_10a
@@ -27,6 +33,17 @@ scrapers:
           type: text
           location:
             - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div.street
+          can_be_empty: true
+        - name: F649ac349--0
+          type: text
+          location:
+            - selector: div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div
+          can_be_empty: true
+        - name: Fb43635ab-href-0
+          type: url
+          location:
+            - selector: div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div > a
+              attr: href
           can_be_empty: true
         - name: Fd179bb67--0
           type: text

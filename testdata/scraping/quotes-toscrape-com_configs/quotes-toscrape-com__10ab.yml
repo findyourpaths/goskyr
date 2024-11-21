@@ -6,34 +6,34 @@ id:
 scrapers:
     - name: quotes-toscrape-com__10ab
       url: https://quotes.toscrape.com
-      item: body > div.container > div.row > div.col-md-8 > div.quote
+      item: body > div.container > div.row > div.col-md-8
       fields:
         - name: F19e3ed34--0
           type: text
           location:
-            - selector: div.tags > a.tag
+            - selector: div.quote > div.tags > a.tag
           can_be_empty: true
         - name: F19e3ed34-href-0
           type: url
           location:
-            - selector: div.tags > a.tag
+            - selector: div.quote > div.tags > a.tag
               attr: href
           can_be_empty: true
         - name: F4508ef81--0
           type: text
           location:
-            - selector: span > small.author
+            - selector: div.quote > span > small.author
           can_be_empty: true
         - name: F9b402b22-href-0
           type: url
           location:
-            - selector: span > a
+            - selector: div.quote > span > a
               attr: href
           can_be_empty: true
         - name: Ff659bb6c--0
           type: text
           location:
-            - selector: span.text
+            - selector: div.quote > span.text
           can_be_empty: true
       render_js: true
 itemmaps: []
