@@ -81,10 +81,10 @@ func ConfigurationsForPage(opts ConfigOptions, gqdocsByURL map[string]*goquery.D
 		return nil, nil, fmt.Errorf("failed to fetch page: %v", err)
 	}
 
-	return ConfigurationsForPageWithMinOccurrences(opts, gqdoc, gqdocsByURL)
+	return ConfigurationsForGQDocumentWithMinOccurrences(opts, gqdoc, gqdocsByURL)
 }
 
-func ConfigurationsForPageWithMinOccurrences(opts ConfigOptions, gqdoc *goquery.Document, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForGQDocumentWithMinOccurrences(opts ConfigOptions, gqdoc *goquery.Document, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
 	var cims map[string]*scrape.Config
 	var err error
 	rs := map[string]*scrape.Config{}
@@ -276,14 +276,14 @@ func ExtendPageConfigsWithNexts(opts ConfigOptions, pageConfigs map[string]*scra
 	// }
 
 	for _, id := range pageCIDs {
-		if err := extendPageConfigItemsWithNext(opts, pageConfigs[id], gqdoc.Selection); err != nil {
+		if err := ExtendPageConfigItemsWithNext(opts, pageConfigs[id], gqdoc.Selection); err != nil {
 			return fmt.Errorf("error extending page config items with next page items: %v", err)
 		}
 	}
 	return nil
 }
 
-func extendPageConfigItemsWithNext(opts ConfigOptions, pageC *scrape.Config, sel *goquery.Selection) error {
+func ExtendPageConfigItemsWithNext(opts ConfigOptions, pageC *scrape.Config, sel *goquery.Selection) error {
 	// fmt.Printf("looking at %q\n", pageC.ID.String())
 	// fmt.Printf("looking at opts url %q\n", fetch.TrimURLScheme(opts.URL))
 
@@ -404,7 +404,7 @@ func pageJoinsURLs(pageJoinsMap map[string][]*pageJoin) []string {
 	return rs
 }
 
-func ConfigurationsForAllSubpages(opts ConfigOptions, pageConfigs map[string]*scrape.Config, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForAllSubpages(opts ConfigOptions, pageConfigs map[string]*scrape.Config, gqdocsByURL map[string]*goquery.Document, fetchFn func(string) (*goquery.Document, error)) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForAllSubpages_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -482,7 +482,7 @@ func ConfigurationsForAllSubpages(opts ConfigOptions, pageConfigs map[string]*sc
 	rs := map[string]*scrape.Config{}
 	for fname, pjs := range pageJoinsByFieldName {
 		opts.configID.Field = fname
-		cs, gqdocsByURL, err = ConfigurationsForSubpages(opts, pjs, gqdocsByURL)
+		cs, gqdocsByURL, err = ConfigurationsForSubpages(opts, pjs, gqdocsByURL, nil)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating configuration for subpages for field %q: %v", fname, err)
 		}
@@ -496,7 +496,7 @@ func ConfigurationsForAllSubpages(opts ConfigOptions, pageConfigs map[string]*sc
 }
 
 // ConfigurationsForSubpages collects the URL values for a candidate subpage field, retrieves the pages at those URLs, concatenates them, trains a scraper to extract from those subpages, and merges the resulting ItemMap into the parent page, outputting the result.
-func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL map[string]*goquery.Document, fetchFn func(string) (*goquery.Document, error)) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForSubpages_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -514,20 +514,22 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL 
 	// Prepare for calling general page generator.
 	opts.DoSubpages = false
 	opts.RequireString = ""
-	cs, gqdocsByURL, err := ConfigurationsForPageWithMinOccurrences(opts, gqdoc, gqdocsByURL)
+	cs, gqdocsByURL, err := ConfigurationsForGQDocumentWithMinOccurrences(opts, gqdoc, gqdocsByURL)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Traverse the fieldJoins for all of the page configs that have a field with this name.
 	rs := map[string]*scrape.Config{}
-	fetchFn := func(u string) (*goquery.Document, error) {
-		u = fetch.TrimURLScheme(u)
-		r := gqdocsByURL[u]
-		if r == nil {
-			return nil, fmt.Errorf("didn't find %q", u)
+	if fetchFn == nil {
+		fetchFn = func(u string) (*goquery.Document, error) {
+			u = fetch.TrimURLScheme(u)
+			r := gqdocsByURL[u]
+			if r == nil {
+				return nil, fmt.Errorf("didn't find %q", u)
+			}
+			return r, nil
 		}
-		return r, nil
 	}
 
 	// slog.Debug("in ConfigurationsForSubpages()", "mergedCConfigBase", mergedCConfigBase)

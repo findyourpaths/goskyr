@@ -101,7 +101,7 @@ func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	TGenerateConfigs(t, testname, cs, inputDir, outputDir)
 
 	if doSubpages {
-		subCs, _, err := generate.ConfigurationsForAllSubpages(opts, cs, gqdocsByURL)
+		subCs, _, err := generate.ConfigurationsForAllSubpages(opts, cs, gqdocsByURL, nil)
 		if err != nil {
 			t.Fatalf("error generating subpage configs: %v", err)
 		}

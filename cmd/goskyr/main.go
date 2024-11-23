@@ -146,7 +146,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 
 	var subCs map[string]*scrape.Config
 	if opts.DoSubpages {
-		if subCs, gqdocsByURL, err = generate.ConfigurationsForAllSubpages(opts, cs, gqdocsByURL); err != nil {
+		if subCs, gqdocsByURL, err = generate.ConfigurationsForAllSubpages(opts, cs, gqdocsByURL, nil); err != nil {
 			return fmt.Errorf("error generating subpage configs: %v", err)
 		}
 	}
