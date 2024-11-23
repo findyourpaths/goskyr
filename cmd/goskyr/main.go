@@ -358,7 +358,7 @@ var urlsForTestnamesByDir = map[string]map[string][]string{
 		"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},
 		"quotes-toscrape-com":            []string{"https://quotes.toscrape.com", "Imperfection"},
 		"realpython-github-io-fake-jobs": []string{"https://realpython.github.io/fake-jobs", ""},
-		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", ""},
+		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
 		"www-scrapethissite-com-pages-forms":                             []string{"https://www.scrapethissite.com/pages/forms", ""},
 		"www-scrapethissite-com-pages-simple":                            []string{"https://www.scrapethissite.com/pages/simple", ""},
 	},

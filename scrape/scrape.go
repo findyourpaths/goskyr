@@ -20,7 +20,6 @@ import (
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/output"
-	"github.com/findyourpaths/goskyr/types"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/goodsign/monday"
 	"github.com/ilyakaznacheev/cleanenv"
@@ -327,15 +326,15 @@ type Paginator struct {
 // A Scraper contains all the necessary config parameters and structs needed
 // to extract the desired information from a website
 type Scraper struct {
-	Name         string         `yaml:"name"`
-	URL          string         `yaml:"url"`
-	Selector     string         `yaml:"selector"`
-	Fields       []Field        `yaml:"fields,omitempty"`
-	Filters      []*Filter      `yaml:"filters,omitempty"`
-	Paginators   []Paginator    `yaml:"paginators,omitempty"`
-	RenderJs     bool           `yaml:"render_js,omitempty"`
-	PageLoadWait int            `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
-	Interaction  []*Interaction `yaml:"interaction,omitempty"`
+	Name         string               `yaml:"name"`
+	URL          string               `yaml:"url"`
+	Selector     string               `yaml:"selector"`
+	Fields       []Field              `yaml:"fields,omitempty"`
+	Filters      []*Filter            `yaml:"filters,omitempty"`
+	Paginators   []Paginator          `yaml:"paginators,omitempty"`
+	RenderJs     bool                 `yaml:"render_js,omitempty"`
+	PageLoadWait int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
+	Interaction  []*fetch.Interaction `yaml:"interaction,omitempty"`
 	fetcher      fetch.Fetcher
 }
 
@@ -716,7 +715,7 @@ func (c *Scraper) GetSubpageURLFields() []Field {
 	return rs
 }
 
-func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl, userAgent string, i []*types.Interaction) (bool, string, *goquery.Document, error) {
+func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl, userAgent string, i []*fetch.Interaction) (bool, string, *goquery.Document, error) {
 
 	if nextPageI == 0 {
 		newDoc, err := fetch.GQDocument(c.fetcher, currentPageUrl, &fetch.FetchOpts{Interaction: i})
@@ -736,10 +735,10 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 		pagSelector := doc.Find(pag.Location.Selector)
 		if len(pagSelector.Nodes) > 0 {
 			if nextPageI < pag.MaxPages || pag.MaxPages == 0 {
-				ia := []*types.Interaction{
+				ia := []*fetch.Interaction{
 					{
 						Selector: pag.Location.Selector,
-						Type:     types.InteractionTypeClick,
+						Type:     fetch.InteractionTypeClick,
 						Count:    nextPageI, // we always need to 'restart' the clicks because we always re-fetch the page
 					},
 				}

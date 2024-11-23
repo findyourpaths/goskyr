@@ -77,17 +77,6 @@ scrapers:
           location:
             - selector: header.fixed-top.navbar.navbar-dark.navbar-expand-lg.navbar-static.svg-background > div.container > div.in.side-collapse > nav.collapse.navbar-collapse > ul.nav.navbar-nav.navbar-right > li.nav-item > a.menuitm.nav-link > p
           can_be_empty: true
-        - name: F41723ef8-href-0
-          type: url
-          location:
-            - selector: div.container-fluid.footer > div.container > div.row > div.col-lg-3 > ul.smedia > li > a.browser-icon-dark.install-extension
-              attr: href
-          can_be_empty: true
-        - name: F41fd3820--0
-          type: text
-          location:
-            - selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4.card-title.float-end.price.pull-right
-          can_be_empty: true
         - name: F480ac03d--0
           type: text
           location:
@@ -114,17 +103,6 @@ scrapers:
           location:
             - selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > h4.float-end.price.pull-right
           can_be_empty: true
-        - name: F72216910--0
-          type: text
-          location:
-            - selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4 > a.title
-          can_be_empty: true
-        - name: F72216910-href-0
-          type: url
-          location:
-            - selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4 > a.title
-              attr: href
-          can_be_empty: true
         - name: F80e20a96--0
           type: text
           location:
@@ -147,25 +125,10 @@ scrapers:
           location:
             - selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.swatches > button.btn.swatch
           can_be_empty: true
-        - name: Fd105cac1--0
-          type: text
-          location:
-            - selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.caption > p.card-text.description
-          can_be_empty: true
-        - name: Fd179bb67--0
-          type: text
-          location:
-            - selector: title
-          can_be_empty: true
         - name: Ff33aaba9--0
           type: text
           location:
             - selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > h4.card-title.title
-          can_be_empty: true
-        - name: Ff467be2a--0
-          type: text
-          location:
-            - selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.ratings > p.float-end.review-count
           can_be_empty: true
       render_js: true
 records: []

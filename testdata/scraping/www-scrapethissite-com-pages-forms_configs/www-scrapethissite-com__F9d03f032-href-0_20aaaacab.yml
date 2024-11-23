@@ -1,0 +1,57 @@
+id:
+    slug: www-scrapethissite-com
+    id: ""
+    field: F9d03f032-href-0
+    subid: 20aaaacab
+scrapers:
+    - name: www-scrapethissite-com__F9d03f032-href-0_20aaaacab
+      url: https://www.scrapethissite.com/pages/forms
+      selector: body > htmls > div > section > div.container > table.table > tbody > tr.team
+      fields:
+        - name: F21ad7531--0
+          type: text
+          location:
+            - selector: td.year
+          can_be_empty: true
+        - name: F38f7d73f--0
+          type: text
+          location:
+            - selector: td.wins
+          can_be_empty: true
+        - name: F5b7dae5e--0
+          type: text
+          location:
+            - selector: td.ga
+          can_be_empty: true
+        - name: F6bd81d7e--0
+          type: text
+          location:
+            - selector: td.ot-losses
+          can_be_empty: true
+        - name: F6d27d28f--0
+          type: text
+          location:
+            - selector: td.text-success
+          can_be_empty: true
+        - name: F9414709d--0
+          type: text
+          location:
+            - selector: td.losses
+          can_be_empty: true
+        - name: Fc40c7800--0
+          type: text
+          location:
+            - selector: td.name
+          can_be_empty: true
+        - name: Fc5193bfd--0
+          type: text
+          location:
+            - selector: td.gf
+          can_be_empty: true
+        - name: Ffc8b57b6--0
+          type: text
+          location:
+            - selector: td.text-danger
+          can_be_empty: true
+      render_js: true
+records: []
