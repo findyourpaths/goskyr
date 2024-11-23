@@ -9,7 +9,6 @@ go_library(
         "//date",
         "//fetch",
         "//output",
-        "//types",
         "//utils",
         "@com_github_antchfx_jsonquery//:jsonquery",
         "@com_github_goodsign_monday//:monday",
