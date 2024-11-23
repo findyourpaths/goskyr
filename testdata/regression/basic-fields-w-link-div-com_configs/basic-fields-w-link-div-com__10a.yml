@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: basic-fields-w-link-div-com__10a
       url: https://basic-fields-w-link-div.com
-      item: body > div.a-0.b-0 > div.a-1.b-1
+      selector: body > div.a-0.b-0 > div.a-1.b-1
       fields:
         - name: F2a60128b-href-0
           type: url
@@ -20,4 +20,4 @@ scrapers:
             - selector: div.a-2.b-2
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

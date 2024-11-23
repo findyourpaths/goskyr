@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: www-scrapethissite-com__F9d03f032-href-0_20aacb
       url: https://www.scrapethissite.com/pages/forms
-      item: body > htmls > div > section > div.container > table.table > tbody > tr.team
+      selector: body > htmls > div > section > div.container > table.table > tbody > tr.team
       fields:
         - name: F21ad7531--0
           type: text
@@ -54,4 +54,4 @@ scrapers:
             - selector: td.text-danger
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

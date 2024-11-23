@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: webscraper-io__05a
       url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
-      item: body
+      selector: body
       fields:
         - name: F6c24067a--0
           type: text
@@ -63,4 +63,4 @@ scrapers:
               attr: href
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

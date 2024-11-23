@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: quotes-toscrape-com__10ab
       url: https://quotes.toscrape.com
-      item: body > div.container > div.row > div.col-md-8
+      selector: body > div.container > div.row > div.col-md-8
       fields:
         - name: F19e3ed34--0
           type: text
@@ -36,4 +36,4 @@ scrapers:
             - selector: div.quote > span.text
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

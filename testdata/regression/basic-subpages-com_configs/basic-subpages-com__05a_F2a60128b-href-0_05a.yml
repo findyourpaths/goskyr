@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: basic-subpages-com__05a
       url: https://basic-subpages.com
-      item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
+      selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
       fields:
         - name: F2a60128b-href-0
           type: url
@@ -22,7 +22,7 @@ scrapers:
       render_js: true
     - name: basic-subpages-com__F2a60128b-href-0_05a
       url: https://basic-subpages.com
-      item: body > htmls
+      selector: body > htmls
       fields:
         - name: F14fd4c6e--0
           type: text
@@ -51,4 +51,4 @@ scrapers:
             - selector: title
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

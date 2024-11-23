@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: realpython-github-io__05a
       url: https://realpython.github.io/fake-jobs
-      item: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content
+      selector: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content
       fields:
         - name: F1647d85c--0
           type: text
@@ -35,4 +35,4 @@ scrapers:
               attr: href
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

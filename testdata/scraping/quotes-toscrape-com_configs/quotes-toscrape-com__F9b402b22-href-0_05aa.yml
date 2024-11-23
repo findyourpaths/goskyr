@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: quotes-toscrape-com__F9b402b22-href-0_05aa
       url: https://quotes.toscrape.com
-      item: body > htmls > div.container > div.author-details > div.author-description
+      selector: body > htmls > div.container > div.author-details > div.author-description
       fields:
         - name: F50c6f8d1--0
           type: text
@@ -14,4 +14,4 @@ scrapers:
             - {}
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

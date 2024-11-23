@@ -233,7 +233,7 @@ func TScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
 	}
 }
 
-func getItems(dir string, testname string, config *scrape.Config) (output.ItemMaps, error) {
+func getRecords(dir string, testname string, config *scrape.Config) (output.Records, error) {
 	// fmt.Printf("getItems(dir: %q, testname: %q, config)\n", dir, testname)
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
 		// We're looking at an event list page scraper. Scrape the page in the outer directory.
@@ -261,12 +261,12 @@ func getItems(dir string, testname string, config *scrape.Config) (output.ItemMa
 }
 
 func TScrapeWithConfig(t *testing.T, dir string, testname string, config *scrape.Config) {
-	itemMaps, err := getItems(dir, testname, config)
+	recs, err := getRecords(dir, testname, config)
 	if err != nil {
 		t.Fatalf("failed to get items for scraper config %q: %v", config.ID.String(), err)
 	}
 
-	act, err := json.MarshalIndent(itemMaps, "", "  ")
+	act, err := json.MarshalIndent(recs, "", "  ")
 	if err != nil {
 		t.Fatalf("failed to marshal json: %v", err)
 	}

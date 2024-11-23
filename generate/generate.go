@@ -154,7 +154,7 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, mi
 	return rs, gqdocsByURL, nil
 }
 
-func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, parentItemsStr string, pagProps []*locationProps, results map[string]*scrape.Config) error {
+func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, parentRecsStr string, pagProps []*locationProps, results map[string]*scrape.Config) error {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -192,8 +192,8 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 		Paginators: pags,
 	}
 
-	// s.Item = shortenRootSelector(rootSelector).string()
-	s.Item = rootSelector.string()
+	// s.Record = shortenRootSelector(rootSelector).string()
+	s.Selector = rootSelector.string()
 	s.Fields = processFields(lps, rootSelector)
 	if opts.DoSubpages && len(s.GetSubpageURLFields()) == 0 {
 		slog.Info("candidate configuration failed to find a subpage URL field, excluding", "opts.configID", opts.configID)
@@ -205,17 +205,17 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 		Scrapers: []scrape.Scraper{s},
 	}
 
-	items, err := scrape.GQDocument(c, &s, gqdoc, true)
+	recs, err := scrape.GQDocument(c, &s, gqdoc, true)
 	if err != nil {
 		return err
 	}
-	c.ItemMaps = items
+	c.Records = recs
 
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		slog.Debug("in expandAllPossibleConfigs()", "len(items)", len(items), "items.TotalFields()", items.TotalFields())
+		slog.Debug("in expandAllPossibleConfigs()", "len(recs)", len(recs), "recs.TotalFields()", recs.TotalFields())
 	}
 
-	itemsStr := items.String()
+	recsStr := recs.String()
 	clusters := findClusters(lps, rootSelector)
 	clusterIDs := []string{}
 	for clusterID := range clusters {
@@ -233,20 +233,20 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 		}
 		nextLPs := clusters[clusterID]
 		nextRootSel := clusters[clusterID][0].path[0 : len(rootSelector)+1]
-		if err := expandAllPossibleConfigs(gqdoc, nextOpts, nextLPs, nextRootSel, itemsStr, pagProps, results); err != nil {
+		if err := expandAllPossibleConfigs(gqdoc, nextOpts, nextLPs, nextRootSel, recsStr, pagProps, results); err != nil {
 			return err
 		}
 		lastID++
 	}
 
-	if scrape.DoPruning && itemsStr == parentItemsStr {
-		slog.Info("candidate configuration failed to produce different items from parent, excluding", "opts.configID", opts.configID)
+	if scrape.DoPruning && recsStr == parentRecsStr {
+		slog.Info("candidate configuration failed to produce different records from parent, excluding", "opts.configID", opts.configID)
 		return nil
 	}
 
 	// fmt.Printf("strings.Index(itemsStr, opts.RequireString): %d\n", strings.Index(itemsStr, opts.RequireString))
-	if opts.RequireString != "" && strings.Index(itemsStr, opts.RequireString) == -1 {
-		slog.Info("candidate configuration failed to extract the required string, excluding", "opts.configID", opts.configID, "opts.RequireString", opts.RequireString, "itemsStr", itemsStr)
+	if opts.RequireString != "" && strings.Index(recsStr, opts.RequireString) == -1 {
+		slog.Info("candidate configuration failed to extract the required string, excluding", "opts.configID", opts.configID, "opts.RequireString", opts.RequireString, "recsStr", recsStr)
 		return nil
 	}
 
@@ -276,14 +276,14 @@ func ExtendPageConfigsWithNexts(opts ConfigOptions, pageConfigs map[string]*scra
 	// }
 
 	for _, id := range pageCIDs {
-		if err := ExtendPageConfigItemsWithNext(opts, pageConfigs[id], gqdoc.Selection); err != nil {
-			return fmt.Errorf("error extending page config items with next page items: %v", err)
+		if err := ExtendPageConfigRecordsWithNext(opts, pageConfigs[id], gqdoc.Selection); err != nil {
+			return fmt.Errorf("error extending page config records with next page records: %v", err)
 		}
 	}
 	return nil
 }
 
-func ExtendPageConfigItemsWithNext(opts ConfigOptions, pageC *scrape.Config, sel *goquery.Selection) error {
+func ExtendPageConfigRecordsWithNext(opts ConfigOptions, pageC *scrape.Config, sel *goquery.Selection) error {
 	// fmt.Printf("looking at %q\n", pageC.ID.String())
 	// fmt.Printf("looking at opts url %q\n", fetch.TrimURLScheme(opts.URL))
 
@@ -328,7 +328,7 @@ func ExtendPageConfigItemsWithNext(opts ConfigOptions, pageC *scrape.Config, sel
 	// 	return fmt.Errorf("failed to fetch next pages: %v", err)
 	// }
 
-	// Scrape items for the proposed next pages.
+	// Scrape records for the proposed next pages.
 	// f := &fetch.FileFetcher{}
 	newPags := []scrape.Paginator{}
 	for uStr, pag := range uStrsMap {
@@ -338,7 +338,7 @@ func ExtendPageConfigItemsWithNext(opts ConfigOptions, pageC *scrape.Config, sel
 		// 	return err
 		// }
 
-		// // fmt.Printf("extended %q with items from page %q\n", pageC.ID.String(), uStr)
+		// // fmt.Printf("extended %q with records from page %q\n", pageC.ID.String(), uStr)
 		// path := filepath.Join(opts.CacheInputDir, fetch.MakeURLStringSlug(uStr)+".html")
 		// nextGQDoc, err := fetch.GQDocument(f, "file://"+path, nil)
 		// // fmt.Printf("adding subURL: %q\n", subURL)
@@ -349,19 +349,19 @@ func ExtendPageConfigItemsWithNext(opts ConfigOptions, pageC *scrape.Config, sel
 
 		// fmt.Printf("read next page: %q\n", u)
 
-		items, err := scrape.GQDocument(pageC, &pageS, nextGQDoc, true)
+		recs, err := scrape.GQDocument(pageC, &pageS, nextGQDoc, true)
 		if err != nil {
 			return err
 		}
-		// fmt.Printf("found %d items\n", len(items))
+		// fmt.Printf("found %d records\n", len(records))
 
-		if len(items) == 0 {
+		if len(recs) == 0 {
 			continue
 		}
 
-		pageC.ItemMaps = append(pageC.ItemMaps, items...)
+		pageC.Records = append(pageC.Records, recs...)
 		newPags = append(newPags, pag)
-		// fmt.Printf("extended %q to %d items\n", pageC.ID.String(), len(pageC.ItemMaps))
+		// fmt.Printf("extended %q to %d records\n", pageC.ID.String(), len(pageC.RecordMaps))
 
 		// rel, err := url.Parse(fj.value)
 		// if err != nil {
@@ -437,7 +437,7 @@ func ConfigurationsForAllSubpages(opts ConfigOptions, pageConfigs map[string]*sc
 		for _, pageF := range pageS.GetSubpageURLFields() {
 			pj := &pageJoin{config: pageC}
 			pageJoinsByFieldName[pageF.Name] = append(pageJoinsByFieldName[pageF.Name], pj)
-			for _, pageIM := range pageC.ItemMaps {
+			for _, pageIM := range pageC.Records {
 				fj := &fieldJoin{
 					// pageConfig: pageC
 					// pageItemMap: pageIM
@@ -495,7 +495,7 @@ func ConfigurationsForAllSubpages(opts ConfigOptions, pageConfigs map[string]*sc
 	return rs, gqdocsByURL, nil
 }
 
-// ConfigurationsForSubpages collects the URL values for a candidate subpage field, retrieves the pages at those URLs, concatenates them, trains a scraper to extract from those subpages, and merges the resulting ItemMap into the parent page, outputting the result.
+// ConfigurationsForSubpages collects the URL values for a candidate subpage field, retrieves the pages at those URLs, concatenates them, trains a scraper to extract from those subpages, and merges the resulting records into the parent page, outputting the result.
 func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL map[string]*goquery.Document, fetchFn func(string) (*goquery.Document, error)) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForSubpages_log.txt"), slog.LevelDebug)
@@ -537,7 +537,7 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL 
 		slog.Debug("looking at", "c.ID", c.ID)
 		rs[c.ID.String()] = c
 		subScraper := c.Scrapers[0]
-		subScraper.Item = strings.TrimPrefix(subScraper.Item, "body > htmls > ")
+		subScraper.Selector = strings.TrimPrefix(subScraper.Selector, "body > htmls > ")
 
 		for _, pj := range pjs {
 			slog.Debug("looking at", "pj.config.ID", pj.config.ID.String())
@@ -547,7 +547,7 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL 
 			mergedC.ID.SubID = c.ID.SubID
 			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
 
-			if err := scrape.Subpages(mergedC, &subScraper, mergedC.ItemMaps, fetchFn); err != nil {
+			if err := scrape.Subpages(mergedC, &subScraper, mergedC.Records, fetchFn); err != nil {
 				// fmt.Printf("skipping generating configuration for subpages for merged config %q: %v\n", mergedC.ID.String(), err)
 				slog.Info("skipping generating configuration for subpages for merged config", "mergedC.ID", mergedC.ID.String(), "err", err)
 				continue

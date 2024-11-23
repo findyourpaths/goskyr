@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: basic-field-com__05a
       url: https://basic-field.com
-      item: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
+      selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
       fields:
         - name: F91a2c1be--0
           type: text
@@ -14,4 +14,4 @@ scrapers:
             - {}
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

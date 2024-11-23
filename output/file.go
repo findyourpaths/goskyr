@@ -18,7 +18,7 @@ func NewFileWriter(wc *WriterConfig) *FileWriter {
 		writerConfig: wc,
 	}
 }
-func (fr *FileWriter) Write(items chan ItemMap) {
+func (fr *FileWriter) Write(recChan chan Record) {
 	logger := slog.With(slog.String("writer", FILE_WRITER_TYPE))
 	f, err := os.Create(fr.writerConfig.FilePath)
 	if err != nil {
@@ -26,14 +26,14 @@ func (fr *FileWriter) Write(items chan ItemMap) {
 		os.Exit(1)
 	}
 	defer f.Close()
-	allItems := ItemMaps{}
-	for item := range items {
-		allItems = append(allItems, item)
+	recs := Records{}
+	for rec := range recChan {
+		recs = append(recs, rec)
 	}
 
 	// We cannot use the following line of code because it automatically replaces certain html characters
 	// with the corresponding Unicode replacement rune.
-	// itemsJson, err := json.MarshalIndent(items, "", "  ")
+	// recsJson, err := json.MarshalIndent(recs, "", "  ")
 	// if err != nil {
 	// 	log.Print(err.Error())
 	// }
@@ -43,8 +43,8 @@ func (fr *FileWriter) Write(items chan ItemMap) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(allItems); err != nil {
-		logger.Error(fmt.Sprintf("error while encoding items: %v", err))
+	if err := encoder.Encode(recs); err != nil {
+		logger.Error(fmt.Sprintf("error while encoding records: %v", err))
 		return
 	}
 
@@ -56,6 +56,6 @@ func (fr *FileWriter) Write(items chan ItemMap) {
 	if _, err = f.Write(indentBuffer.Bytes()); err != nil {
 		logger.Error(fmt.Sprintf("error while writing json to file: %v", err))
 	} else {
-		logger.Info(fmt.Sprintf("wrote %d items to file %s", len(allItems), fr.writerConfig.FilePath))
+		logger.Info(fmt.Sprintf("wrote %d records to file %s", len(recs), fr.writerConfig.FilePath))
 	}
 }

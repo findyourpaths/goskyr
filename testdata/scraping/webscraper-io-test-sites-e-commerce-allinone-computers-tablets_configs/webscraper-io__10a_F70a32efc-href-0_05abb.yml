@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: webscraper-io__10a
       url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
-      item: body
+      selector: body
       fields:
         - name: F6c24067a--0
           type: text
@@ -48,7 +48,7 @@ scrapers:
       render_js: true
     - name: webscraper-io__F70a32efc-href-0_05abb
       url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
-      item: div.wrapper > div.container.test-site > div.row > div.col-lg-9
+      selector: div.wrapper > div.container.test-site > div.row > div.col-lg-9
       fields:
         - name: F2dff4b89--0
           type: text
@@ -107,4 +107,4 @@ scrapers:
             - selector: div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper > div.ratings > p.float-end.review-count
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

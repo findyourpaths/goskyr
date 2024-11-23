@@ -93,8 +93,8 @@ type GenerateCmd struct {
 
 	Batch               bool   `short:"b" long:"batch" default:true help:"Run batch (not interactively) to generate the config file."`
 	DoSubpages          bool   `short:"s" long:"subpages" default:true help:"Whether to generate configurations for subpages as well."`
-	FieldsVary          bool   `long:"fieldsvary" default:true help:"Only show fields that have varying values across the list of items."`
-	MinOcc              int    `short:"m" long:"min" help:"The minimum number of items on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	FieldsVary          bool   `long:"fieldsvary" default:true help:"Only show fields that have varying values across the list of records."`
+	MinOcc              int    `short:"m" long:"min" help:"The minimum number of records on a page. This is needed to filter out noise. Works in combination with the -g flag."`
 	CacheInputDir       string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
 	CacheOutputDir      string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will receive cached copies of the html page and linked pages."`
 	ConfigOutputDir     string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will recieve configuration files."`
@@ -286,11 +286,11 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error reading config: %v", err)
 	}
 
-	itemMaps, err := scrape.Page(conf, &conf.Scrapers[0], &conf.Global, true, cmd.File)
+	recs, err := scrape.Page(conf, &conf.Scrapers[0], &conf.Global, true, cmd.File)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("found %d itemMaps\n", len(itemMaps))
+	fmt.Printf("found %d itemMaps\n", len(recs))
 	f := &fetch.FileFetcher{}
 	slugID := fetch.MakeURLStringSlug(conf.Scrapers[0].URL)
 	fetchFn := func(u string) (*goquery.Document, error) {
@@ -299,17 +299,17 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 		return fetch.GQDocument(f, u, nil)
 	}
 	if len(conf.Scrapers) > 1 {
-		if err = scrape.Subpages(conf, &conf.Scrapers[1], itemMaps, fetchFn); err != nil {
+		if err = scrape.Subpages(conf, &conf.Scrapers[1], recs, fetchFn); err != nil {
 			return err
 		}
 	}
 
 	if cmd.ToStdout {
-		fmt.Println(itemMaps) //conf.String())
+		fmt.Println(recs) //conf.String())
 	}
 
 	if cmd.JSONFile != "" {
-		if err := utils.WriteJSONFile(cmd.JSONFile, itemMaps); err != nil {
+		if err := utils.WriteJSONFile(cmd.JSONFile, recs); err != nil {
 			return fmt.Errorf("error writing json file to path: %q: %v", cmd.JSONFile, err)
 		}
 	}

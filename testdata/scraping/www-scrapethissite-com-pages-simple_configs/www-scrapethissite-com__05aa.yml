@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: www-scrapethissite-com__05aa
       url: https://www.scrapethissite.com/pages/simple
-      item: body > div > section > div.container > div.row > div.col-md-4.country > div.country-info
+      selector: body > div > section > div.container > div.row > div.col-md-4.country > div.country-info
       fields:
         - name: F4a72abfd--0
           type: text
@@ -29,4 +29,4 @@ scrapers:
             - selector: span.country-capital
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: basic-subpages-com__F2a60128b-href-0_10aa
       url: https://basic-subpages.com
-      item: body > htmls > div.a-0.b-0
+      selector: body > htmls > div.a-0.b-0
       fields:
         - name: F649ac349--0
           type: text
@@ -20,4 +20,4 @@ scrapers:
               attr: href
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

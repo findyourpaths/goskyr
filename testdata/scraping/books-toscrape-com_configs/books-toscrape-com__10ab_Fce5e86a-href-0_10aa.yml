@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: books-toscrape-com__10ab
       url: https://books.toscrape.com
-      item: body > div.container-fluid.page > div.page_inner > div.row > div.col-md-9.col-sm-8 > section > div > ol.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod
+      selector: body > div.container-fluid.page > div.page_inner > div.row > div.col-md-9.col-sm-8 > section > div > ol.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod
       fields:
         - name: F8ab8a6c2-src-0
           type: url
@@ -39,7 +39,7 @@ scrapers:
       render_js: true
     - name: books-toscrape-com__Fce5e86a-href-0_10aa
       url: https://books.toscrape.com
-      item: div.container-fluid.page > div.page_inner
+      selector: div.container-fluid.page > div.page_inner
       fields:
         - name: F253bb4ab--2
           type: text
@@ -128,4 +128,4 @@ scrapers:
             - selector: div.content > div > article.product_page > div.row > div.col-sm-6.product_main > p.price_color
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

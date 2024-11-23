@@ -25,7 +25,7 @@ func NewAPIWriter(wc *WriterConfig) *APIWriter {
 	}
 }
 
-func (f *APIWriter) Write(items chan ItemMap) {
+func (f *APIWriter) Write(recs chan Record) {
 	logger := slog.With(slog.String("writer", API_WRITER_TYPE))
 	client := &http.Client{
 		Timeout: time.Second * 10,
@@ -35,19 +35,19 @@ func (f *APIWriter) Write(items chan ItemMap) {
 	apiPassword := f.writerConfig.Password
 
 	deletedSources := map[string]bool{}
-	nrItemsWritten := 0
-	batch := ItemMaps{}
+	nrRecsWritten := 0
+	batch := Records{}
 
-	// This code assumes that within one source, items are ordered
+	// This code assumes that within one source, records are ordered
 	// by date ascending.
-	for item := range items {
-		currentSrc := item["sourceUrl"].(string)
+	for rec := range recs {
+		currentSrc := rec["sourceUrl"].(string)
 		if _, found := deletedSources[currentSrc]; !found {
 			deletedSources[currentSrc] = true
-			// delete all items from the given source
-			firstDate, ok := item["date"].(time.Time)
+			// delete all records from the given source
+			firstDate, ok := rec["date"].(time.Time)
 			if !ok {
-				logger.Error(fmt.Sprintf("error while trying to cast the date field of item %v to time.Time", item))
+				logger.Error(fmt.Sprintf("error while trying to cast the date field of record %v to time.Time", rec))
 				continue
 			}
 			firstDateUTCF := firstDate.UTC().Format("2006-01-02 15:04")
@@ -56,7 +56,7 @@ func (f *APIWriter) Write(items chan ItemMap) {
 			req.SetBasicAuth(apiUser, apiPassword)
 			resp, err := client.Do(req)
 			if err != nil {
-				logger.Error(fmt.Sprintf("error while deleting items from the api: %v\n", err))
+				logger.Error(fmt.Sprintf("error while deleting records from the api: %v\n", err))
 				continue
 			}
 			if resp.StatusCode != 200 {
@@ -64,32 +64,32 @@ func (f *APIWriter) Write(items chan ItemMap) {
 				if err != nil {
 					logger.Error(fmt.Sprintf("%v", err))
 				}
-				logger.Error(fmt.Sprintf("error while deleting items. Status Code: %d\nUrl: %s Response: %s\n", resp.StatusCode, deleteURL, body))
+				logger.Error(fmt.Sprintf("error while deleting records. Status Code: %d\nUrl: %s Response: %s\n", resp.StatusCode, deleteURL, body))
 				os.Exit(1)
 			}
 			resp.Body.Close()
 		}
-		batch = append(batch, item)
+		batch = append(batch, rec)
 		if len(batch) == 100 {
 			if err := postBatch(client, batch, apiURL, apiUser, apiPassword); err != nil {
 				fmt.Printf("%v\n", err)
 			} else {
-				nrItemsWritten = nrItemsWritten + 100
+				nrRecsWritten = nrRecsWritten + 100
 			}
-			batch = ItemMaps{}
+			batch = Records{}
 		}
 	}
 	if err := postBatch(client, batch, apiURL, apiUser, apiPassword); err != nil {
 		fmt.Printf("%v\n", err)
 	} else {
-		nrItemsWritten = nrItemsWritten + len(batch)
+		nrRecsWritten = nrRecsWritten + len(batch)
 	}
 
-	logger.Info(fmt.Sprintf("wrote %d items from %d sources to the api", nrItemsWritten, len(deletedSources)))
+	logger.Info(fmt.Sprintf("wrote %d records from %d sources to the api", nrRecsWritten, len(deletedSources)))
 }
 
-func postBatch(client *http.Client, batch ItemMaps, apiURL, apiUser, apiPassword string) error {
-	concertJSON, err := json.Marshal(batch)
+func postBatch(client *http.Client, recs Records, apiURL, apiUser, apiPassword string) error {
+	concertJSON, err := json.Marshal(recs)
 	if err != nil {
 		return err
 	}

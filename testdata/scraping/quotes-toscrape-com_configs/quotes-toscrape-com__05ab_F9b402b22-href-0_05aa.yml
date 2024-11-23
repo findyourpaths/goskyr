@@ -6,7 +6,7 @@ id:
 scrapers:
     - name: quotes-toscrape-com__05ab
       url: https://quotes.toscrape.com
-      item: body > div.container > div.row > div.col-md-8
+      selector: body > div.container > div.row > div.col-md-8
       fields:
         - name: F19e3ed34--0
           type: text
@@ -38,7 +38,7 @@ scrapers:
       render_js: true
     - name: quotes-toscrape-com__F9b402b22-href-0_05aa
       url: https://quotes.toscrape.com
-      item: div.container > div.author-details
+      selector: div.container > div.author-details
       fields:
         - name: F12164689--0
           type: text
@@ -66,4 +66,4 @@ scrapers:
             - selector: p > strong
           can_be_empty: true
       render_js: true
-itemmaps: []
+records: []

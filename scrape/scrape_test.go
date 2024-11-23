@@ -94,8 +94,8 @@ const (
 	</h2>`
 )
 
-func TestFilterItemMatchTrue(t *testing.T) {
-	item := output.ItemMap{"title": "Jacob Collier - Concert"}
+func TestFilterRecordMatchTrue(t *testing.T) {
+	rec := output.Record{"title": "Jacob Collier - Concert"}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -114,14 +114,14 @@ func TestFilterItemMatchTrue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.keepItem(item)
+	f := s.keepRecord(rec)
 	if !f {
 		t.Fatalf("expected 'true' but got 'false'")
 	}
 }
 
-func TestFilterItemMatchFalse(t *testing.T) {
-	item := output.ItemMap{"title": "Jacob Collier - Cancelled"}
+func TestFilterRecordMatchFalse(t *testing.T) {
+	rec := output.Record{"title": "Jacob Collier - Cancelled"}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -140,15 +140,15 @@ func TestFilterItemMatchFalse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.keepItem(item)
+	f := s.keepRecord(rec)
 	if f {
 		t.Fatalf("expected 'false' but got 'true'")
 	}
 }
 
-func TestFilterItemByDateMatchTrue(t *testing.T) {
+func TestFilterRecordByDateMatchTrue(t *testing.T) {
 	loc, _ := time.LoadLocation("UTC")
-	item := output.ItemMap{"date": time.Date(2023, 10, 20, 19, 1, 0, 0, loc)}
+	rec := output.Record{"date": time.Date(2023, 10, 20, 19, 1, 0, 0, loc)}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -168,15 +168,15 @@ func TestFilterItemByDateMatchTrue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.keepItem(item)
+	f := s.keepRecord(rec)
 	if !f {
 		t.Fatalf("expected 'true' but got 'false'")
 	}
 }
 
-func TestFilterItemByDateMatchTrue2(t *testing.T) {
+func TestFilterRecordByDateMatchTrue2(t *testing.T) {
 	loc, _ := time.LoadLocation("UTC")
-	item := output.ItemMap{"date": time.Date(2023, 10, 20, 19, 0, 0, 0, loc)}
+	rec := output.Record{"date": time.Date(2023, 10, 20, 19, 0, 0, 0, loc)}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -196,15 +196,15 @@ func TestFilterItemByDateMatchTrue2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.keepItem(item)
+	f := s.keepRecord(rec)
 	if f {
 		t.Fatalf("expected 'false' but got 'true'")
 	}
 }
 
-func TestFilterItemByDateMatchFalse(t *testing.T) {
+func TestFilterRecordByDateMatchFalse(t *testing.T) {
 	loc, _ := time.LoadLocation("UTC")
-	item := output.ItemMap{"date": time.Date(2023, 10, 20, 19, 1, 0, 0, loc)}
+	rec := output.Record{"date": time.Date(2023, 10, 20, 19, 1, 0, 0, loc)}
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -224,7 +224,7 @@ func TestFilterItemByDateMatchFalse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got unexpected error: %v", err)
 	}
-	f := s.keepItem(item)
+	f := s.keepRecord(rec)
 	if f {
 		t.Fatalf("expected 'false' but got 'true'")
 	}
@@ -243,13 +243,13 @@ func TestRemoveHiddenFields(t *testing.T) {
 			},
 		},
 	}
-	item := output.ItemMap{"hidden": "bli", "visible": "bla"}
-	r := s.removeHiddenFields(item)
+	rec := output.Record{"hidden": "bli", "visible": "bla"}
+	r := s.removeHiddenFields(rec)
 	if _, ok := r["hidden"]; ok {
-		t.Fatal("the field 'hidden' should have been removed from the item")
+		t.Fatal("the field 'hidden' should have been removed from the record")
 	}
 	if _, ok := r["visible"]; !ok {
-		t.Fatal("the field 'visible' should not have been removed from the item")
+		t.Fatal("the field 'visible' should not have been removed from the record")
 	}
 }
 
@@ -266,7 +266,7 @@ func TestExtractFieldText(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
@@ -295,7 +295,7 @@ func TestExtractFieldTextEntireSubtree(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
@@ -326,7 +326,7 @@ func TestExtractFieldTextAllNodes(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
@@ -357,7 +357,7 @@ func TestExtractFieldTextRegex(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -386,7 +386,7 @@ func TestExtractFieldUrl(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "https://www.dachstock.ch/events")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -415,7 +415,7 @@ func TestExtractFieldUrlFull(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -444,7 +444,7 @@ func TestExtractFieldUrlQuery(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -473,7 +473,7 @@ func TestExtractFieldUrlFile(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "https://www.roxy.ulm.de/programm/programm.php")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -502,7 +502,7 @@ func TestExtractFieldUrlParentDir(t *testing.T) {
 			},
 		},
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "http://point11.ch/site/home")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
@@ -543,7 +543,7 @@ func TestExtractFieldDate(t *testing.T) {
 		},
 		DateLocation: "Europe/Berlin",
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
@@ -596,7 +596,7 @@ func TestExtractFieldDateTransform(t *testing.T) {
 		},
 		DateLocation: "Europe/Berlin",
 	}
-	event := output.ItemMap{}
+	event := output.Record{}
 	err = extractField(f, event, doc.Selection, "")
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
@@ -651,7 +651,7 @@ func TestExtractFieldDate29Feb(t *testing.T) {
 }
 
 func TestGuessYearSimple(t *testing.T) {
-	// items dates span period around change of year
+	// records dates span period around change of year
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -662,7 +662,7 @@ func TestGuessYearSimple(t *testing.T) {
 		},
 	}
 	loc, _ := time.LoadLocation("CET")
-	items := output.ItemMaps{
+	recs := output.Records{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -673,7 +673,7 @@ func TestGuessYearSimple(t *testing.T) {
 			"date": time.Date(2023, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	expectedItems := output.ItemMaps{
+	expectedRecs := output.Records{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -684,16 +684,16 @@ func TestGuessYearSimple(t *testing.T) {
 			"date": time.Date(2024, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	s.guessYear(items, time.Date(2023, 11, 30, 20, 30, 0, 0, loc))
-	for i, d := range items {
-		if d["date"] != expectedItems[i]["date"] {
-			t.Fatalf("expected '%v' as year of date but got '%v'", expectedItems[i]["date"], d["date"])
+	s.guessYear(recs, time.Date(2023, 11, 30, 20, 30, 0, 0, loc))
+	for i, d := range recs {
+		if d["date"] != expectedRecs[i]["date"] {
+			t.Fatalf("expected '%v' as year of date but got '%v'", expectedRecs[i]["date"], d["date"])
 		}
 	}
 }
 
 func TestGuessYearUnordered(t *testing.T) {
-	// items dates are not perfectly ordered and span
+	// records dates are not perfectly ordered and span
 	// period around change of year
 	s := &Scraper{
 		Fields: []Field{
@@ -705,7 +705,7 @@ func TestGuessYearUnordered(t *testing.T) {
 		},
 	}
 	loc, _ := time.LoadLocation("CET")
-	items := output.ItemMaps{
+	recs := output.Records{
 		{
 			"date": time.Date(2023, 11, 2, 20, 30, 0, 0, loc),
 		},
@@ -722,7 +722,7 @@ func TestGuessYearUnordered(t *testing.T) {
 			"date": time.Date(2023, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	expectedItems := output.ItemMaps{
+	expectedRecs := output.Records{
 		{
 			"date": time.Date(2023, 11, 2, 20, 30, 0, 0, loc),
 		},
@@ -739,16 +739,16 @@ func TestGuessYearUnordered(t *testing.T) {
 			"date": time.Date(2024, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	s.guessYear(items, time.Date(2023, 11, 1, 20, 30, 0, 0, loc))
-	for i, d := range items {
-		if d["date"] != expectedItems[i]["date"] {
-			t.Fatalf("expected '%v' as year of date but got '%v'", expectedItems[i]["date"], d["date"])
+	s.guessYear(recs, time.Date(2023, 11, 1, 20, 30, 0, 0, loc))
+	for i, d := range recs {
+		if d["date"] != expectedRecs[i]["date"] {
+			t.Fatalf("expected '%v' as year of date but got '%v'", expectedRecs[i]["date"], d["date"])
 		}
 	}
 }
 
 func TestGuessYear2Years(t *testing.T) {
-	// items dates span more than 2 years
+	// records dates span more than 2 years
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -759,7 +759,7 @@ func TestGuessYear2Years(t *testing.T) {
 		},
 	}
 	loc, _ := time.LoadLocation("CET")
-	items := output.ItemMaps{
+	recs := output.Records{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -776,7 +776,7 @@ func TestGuessYear2Years(t *testing.T) {
 			"date": time.Date(2023, 2, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	expectedItems := output.ItemMaps{
+	expectedRecs := output.Records{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -793,16 +793,16 @@ func TestGuessYear2Years(t *testing.T) {
 			"date": time.Date(2025, 2, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	s.guessYear(items, time.Date(2023, 11, 1, 20, 30, 0, 0, loc))
-	for i, d := range items {
-		if d["date"] != expectedItems[i]["date"] {
-			t.Fatalf("expected '%v' as year of date but got '%v'", expectedItems[i]["date"], d["date"])
+	s.guessYear(recs, time.Date(2023, 11, 1, 20, 30, 0, 0, loc))
+	for i, d := range recs {
+		if d["date"] != expectedRecs[i]["date"] {
+			t.Fatalf("expected '%v' as year of date but got '%v'", expectedRecs[i]["date"], d["date"])
 		}
 	}
 }
 
 func TestGuessYearStartBeforeReference(t *testing.T) {
-	// items date start before given reference
+	// records date start before given reference
 	s := &Scraper{
 		Fields: []Field{
 			{
@@ -813,7 +813,7 @@ func TestGuessYearStartBeforeReference(t *testing.T) {
 		},
 	}
 	loc, _ := time.LoadLocation("CET")
-	items := output.ItemMaps{
+	recs := output.Records{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -824,7 +824,7 @@ func TestGuessYearStartBeforeReference(t *testing.T) {
 			"date": time.Date(2023, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	expectedItems := output.ItemMaps{
+	expectedRecs := output.Records{
 		{
 			"date": time.Date(2023, 12, 2, 20, 30, 0, 0, loc),
 		},
@@ -835,10 +835,10 @@ func TestGuessYearStartBeforeReference(t *testing.T) {
 			"date": time.Date(2024, 1, 2, 20, 0, 0, 0, loc),
 		},
 	}
-	s.guessYear(items, time.Date(2024, 1, 30, 20, 30, 0, 0, loc))
-	for i, d := range items {
-		if d["date"] != expectedItems[i]["date"] {
-			t.Fatalf("expected '%v' as year of date but got '%v'", expectedItems[i]["date"], d["date"])
+	s.guessYear(recs, time.Date(2024, 1, 30, 20, 30, 0, 0, loc))
+	for i, d := range recs {
+		if d["date"] != expectedRecs[i]["date"] {
+			t.Fatalf("expected '%v' as year of date but got '%v'", expectedRecs[i]["date"], d["date"])
 		}
 	}
 }
