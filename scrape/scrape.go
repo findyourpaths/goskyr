@@ -327,15 +327,15 @@ type Paginator struct {
 // A Scraper contains all the necessary config parameters and structs needed
 // to extract the desired information from a website
 type Scraper struct {
-	Name         string               `yaml:"name"`
-	URL          string               `yaml:"url"`
-	Selector     string               `yaml:"selector"`
-	Fields       []Field              `yaml:"fields,omitempty"`
-	Filters      []*Filter            `yaml:"filters,omitempty"`
-	Paginators   []Paginator          `yaml:"paginators,omitempty"`
-	RenderJs     bool                 `yaml:"render_js,omitempty"`
-	PageLoadWait int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
-	Interaction  []*types.Interaction `yaml:"interaction,omitempty"`
+	Name         string         `yaml:"name"`
+	URL          string         `yaml:"url"`
+	Selector     string         `yaml:"selector"`
+	Fields       []Field        `yaml:"fields,omitempty"`
+	Filters      []*Filter      `yaml:"filters,omitempty"`
+	Paginators   []Paginator    `yaml:"paginators,omitempty"`
+	RenderJs     bool           `yaml:"render_js,omitempty"`
+	PageLoadWait int            `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
+	Interaction  []*Interaction `yaml:"interaction,omitempty"`
 	fetcher      fetch.Fetcher
 }
 

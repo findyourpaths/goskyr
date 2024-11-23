@@ -19,13 +19,25 @@ import (
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/chromedp"
 	"github.com/findyourpaths/goskyr/config"
-	"github.com/findyourpaths/goskyr/types"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/gosimple/slug"
 )
 
+// Interaction represents a simple user interaction with a webpage
+type Interaction struct {
+	Type     string `yaml:"type,omitempty"`
+	Selector string `yaml:"selector,omitempty"`
+	Count    int    `yaml:"count,omitempty"`
+	Delay    int    `yaml:"delay,omitempty"`
+}
+
+const (
+	InteractionTypeClick  = "click"
+	InteractionTypeScroll = "scroll"
+)
+
 type FetchOpts struct {
-	Interaction []*types.Interaction
+	Interaction []*Interaction
 }
 
 // A Fetcher allows to fetch the content of a web page
@@ -203,7 +215,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 		if ia.Delay > 0 {
 			delay = time.Duration(ia.Delay) * time.Millisecond
 		}
-		if ia.Type == types.InteractionTypeClick {
+		if ia.Type == InteractionTypeClick {
 			count := 1 // default is 1
 			if ia.Count > 0 {
 				count = ia.Count

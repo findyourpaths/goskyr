@@ -7,7 +7,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//config",
-        "//types",
         "//utils",
         "@com_github_chromedp_cdproto//cdp",
         "@com_github_chromedp_cdproto//dom",
