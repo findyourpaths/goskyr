@@ -341,27 +341,27 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 //	go run main.go --debug regenerate
 var urlsForTestnamesByDir = map[string]map[string][]string{
 	"regression": {
-		// "basic-field-com":                   []string{"https://basic-field.com", ""},
-		// "basic-field-w-div-com":             []string{"https://basic-field-w-div.com", ""},
-		// "basic-fields-w-div-com":            []string{"https://basic-fields-w-div.com", ""},
-		// "basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
-		// "basic-fields-w-div-w-divc-com":     []string{"https://basic-fields-w-div-w-div.com", ""},
-		// "basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
-		// "basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},
-		// "basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},
-		// "basic-fields-w-style-com":          []string{"https://basic-fields-w-style.com", ""},
-		// "basic-subpages-com":                []string{"https://basic-subpages.com", ""},
-		"css-class-with-digit-prefix-com": []string{"https://css-class-with-digit-prefix.com", ""},
-		// "fields-w-a-com_cache":              []string{"https://fields-w-a.com", ""},
+		"basic-field-com":                   []string{"https://basic-field.com", ""},
+		"basic-field-w-div-com":             []string{"https://basic-field-w-div.com", ""},
+		"basic-fields-w-div-com":            []string{"https://basic-fields-w-div.com", ""},
+		"basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
+		"basic-fields-w-div-w-divc-com":     []string{"https://basic-fields-w-div-w-div.com", ""},
+		"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
+		"basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},
+		"basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},
+		"basic-fields-w-style-com":          []string{"https://basic-fields-w-style.com", ""},
+		"basic-subpages-com":                []string{"https://basic-subpages.com", ""},
+		"css-class-with-special-chars-com":  []string{"https://css-class-with-special-chars.com", ""},
+		"fields-w-a-com_cache":              []string{"https://fields-w-a.com", ""},
 	},
-	// "scraping": {
-	// 	"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},
-	// 	"quotes-toscrape-com":            []string{"https://quotes.toscrape.com", "Imperfection"},
-	// 	"realpython-github-io-fake-jobs": []string{"https://realpython.github.io/fake-jobs", ""},
-	// 	"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
-	// 	"www-scrapethissite-com-pages-forms":                             []string{"https://www.scrapethissite.com/pages/forms", ""},
-	// 	"www-scrapethissite-com-pages-simple":                            []string{"https://www.scrapethissite.com/pages/simple", ""},
-	// },
+	"scraping": {
+		"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},
+		"quotes-toscrape-com":            []string{"https://quotes.toscrape.com", "Imperfection"},
+		"realpython-github-io-fake-jobs": []string{"https://realpython.github.io/fake-jobs", ""},
+		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
+		"www-scrapethissite-com-pages-forms":                             []string{"https://www.scrapethissite.com/pages/forms", ""},
+		"www-scrapethissite-com-pages-simple":                            []string{"https://www.scrapethissite.com/pages/simple", ""},
+	},
 }
 
 var testOutputDir = "/tmp/goskyr/main/"

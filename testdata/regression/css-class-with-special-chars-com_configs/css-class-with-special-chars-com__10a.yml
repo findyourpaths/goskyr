@@ -1,11 +1,11 @@
 id:
-    slug: css-class-with-digit-prefix-com
+    slug: css-class-with-special-chars-com
     id: 10a
     field: ""
     subid: ""
 scrapers:
-    - name: css-class-with-digit-prefix-com__10a
-      url: https://css-class-with-digit-prefix.com
+    - name: css-class-with-special-chars-com__10a
+      url: https://css-class-with-special-chars.com
       selector: body > div.a-0.b-0 > div.\31-1.a-1.b-1 > div.b-2
       fields:
         - name: F5cdd0606--0
