@@ -6,9 +6,9 @@ id:
 scrapers:
     - name: css-class-with-digit-prefix-com__10a
       url: https://css-class-with-digit-prefix.com
-      selector: body > div.a-0.b-0 > div.\31-1.a-1.b-1 > div.a-2.b-2
+      selector: body > div.a-0.b-0 > div.\31-1.a-1.b-1 > div.b-2
       fields:
-        - name: F84428c4e--0
+        - name: F5cdd0606--0
           type: text
           location:
             - {}
