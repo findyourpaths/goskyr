@@ -47,12 +47,12 @@ func TestGenerate(t *testing.T) {
 
 	for _, dir := range dirs {
 		t.Run(dir, func(t *testing.T) {
-			TGenerateAllDirConfigs(t, dir)
+			testGenerateAllDirConfigs(t, dir)
 		})
 	}
 }
 
-func TGenerateAllDirConfigs(t *testing.T, dir string) {
+func testGenerateAllDirConfigs(t *testing.T, dir string) {
 	testnames := []string{}
 	for testname := range urlsForTestnamesByDir[dir] {
 		testnames = append(testnames, testname)
@@ -61,12 +61,12 @@ func TGenerateAllDirConfigs(t *testing.T, dir string) {
 
 	for _, testname := range testnames {
 		t.Run(testname, func(t *testing.T) {
-			TGenerateAllConfigs(t, dir, testname)
+			testGenerateAllConfigs(t, dir, testname)
 		})
 	}
 }
 
-func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
+func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	inputDir := testInputDir + dir
 	outputDir := testOutputDir + dir
 
@@ -98,18 +98,18 @@ func TGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	if err != nil {
 		t.Fatalf("error generating page configs: %v", err)
 	}
-	TGenerateConfigs(t, testname, cs, inputDir, outputDir)
+	testGenerateConfigs(t, testname, cs, inputDir, outputDir)
 
 	if doSubpages {
 		subCs, _, err := generate.ConfigurationsForAllSubpages(opts, cs, gqdocsByURL, nil)
 		if err != nil {
 			t.Fatalf("error generating subpage configs: %v", err)
 		}
-		TGenerateConfigs(t, testname, subCs, inputDir, outputDir)
+		testGenerateConfigs(t, testname, subCs, inputDir, outputDir)
 	}
 }
 
-func TGenerateConfigs(t *testing.T, testname string, cs map[string]*scrape.Config, inputDir string, outputDir string) {
+func testGenerateConfigs(t *testing.T, testname string, cs map[string]*scrape.Config, inputDir string, outputDir string) {
 	ids := []string{}
 	for id := range cs {
 		ids = append(ids, id)
@@ -126,12 +126,12 @@ func TGenerateConfigs(t *testing.T, testname string, cs map[string]*scrape.Confi
 			t.Fatal(err)
 		}
 		t.Run(id, func(t *testing.T) {
-			TGenerateConfig(t, testname, cs[id], outputDir, exp)
+			testGenerateConfig(t, testname, cs[id], outputDir, exp)
 		})
 	}
 }
 
-func TGenerateConfig(t *testing.T, testname string, config *scrape.Config, outputDir string, exp string) {
+func testGenerateConfig(t *testing.T, testname string, config *scrape.Config, outputDir string, exp string) {
 	actC := config
 	// Strip the event list scraper paginators, which are generated but don't appear in the expected data.
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
@@ -185,12 +185,12 @@ func TestScrape(t *testing.T) {
 
 	for _, dir := range dirs {
 		t.Run(dir, func(t *testing.T) {
-			TScrapeWithAllDirConfigs(t, dir)
+			testScrapeWithAllDirConfigs(t, dir)
 		})
 	}
 }
 
-func TScrapeWithAllDirConfigs(t *testing.T, dir string) {
+func testScrapeWithAllDirConfigs(t *testing.T, dir string) {
 	testnames := []string{}
 	for testname := range urlsForTestnamesByDir[dir] {
 		testnames = append(testnames, testname)
@@ -199,12 +199,12 @@ func TScrapeWithAllDirConfigs(t *testing.T, dir string) {
 
 	for _, testname := range testnames {
 		t.Run(testname, func(t *testing.T) {
-			TScrapeWithAllConfigs(t, dir, testname)
+			testScrapeWithAllConfigs(t, dir, testname)
 		})
 	}
 }
 
-func TScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
+func testScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
 	glob := filepath.Join(testInputDir, dir, testname+"_configs", "*"+configSuffix)
 	// fmt.Printf("glob: %s\n", glob)
 	allPaths, err := filepath.Glob(glob)
@@ -228,7 +228,7 @@ func TScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
 			t.Fatalf("cannot open config file path at %q: %v", path, err)
 		}
 		t.Run(config.ID.String(), func(t *testing.T) {
-			TScrapeWithConfig(t, dir, testname, config)
+			testScrapeWithConfig(t, dir, testname, config)
 		})
 	}
 }
@@ -260,7 +260,7 @@ func getRecords(dir string, testname string, config *scrape.Config) (output.Reco
 	}
 }
 
-func TScrapeWithConfig(t *testing.T, dir string, testname string, config *scrape.Config) {
+func testScrapeWithConfig(t *testing.T, dir string, testname string, config *scrape.Config) {
 	recs, err := getRecords(dir, testname, config)
 	if err != nil {
 		t.Fatalf("failed to get items for scraper config %q: %v", config.ID.String(), err)
