@@ -28,3 +28,11 @@ func (recs Records) TotalFields() int {
 	}
 	return numFields
 }
+
+func ReadRecords(str string) (Records, error) {
+	rs := Records{}
+	if err := json.Unmarshal([]byte(str), &rs); err != nil {
+		return nil, fmt.Errorf("error while reading records: %v", err)
+	}
+	return rs, nil
+}
