@@ -94,7 +94,7 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 		t.Fatalf("error initializing page options: %v", err)
 	}
 
-	cs, gqdocsByURL, err := generate.ConfigurationsForPage(opts, nil)
+	cs, gqdocsByURL, err := generate.ConfigurationsForPage(opts)
 	if err != nil {
 		t.Fatalf("error generating page configs: %v", err)
 	}

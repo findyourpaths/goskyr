@@ -63,7 +63,7 @@ func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	return opts, nil
 }
 
-func ConfigurationsForPage(opts ConfigOptions, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForPage(opts ConfigOptions) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForPage_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -74,24 +74,22 @@ func ConfigurationsForPage(opts ConfigOptions, gqdocsByURL map[string]*goquery.D
 	slog.Info("ConfigurationsForPage()", "opts", opts)
 	defer slog.Info("ConfigurationsForPage() returning")
 
-	var gqdoc *goquery.Document
-	var err error
-	gqdoc, gqdocsByURL, err = fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), gqdocsByURL)
+	gqdoc, gqdocsByURL, err := fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch page: %v", err)
 	}
 
-	return ConfigurationsForGQDocumentWithMinOccurrences(opts, gqdoc, gqdocsByURL)
+	return ConfigurationsForGQDocument(opts, gqdoc, gqdocsByURL)
 }
 
-func ConfigurationsForGQDocumentWithMinOccurrences(opts ConfigOptions, gqdoc *goquery.Document, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
 	var cims map[string]*scrape.Config
 	var err error
 	rs := map[string]*scrape.Config{}
 	// Generate configs for each of the minimum occs.
 	for _, minOcc := range opts.MinOccs {
 		slog.Debug("calling ConfigurationsForGQDocument()", "minOcc", minOcc)
-		cims, gqdocsByURL, err = ConfigurationsForGQDocument(opts, gqdoc, minOcc, gqdocsByURL)
+		cims, gqdocsByURL, err = ConfigurationsForGQDocumentWithMinOccurrence(opts, gqdoc, minOcc, gqdocsByURL)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -104,7 +102,15 @@ func ConfigurationsForGQDocumentWithMinOccurrences(opts ConfigOptions, gqdoc *go
 	return rs, gqdocsByURL, nil
 }
 
-func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, minOcc int, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+// func ConfigurationsForGQDocuments(opts ConfigOptions, gqdocs []*goquery.Document, minOcc int, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+// 	_, gqdoc, err := joinGQDocuments(gqdocs)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	return ConfigurationsForGQDocumentWithMinOccurrence(opts, gqdoc, minOcc, gqdocsByURL)
+// }
+
+func ConfigurationsForGQDocumentWithMinOccurrence(opts ConfigOptions, gqdoc *goquery.Document, minOcc int, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
 	minOccStr := fmt.Sprintf("%02da", minOcc)
 	if opts.configID.Field != "" {
 		opts.configID.SubID = minOccStr
@@ -514,7 +520,7 @@ func ConfigurationsForSubpages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL 
 	// Prepare for calling general page generator.
 	opts.DoSubpages = false
 	opts.RequireString = ""
-	cs, gqdocsByURL, err := ConfigurationsForGQDocumentWithMinOccurrences(opts, gqdoc, gqdocsByURL)
+	cs, gqdocsByURL, err := ConfigurationsForGQDocument(opts, gqdoc, gqdocsByURL)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -664,7 +670,17 @@ func joinPageJoinsGQDocuments(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL m
 	var err error
 	if !found {
 		// Concatenate all of the subpages pointed to by the field with this name in the parent pages.
-		str, r, err = joinGQDocuments(opts, us, gqdocsByURL)
+		gqdocs := []*goquery.Document{}
+		for _, u := range us {
+			var gqdoc *goquery.Document
+			gqdoc, gqdocsByURL, err = fetchGQDocument(opts, u, gqdocsByURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed to fetch page: %v", err)
+			}
+			gqdocs = append(gqdocs, gqdoc)
+		}
+
+		str, r, err = joinGQDocuments(gqdocs) // ./opts, us, gqdocsByURL)
 		if err != nil {
 			return nil, err
 		}
@@ -686,18 +702,15 @@ func joinPageJoinsGQDocuments(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL m
 	return r, nil
 }
 
-func joinGQDocuments(opts ConfigOptions, us []string, gqdocsByURL map[string]*goquery.Document) (string, *goquery.Document, error) {
+// func joinGQDocuments(opts ConfigOptions, us []string, gqdocsByURL map[string]*goquery.Document) (string, *goquery.Document, error) {
+
+func joinGQDocuments(gqdocs []*goquery.Document) (string, *goquery.Document, error) {
 	rs := strings.Builder{}
 	rs.WriteString("<htmls>\n")
 
 	var gqdoc *goquery.Document
 	var err error
-	for _, u := range us {
-		gqdoc, gqdocsByURL, err = fetchGQDocument(opts, u, gqdocsByURL)
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to fetch page: %v", err)
-		}
-
+	for _, gqdoc := range gqdocs {
 		str, err := goquery.OuterHtml(gqdoc.Children())
 		if err != nil {
 			return "", nil, err

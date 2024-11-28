@@ -148,15 +148,18 @@ type DynamicFetcher struct {
 	cancelAlloc      context.CancelFunc
 }
 
+var userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+
 func NewDynamicFetcher(ua string, ms int) *DynamicFetcher {
+	if ua == "" {
+		ua = userAgent
+	}
 	opts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.WindowSize(1920, 1080), // init with a desktop view (sometimes pages look different on mobile, eg buttons are missing)
+		chromedp.UserAgent(ua),
 	)
-	if ua != "" {
-		opts = append(opts,
-			chromedp.UserAgent(ua))
-	}
+
 	allocContext, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
 	d := &DynamicFetcher{
 		UserAgent:        ua,

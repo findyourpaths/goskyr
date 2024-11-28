@@ -138,7 +138,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error initializing page options: %v", err)
 	}
 
-	cs, gqdocsByURL, err := generate.ConfigurationsForPage(opts, nil)
+	cs, gqdocsByURL, err := generate.ConfigurationsForPage(opts)
 	if err != nil {
 		return fmt.Errorf("error generating page configs: %v", err)
 	}
@@ -225,7 +225,6 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 
 			// Copy updated config files to testdata config dir.
 			cGlob := filepath.Join(strings.TrimPrefix(testInputDir, "../../"), dir, testname+"_configs", "*")
-			fmt.Printf("cGlob: %s\n", cGlob)
 			cPaths, err := filepath.Glob(cGlob)
 			if err != nil {
 				return fmt.Errorf("error getting config input paths with glob %q: %v", cGlob, err)
