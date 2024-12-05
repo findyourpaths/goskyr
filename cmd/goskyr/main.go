@@ -142,7 +142,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	if err != nil {
 		return fmt.Errorf("error generating page configs: %v", err)
 	}
-	fmt.Printf("Generated %d page configurations\n", len(cs))
+	fmt.Printf("Generated %d page configurations in %q\n", len(cs), opts.ConfigOutputDir)
 
 	var subCs map[string]*scrape.Config
 	if opts.DoSubpages {
@@ -150,7 +150,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 			return fmt.Errorf("error generating subpage configs: %v", err)
 		}
 	}
-	fmt.Printf("Generated %d subpage configurations\n", len(subCs))
+	fmt.Printf("Generated %d subpage configurations in %q\n", len(subCs), opts.ConfigOutputDir)
 
 	if cmd.ConfigOutputDir != "" {
 		for _, c := range cs {

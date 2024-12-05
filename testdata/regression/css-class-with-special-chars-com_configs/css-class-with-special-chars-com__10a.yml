@@ -6,9 +6,9 @@ id:
 scrapers:
     - name: css-class-with-special-chars-com__10a
       url: https://css-class-with-special-chars.com
-      selector: body > div.a-0.b-0 > div.\31-1.a-1.b-1 > div.b-2
+      selector: body > div.a-0.b-0 > div.\31-1.a-1.b-1\@1 > div.a-2.b-2
       fields:
-        - name: F5cdd0606--0
+        - name: F6d652493--0
           type: text
           location:
             - {}
