@@ -31,6 +31,8 @@ import (
 
 var DoDebug = false
 
+var DebugGQFind = true
+
 func init() {
 	utils.WriteStringFile("/tmp/goskyr/main/scrape_Page_log.txt", "")
 	utils.WriteStringFile("/tmp/goskyr/main/scrape_GQDocument_log.txt", "")
@@ -416,7 +418,18 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 
 		slog.Debug("in scrape.Page()", "s.Selector", s.Selector)
 		slog.Debug("in scrape.Page()", "len(doc.Find(s.Record).Nodes)", len(doc.Find(s.Selector).Nodes))
-		doc.Find(s.Selector).Each(func(i int, sel *goquery.Selection) {
+
+		found := doc.Find(s.Selector)
+		if DebugGQFind && len(found.Nodes) == 0 {
+			fmt.Printf("Found no nodes for original selector: %q\n", s.Selector)
+			selParts := strings.Split(s.Selector, " > ")
+			for i := len(selParts); i > 0; i-- {
+				sel := strings.Join(selParts[0:i], " > ")
+				fmt.Printf("found %d nodes with selector: %q\n", len(doc.Find(sel).Nodes), sel)
+			}
+			return nil, nil
+		}
+		found.Each(func(i int, sel *goquery.Selection) {
 			rec, err := GQSelection(c, s, sel, baseUrl, rawDyn)
 			if err != nil {
 				slog.Error(err.Error())

@@ -22,7 +22,7 @@ go_library(
 go_test(
     name = "scrape_test",
     srcs = ["scrape_test.go"],
-    data = glob(["testdata/**"]),
+    data = ["//testdata"],
     embed = [":scrape"],
     deps = [
         "//date",
