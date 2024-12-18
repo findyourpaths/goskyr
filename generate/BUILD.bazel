@@ -20,6 +20,7 @@ go_library(
         "@com_github_agnivade_levenshtein//:levenshtein",
         "@com_github_gdamore_tcell_v2//:tcell",
         "@com_github_gosimple_slug//:slug",
+        "@com_github_jpillora_go_tld//:go-tld",
         "@com_github_puerkitobio_goquery//:goquery",
         "@com_github_rivo_tview//:tview",
         "@org_golang_x_net//html",

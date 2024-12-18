@@ -76,19 +76,18 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	if err != nil {
 		t.Fatalf("error getting cache input paths with glob %q: %v", glob, err)
 	}
-	doSubpages := len(paths) > 1
-	// fmt.Printf("in test %q, doing subpages: %t\n", testname, doSubpages)
+	doDetailPages := len(paths) > 1
 
 	urlAndReq := urlsForTestnamesByDir[dir][testname]
 	opts, err := generate.InitOpts(generate.ConfigOptions{
-		Batch:         true,
-		CacheInputDir: inputDir,
-		DoSubpages:    doSubpages,
-		MinOccs:       []int{5, 10, 20},
-		OnlyVarying:   true,
-		RenderJS:      true,
-		RequireString: urlAndReq[1],
-		URL:           urlAndReq[0],
+		Batch:             true,
+		CacheInputDir:     inputDir,
+		DoDetailPages:     doDetailPages,
+		MinOccs:           []int{5, 10, 20},
+		OnlyVaryingFields: true,
+		RenderJS:          true,
+		RequireString:     urlAndReq[1],
+		URL:               urlAndReq[0],
 	})
 	if err != nil {
 		t.Fatalf("error initializing page options: %v", err)
@@ -100,10 +99,10 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	}
 	testGenerateConfigs(t, testname, cs, inputDir, outputDir)
 
-	if doSubpages {
-		subCs, _, err := generate.ConfigurationsForAllSubpages(opts, cs, gqdocsByURL, nil)
+	if doDetailPages {
+		subCs, _, err := generate.ConfigurationsForAllDetailPages(opts, cs, gqdocsByURL, nil)
 		if err != nil {
-			t.Fatalf("error generating subpage configs: %v", err)
+			t.Fatalf("error generating detail page configs: %v", err)
 		}
 		testGenerateConfigs(t, testname, subCs, inputDir, outputDir)
 	}
@@ -255,7 +254,7 @@ func getRecords(dir string, testname string, config *scrape.Config) (output.Reco
 			u = "file://" + filepath.Join(testInputDir, dir, testname+"_cache", fetch.MakeURLStringSlug(u)+".html")
 			return fetch.GQDocument(f, u, nil)
 		}
-		err = scrape.Subpages(config, &config.Scrapers[1], itemMaps, fetchFn)
+		err = scrape.DetailPages(config, &config.Scrapers[1], itemMaps, fetchFn)
 		return itemMaps, err
 	}
 }

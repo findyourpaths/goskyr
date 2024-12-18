@@ -219,16 +219,17 @@ type Field struct {
 	ElementLocations ElementLocations `yaml:"location,omitempty"` // elements are extracted strings joined using the given Separator
 	Default          string           `yaml:"default,omitempty"`  // the default for a dynamic field (text or url) if no value is found
 	Separator        string           `yaml:"separator,omitempty"`
-	// If a field can be found on a subpage the following variable has to contain a field name of
-	// a field of type 'url' that is located on the main page.
-	OnSubpage    string            `yaml:"on_subpage,omitempty"`    // applies to text, url, date
-	CanBeEmpty   bool              `yaml:"can_be_empty,omitempty"`  // applies to text, url
-	Components   []DateComponent   `yaml:"components,omitempty"`    // applies to date
-	DateLocation string            `yaml:"date_location,omitempty"` // applies to date
-	DateLanguage string            `yaml:"date_language,omitempty"` // applies to date
-	Hide         bool              `yaml:"hide,omitempty"`          // applies to text, url, date
-	GuessYear    bool              `yaml:"guess_year,omitempty"`    // applies to date
-	Transform    []TransformConfig `yaml:"transform,omitempty"`     // applies to text
+	// If a field can be found on a detail page the following variable has to
+	// contain a field name of a field of type 'url' that is located on the main
+	// page.
+	OnDetailPage string            `yaml:"on_detail_page,omitempty"` // applies to text, url, date
+	CanBeEmpty   bool              `yaml:"can_be_empty,omitempty"`   // applies to text, url
+	Components   []DateComponent   `yaml:"components,omitempty"`     // applies to date
+	DateLocation string            `yaml:"date_location,omitempty"`  // applies to date
+	DateLanguage string            `yaml:"date_language,omitempty"`  // applies to date
+	Hide         bool              `yaml:"hide,omitempty"`           // applies to text, url, date
+	GuessYear    bool              `yaml:"guess_year,omitempty"`     // applies to date
+	Transform    []TransformConfig `yaml:"transform,omitempty"`      // applies to text
 }
 
 type ElementLocations []ElementLocation
@@ -345,7 +346,7 @@ type Scraper struct {
 // not processed according to their type but instead the raw values based
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
-// present on the main page (not subpages). This is used by the ML feature generation.
+// present on the main page (not detail pages). This is used by the ML feature generation.
 func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
@@ -423,9 +424,19 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 		if DebugGQFind && len(found.Nodes) == 0 {
 			fmt.Printf("Found no nodes for original selector: %q\n", s.Selector)
 			selParts := strings.Split(s.Selector, " > ")
-			for i := len(selParts); i > 0; i-- {
+			fmt.Printf("     starting with selector: %q\n", selParts[0])
+			foundNone := false
+			for i := 1; i < len(selParts); i++ {
 				sel := strings.Join(selParts[0:i], " > ")
-				fmt.Printf("found %d nodes with selector: %q\n", len(doc.Find(sel).Nodes), sel)
+				found := len(doc.Find(sel).Nodes)
+				if !foundNone && found == 0 {
+					foundNone = true
+					prevNs := doc.Find(strings.Join(selParts[0:i-1], " > ")).Nodes
+					for _, n := range prevNs {
+						fmt.Printf("found child node: %q\n", printHTMLNodeAsStartTag(n))
+					}
+				}
+				fmt.Printf("found %d nodes with selector: %q\n", found, selParts[i])
 			}
 			return nil, nil
 		}
@@ -459,7 +470,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 // not processed according to their type but instead the raw values based
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
-// present on the main page (not subpages). This is used by the ML feature generation.
+// present on the main page (not detail pages). This is used by the ML feature generation.
 func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
@@ -504,7 +515,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 // processed according to its type but instead the raw value based only on the
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
-// the main page (not subpages). This is used by the ML feature generation.
+// the main page (not detail pages). This is used by the ML feature generation.
 func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.Record, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
@@ -539,7 +550,7 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, 
 		slog.Debug("in scrape.GQSelection(), before extract", "f", f)
 
 		// handle all dynamic fields on the main page
-		if f.OnSubpage == "" {
+		if f.OnDetailPage == "" {
 			var err error
 			if rawDyn {
 				err = extractRawField(&f, rs, sel)
@@ -552,45 +563,45 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, 
 		}
 		slog.Debug("in scrape.GQSelection(), after extract", "f", f)
 
-		// to speed things up we check the filter after each field.
-		// Like that we safe time if we already know for sure that
-		// we want to filter out a certain record. Especially, if
-		// certain elements would need to be fetched from subpages.
-		// filter fast!
+		// To speed things up we check the filter after each field.  Like that we
+		// safe time if we already know for sure that we want to filter out a
+		// certain record. Especially, if certain elements would need to be fetched
+		// from detail pages.
+		//
+		// Filter fast!
 		if !s.keepRecord(rs) {
 			return nil, nil
 		}
 	}
 	// slog.Debug("in Scraper.GQSelection(), after field check", "currentItem", rs)
 
-	// handle all fields on subpages
+	// Handle all fields on detail pages.
 	if !rawDyn {
-		subDocs := make(map[string]*goquery.Document)
+		dpDocs := make(map[string]*goquery.Document)
 		for _, f := range s.Fields {
-			if f.OnSubpage == "" || f.Value != "" {
+			if f.OnDetailPage == "" || f.Value != "" {
 				continue
 			}
 
 			// check whether we fetched the page already
-			subpageURL := fmt.Sprint(rs[f.OnSubpage])
-			// slog.Debug("looking at", "subpageURL", subpageURL)
-			_, found := subDocs[subpageURL]
+			dpURL := fmt.Sprint(rs[f.OnDetailPage])
+			_, found := dpDocs[dpURL]
 			if !found {
-				subRes, err := s.fetcher.Fetch(subpageURL, nil)
+				dpRes, err := s.fetcher.Fetch(dpURL, nil)
 				if err != nil {
-					return nil, fmt.Errorf("error while fetching subpage: %v. Skipping record %v.", err, rs)
+					return nil, fmt.Errorf("error while fetching detail page: %v. Skipping record %v.", err, rs)
 				}
-				subDoc, err := goquery.NewDocumentFromReader(strings.NewReader(subRes))
+				dpDoc, err := goquery.NewDocumentFromReader(strings.NewReader(dpRes))
 				if err != nil {
-					return nil, fmt.Errorf("error while reading subpage document: %v. Skipping record %v", err, rs)
+					return nil, fmt.Errorf("error while reading detail page document: %v. Skipping record %v", err, rs)
 				}
-				subDocs[subpageURL] = subDoc
+				dpDocs[dpURL] = dpDoc
 			}
 
-			baseURLSubpage := getBaseURL(subpageURL, subDocs[subpageURL])
-			err := extractField(&f, rs, subDocs[subpageURL].Selection, baseURLSubpage)
+			baseURLDetailPage := getBaseURL(dpURL, dpDocs[dpURL])
+			err := extractField(&f, rs, dpDocs[dpURL].Selection, baseURLDetailPage)
 			if err != nil {
-				return nil, fmt.Errorf("error while parsing subpage field %s: %v. Skipping record %v.", f.Name, err, rs)
+				return nil, fmt.Errorf("error while parsing detail page field %s: %v. Skipping record %v.", f.Name, err, rs)
 			}
 			// filter fast!
 			if !s.keepRecord(rs) {
@@ -711,7 +722,7 @@ func (c *Scraper) removeHiddenFields(rec output.Record) output.Record {
 	return rec
 }
 
-func (c *Scraper) GetSubpageURLFields() []Field {
+func (c *Scraper) GetDetailPageURLFields() []Field {
 	rs := []Field{}
 	for _, f := range c.Fields {
 		if f.Type != "url" {
@@ -1300,18 +1311,10 @@ var SkipSubURLExt = map[string]bool{
 	".png":  true,
 }
 
-func Subpages(c *Config, s *Scraper, recs output.Records, fetchFn func(string) (*goquery.Document, error)) error {
+func DetailPages(c *Config, s *Scraper, recs output.Records, fetchFn func(string) (*goquery.Document, error)) error {
 	if DoDebug {
-		// if output.WriteSeparateLogFiles {
-		// 	prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/" + c.ID.Slug + "_configs/" + c.ID.String() + "_scrape_Subpages_log.txt", slog.LevelDebug)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// 	defer output.RestoreDefaultLogger(prevLogger)
-		// }
-		// slog = slog.With(slog.String("s.Name", s.Name))
-		slog.Debug("scrape.Subpages()")
-		defer slog.Debug("scrape.Subpages() returning")
+		slog.Debug("scrape.DetailPages()")
+		defer slog.Debug("scrape.DetailPages() returning")
 	}
 
 	uBase, err := url.Parse(s.URL)
@@ -1327,19 +1330,19 @@ func Subpages(c *Config, s *Scraper, recs output.Records, fetchFn func(string) (
 
 		rel, err := url.Parse(relStr)
 		if err != nil {
-			return fmt.Errorf("error parsing subpage url %q: %v", c.ID.Field, err)
+			return fmt.Errorf("error parsing detail page url %q: %v", c.ID.Field, err)
 		}
 		subURL := uBase.ResolveReference(rel).String()
-		slog.Debug("in scrape.Subpages()", "i", i, "subURL", subURL)
+		slog.Debug("in scrape.DetailPages()", "i", i, "subURL", subURL)
 		var subGQDoc *goquery.Document
 		if fetchFn != nil {
 			subGQDoc, err = fetchFn(subURL)
 		} else {
-			return fmt.Errorf("need to fetch subpage")
+			return fmt.Errorf("need to fetch detail page")
 		}
 		// fmt.Printf("adding subURL: %q\n", subURL)
 		if err != nil {
-			return fmt.Errorf("error fetching subpage GQDocument at %q: %v", subURL, err)
+			return fmt.Errorf("error fetching detail page GQDocument at %q: %v", subURL, err)
 		}
 		if err := SubGQDocument(c, s, rec, c.ID.Field, subGQDoc); err != nil {
 			return fmt.Errorf("error extending records: %v", err)
@@ -1364,12 +1367,12 @@ func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc
 
 	subRecs, err := GQDocument(c, s, gqdoc, true)
 	if err != nil {
-		return fmt.Errorf("error scraping subpage for field %q: %v", fname, err)
+		return fmt.Errorf("error scraping detail page for field %q: %v", fname, err)
 	}
-	// The subpage may not have had valid records.
+	// The detail page may not have had valid records.
 	if len(subRecs) != 1 {
-		// return fmt.Errorf("error scraping subpage: expected exactly one item map for configID: %q, fname %q, got %d instead", c.ID.String(), fname, len(subRecs))
-		// fmt.Printf("error scraping subpage: expected exactly one item map for configID: %q, fname %q, got %d instead", c.ID.String(), fname, len(subRecs))
+		// return fmt.Errorf("error scraping detail page: expected exactly one item map for configID: %q, fname %q, got %d instead", c.ID.String(), fname, len(subRecs))
+		// fmt.Printf("error scraping detail page: expected exactly one item map for configID: %q, fname %q, got %d instead", c.ID.String(), fname, len(subRecs))
 		return nil
 	}
 	for k, v := range subRecs[0] {
@@ -1387,4 +1390,15 @@ func printHTMLNodes(ns []*html.Node) string {
 		}
 	}
 	return r.String()
+}
+
+func printHTMLNodeAsStartTag(n *html.Node) string {
+	if n.Type != html.ElementNode {
+		return ""
+	}
+	var attrs []string
+	for _, attr := range n.Attr {
+		attrs = append(attrs, fmt.Sprintf("%s=\"%s\"", attr.Key, attr.Val))
+	}
+	return "<" + n.Data + " " + strings.Join(attrs, " ") + ">"
 }

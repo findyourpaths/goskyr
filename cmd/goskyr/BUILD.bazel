@@ -16,12 +16,6 @@ go_library(
     ],
 )
 
-go_binary(
-    name = "goskyr",
-    embed = [":goskyr_lib"],
-    visibility = ["//visibility:public"],
-)
-
 go_test(
     name = "goskyr_test",
     size = "large",
@@ -37,4 +31,10 @@ go_test(
         "@com_github_puerkitobio_goquery//:goquery",
         "@com_github_sergi_go_diff//diffmatchpatch",
     ],
+)
+
+go_binary(
+    name = "goskyr",
+    embed = [":goskyr_lib"],
+    visibility = ["//visibility:public"],
 )

@@ -1,11 +1,11 @@
 id:
-    slug: basic-subpages-com
-    id: 05aa
+    slug: basic-detail-pages-com
+    id: 10aa
     field: ""
     subid: ""
 scrapers:
-    - name: basic-subpages-com__05aa
-      url: https://basic-subpages.com
+    - name: basic-detail-pages-com__10aa
+      url: https://basic-detail-pages.com
       selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div
       fields:
         - name: F2a60128b-href-0

@@ -59,14 +59,14 @@ scrapers:
         location:
           selector: ".qt-the-content div"
         can_be_empty: true
-        on_subpage: "url"
+        on_detail_page: "url"
       - name: "url"
         type: "url"
         location:
           selector: ".qt-text-shadow"
       - name: "date"
         type: "date"
-        on_subpage: "url"
+        on_detail_page: "url"
         components:
           - covers:
               day: true
@@ -198,7 +198,7 @@ scrapers:
           selector: ".calendar-item__inner a"
       - name: "date"
         type: "date"
-        on_subpage: "url"
+        on_detail_page: "url"
         components:
           - covers:
               day: true
@@ -242,7 +242,7 @@ scrapers:
           selector: ".event-title a"
       - name: "date"
         type: "date"
-        on_subpage: "url"
+        on_detail_page: "url"
         components:
           - covers:
               day: true
@@ -283,7 +283,7 @@ scrapers:
         location:
           selector: ".hover-in .right a"
       - name: "location"
-        on_subpage: "url"
+        on_detail_page: "url"
         location:
           selector: ".entry-info"
           child_index: 10
@@ -400,7 +400,7 @@ scrapers:
         location:
           selector: ".event-detail__content div p"
           max_length: 200
-        on_subpage: "url"
+        on_detail_page: "url"
         can_be_empty: true
       - name: "url"
         type: "url"
@@ -438,7 +438,7 @@ scrapers:
       - name: "comment"
         location:
           selector: ".concertStyleNew .concertDetails"
-        on_subpage: "url"
+        on_detail_page: "url"
         can_be_empty: true
       - name: "url"
         type: "url"
@@ -487,7 +487,7 @@ scrapers:
           selector: ""
       - name: "date"
         type: "date"
-        on_subpage: "url"
+        on_detail_page: "url"
         components:
           - covers:
               day: true

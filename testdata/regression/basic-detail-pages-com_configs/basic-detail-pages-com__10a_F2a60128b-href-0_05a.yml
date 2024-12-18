@@ -1,11 +1,27 @@
 id:
-    slug: basic-subpages-com
-    id: ""
+    slug: basic-detail-pages-com
+    id: 10a
     field: F2a60128b-href-0
-    subid: 10a
+    subid: 05a
 scrapers:
-    - name: basic-subpages-com__F2a60128b-href-0_10a
-      url: https://basic-subpages.com
+    - name: basic-detail-pages-com__10a
+      url: https://basic-detail-pages.com
+      selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
+      fields:
+        - name: F2a60128b-href-0
+          type: url
+          location:
+            - selector: div > a
+              attr: href
+          can_be_empty: true
+        - name: Fa5ccda70--0
+          type: text
+          location:
+            - selector: div
+          can_be_empty: true
+      render_js: true
+    - name: basic-detail-pages-com__F2a60128b-href-0_05a
+      url: https://basic-detail-pages.com
       selector: body > htmls
       fields:
         - name: F14fd4c6e--0

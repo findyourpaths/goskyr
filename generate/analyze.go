@@ -68,8 +68,8 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 		}
 	}
 
-	slog.Debug("in analyzePage()", "opts.OnlyVarying", opts.OnlyVarying)
-	if opts.OnlyVarying {
+	slog.Debug("in analyzePage()", "opts.OnlyVarying", opts.OnlyVaryingFields)
+	if opts.OnlyVaryingFields {
 		a.LocMan = filterStaticFields(a.LocMan)
 		a.PagMan = filterStaticFields(a.PagMan)
 		if slog.Default().Enabled(nil, slog.LevelDebug) {
