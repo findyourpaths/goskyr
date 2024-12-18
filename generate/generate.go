@@ -459,28 +459,32 @@ func ConfigurationsForAllDetailPages(opts ConfigOptions, pageConfigs map[string]
 					continue
 				}
 
-				rel, err := tld.Parse(fj.value)
+				relURL, err := url.Parse(fj.value)
 				if err != nil {
-					slog.Error("error parsing detail page url", "err", err)
+					slog.Error("error parsing detail page relative url", "fj.value", fj.value, "err", err)
+					continue
+				}
+
+				absURL, err := tld.Parse(uBase.ResolveReference(relURL).String())
+				if err != nil {
+					slog.Error("error parsing detail page absolute url", "fj.value", fj.value, "err", err)
 					continue
 				}
 
 				// fmt.Printf("rel: %q, %#v\n", rerel)
-
-				if rel.Scheme != "http" && rel.Scheme != "https" {
+				if absURL.Scheme != "http" && absURL.Scheme != "https" {
 					slog.Debug("skipping sub URL with non-http(s) scheme", "fj.value", fj.value)
 					continue
 				}
 
 				if opts.OnlySameDomainDetailPages {
-					if uBase.Domain != rel.Domain {
+					if uBase.Domain != absURL.Domain {
 						slog.Debug("skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value)
 						continue
 					}
 				}
 
-				u := uBase.ResolveReference(rel.URL)
-				fj.url = fetch.TrimURLScheme(u.String())
+				fj.url = fetch.TrimURLScheme(absURL.String())
 				pj.fieldJoins = append(pj.fieldJoins, fj)
 			}
 		}
