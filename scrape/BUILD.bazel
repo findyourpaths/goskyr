@@ -13,6 +13,7 @@ go_library(
         "@com_github_antchfx_jsonquery//:jsonquery",
         "@com_github_goodsign_monday//:monday",
         "@com_github_ilyakaznacheev_cleanenv//:cleanenv",
+        "@com_github_jpillora_go_tld//:go-tld",
         "@com_github_puerkitobio_goquery//:goquery",
         "@in_gopkg_yaml_v3//:yaml_v3",
         "@org_golang_x_net//html",

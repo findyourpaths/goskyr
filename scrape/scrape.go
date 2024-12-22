@@ -23,6 +23,7 @@ import (
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/goodsign/monday"
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/jpillora/go-tld"
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
 )
@@ -168,6 +169,13 @@ func ReadConfig(configPath string) (*Config, error) {
 	}
 	if config.Global.UserAgent == "" {
 		config.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
+	}
+	for _, s := range config.Scrapers {
+		u, err := url.Parse(s.URL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse scraper URL: %q", s.URL)
+		}
+		s.HostSlug = fetch.MakeURLStringSlug(u.Host)
 	}
 	return &config, nil
 }
@@ -338,7 +346,9 @@ type Scraper struct {
 	RenderJs     bool                 `yaml:"render_js,omitempty"`
 	PageLoadWait int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
 	Interaction  []*fetch.Interaction `yaml:"interaction,omitempty"`
-	fetcher      fetch.Fetcher
+
+	fetcher  fetch.Fetcher
+	HostSlug string
 }
 
 // Page fetches and returns all records from a webpage according to the
@@ -350,7 +360,7 @@ type Scraper struct {
 func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_GQPage_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug+"_configs/"+c.ID.String()+"_scrape_GQPage_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -365,6 +375,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 	// scrLogger := slog.With(slog.String("name", s.Name))
 	// // initialize fetcher
 
+	// fmt.Println("in scrape.Page()", "s.URL", s.URL)
 	u := s.URL
 	if path != "" {
 		s.fetcher = &fetch.FileFetcher{}
@@ -379,6 +390,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 			// UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
 		}
 	}
+	// fmt.Println("in scrape.Page()", "u", u)
 
 	rs := output.Records{}
 
@@ -398,7 +410,9 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 	}
 
 	for hasNextPage {
-		baseUrl := getBaseURL(pageURL, doc)
+		baseURL := getBaseURL(pageURL, doc)
+		// fmt.Println("in scrape.Page()", "baseURL", baseURL)
+		// fmt.Println("in scrape.Page()", "pageURL", pageURL)
 
 		// if len(doc.Find(c.Record).Nodes) == 0 {
 		// 	slog.Debug("in Scraper.Page(), no records found, shortening selector to find the longest prefix that selects records")
@@ -422,9 +436,10 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 
 		found := doc.Find(s.Selector)
 		if DebugGQFind && len(found.Nodes) == 0 {
+			fmt.Printf("Trying to scrape from %q\n", pageURL)
 			fmt.Printf("Found no nodes for original selector: %q\n", s.Selector)
 			selParts := strings.Split(s.Selector, " > ")
-			fmt.Printf("     starting with selector: %q\n", selParts[0])
+			fmt.Printf("    starting with selector: %q\n", selParts[0])
 			foundNone := false
 			for i := 1; i < len(selParts); i++ {
 				sel := strings.Join(selParts[0:i], " > ")
@@ -433,15 +448,15 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 					foundNone = true
 					prevNs := doc.Find(strings.Join(selParts[0:i-1], " > ")).Nodes
 					for _, n := range prevNs {
-						fmt.Printf("found child node: %q\n", printHTMLNodeAsStartTag(n))
+						fmt.Printf("    found child node: %q\n", printHTMLNodeAsStartTag(n))
 					}
 				}
-				fmt.Printf("found %d nodes with selector: %q\n", found, selParts[i])
+				fmt.Printf("    found %d nodes with selector: %q\n", found, selParts[i])
 			}
 			return nil, nil
 		}
 		found.Each(func(i int, sel *goquery.Selection) {
-			rec, err := GQSelection(c, s, sel, baseUrl, rawDyn)
+			rec, err := GQSelection(c, s, sel, baseURL, rawDyn)
 			if err != nil {
 				slog.Error(err.Error())
 				return
@@ -474,7 +489,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_GQDocument_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug+"_configs/"+c.ID.String()+"_scrape_GQDocument_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -519,7 +534,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.Record, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -739,14 +754,14 @@ func (c *Scraper) GetDetailPageURLFields() []Field {
 	return rs
 }
 
-func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl, userAgent string, i []*fetch.Interaction) (bool, string, *goquery.Document, error) {
+func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageURL, userAgent string, i []*fetch.Interaction) (bool, string, *goquery.Document, error) {
 
 	if nextPageI == 0 {
-		newDoc, err := fetch.GQDocument(c.fetcher, currentPageUrl, &fetch.FetchOpts{Interaction: i})
+		newDoc, err := fetch.GQDocument(c.fetcher, currentPageURL, &fetch.FetchOpts{Interaction: i})
 		if err != nil {
 			return false, "", nil, err
 		}
-		return true, currentPageUrl, newDoc, nil
+		return true, currentPageURL, newDoc, nil
 	}
 
 	if len(c.Paginators) == 0 {
@@ -766,29 +781,32 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageUrl
 						Count:    nextPageI, // we always need to 'restart' the clicks because we always re-fetch the page
 					},
 				}
-				nextPageDoc, err := fetch.GQDocument(c.fetcher, currentPageUrl, &fetch.FetchOpts{Interaction: ia})
+				nextPageDoc, err := fetch.GQDocument(c.fetcher, currentPageURL, &fetch.FetchOpts{Interaction: ia})
 				if err != nil {
 					return false, "", nil, err
 				}
-				return true, currentPageUrl, nextPageDoc, nil
+				return true, currentPageURL, nextPageDoc, nil
 			}
 		}
 		return false, "", nil, nil
 	}
 
-	baseUrl := getBaseURL(currentPageUrl, doc)
-	nextPageU, err := GetURL(&c.Paginators[0].Location, doc.Selection, baseUrl)
-	nextPageUrl := nextPageU.String()
+	baseURL := getBaseURL(currentPageURL, doc)
+	nextPageU, err := GetURL(&c.Paginators[0].Location, doc.Selection, baseURL)
+	nextPageURL := nextPageU.String()
+	fmt.Println("in scrape.fetchPage()", "baseURL", baseURL)
+	fmt.Println("in scrape.fetchPage()", "nextPageURL", nextPageURL)
+
 	if err != nil {
 		return false, "", nil, err
 	}
-	if nextPageUrl != "" {
-		nextPageDoc, err := fetch.GQDocument(c.fetcher, nextPageUrl, nil)
+	if nextPageURL != "" {
+		nextPageDoc, err := fetch.GQDocument(c.fetcher, nextPageURL, nil)
 		if err != nil {
 			return false, "", nil, err
 		}
 		if nextPageI < c.Paginators[0].MaxPages || c.Paginators[0].MaxPages == 0 {
-			return true, nextPageUrl, nextPageDoc, nil
+			return true, nextPageURL, nextPageDoc, nil
 		}
 	}
 
@@ -1309,9 +1327,15 @@ var SkipSubURLExt = map[string]bool{
 	".jpeg": true,
 	".jpg":  true,
 	".png":  true,
+	".zip":  true,
 }
 
-func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records) error {
+var KeepSubURLScheme = map[string]bool{
+	"http":  true,
+	"https": true,
+}
+
+func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, domain string) error {
 	if DoDebug {
 		slog.Debug("scrape.DetailPages()")
 		defer slog.Debug("scrape.DetailPages() returning")
@@ -1324,7 +1348,8 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records) 
 
 	for i, rec := range recs {
 		relStr := rec[c.ID.Field].(string)
-		if SkipSubURLExt[filepath.Ext(relStr)] || strings.HasPrefix(relStr, "mailto:") {
+		if SkipSubURLExt[filepath.Ext(relStr)] {
+			slog.Debug("in scrape.DetailPages(), skipping sub URL due to extension", "relStr", relStr)
 			continue
 		}
 
@@ -1332,9 +1357,23 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records) 
 		if err != nil {
 			return fmt.Errorf("error parsing detail page url %q: %v", c.ID.Field, err)
 		}
-		subURL := uBase.ResolveReference(rel).String()
+		subURL, err := tld.Parse(uBase.ResolveReference(rel).String())
+		if err != nil {
+			return fmt.Errorf("error reparsing detail page url %q: %v", c.ID.Field, err)
+		}
+
+		if !KeepSubURLScheme[subURL.Scheme] {
+			slog.Debug("in scrape.DetailPages(), skipping sub URL due to scheme", "subURL", subURL)
+			continue
+		}
+		if domain != "" && domain != subURL.Domain {
+			slog.Debug("in scrape.DetailPages(), skipping sub URL with different domain", "domain", domain, "subURL", subURL)
+			continue
+		}
+
 		slog.Debug("in scrape.DetailPages()", "i", i, "subURL", subURL)
-		subGQDoc, found, err := fetch.GetGQDocument(cache, subURL)
+		// fmt.Println("in scrape.DetailPages()", "i", i, "subURL", subURL)
+		subGQDoc, found, err := fetch.GetGQDocument(cache, subURL.String())
 		if err != nil {
 			return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
 		}
@@ -1348,7 +1387,7 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records) 
 func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc *goquery.Document) error {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+c.ID.Slug+"_configs/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug+"_configs/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
 			if err != nil {
 				return err
 			}

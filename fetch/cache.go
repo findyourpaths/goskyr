@@ -25,8 +25,9 @@ import (
 	"github.com/findyourpaths/goskyr/utils"
 )
 
-// var DebugCache = true
-var DebugCache = false
+// var DoDebug = true
+
+var DoDebug = false
 
 // A Cache interface is used by the Transport to store and retrieve responses.
 type Cache interface {
@@ -55,7 +56,9 @@ func GetGQDocument(cache Cache, u string) (*goquery.Document, bool, error) {
 	}
 	// return nil, false, nil
 	gqdoc, err := GQDocument(fetcher, u, nil)
-	SetGQDocument(cache, u, gqdoc)
+	if gqdoc != nil {
+		SetGQDocument(cache, u, gqdoc)
+	}
 	return gqdoc, false, err
 }
 
@@ -113,15 +116,17 @@ func ResponseBytesToGQDocument(respBytes []byte) (*goquery.Document, error) {
 
 // Cache is an implementation of Geziyor cache.Cache that stores html pages on disk.
 type FetchCache struct {
-	inputDir  string
-	outputDir string
+	inputDir       string
+	outputDir      string
+	responsesByKey map[string][]byte
 }
 
 // New returns a new Cache that will store files in dir.
 func New(inputDir string, outputDir string) *FetchCache {
 	return &FetchCache{
-		inputDir:  inputDir,
-		outputDir: outputDir,
+		inputDir:       inputDir,
+		outputDir:      outputDir,
+		responsesByKey: map[string][]byte{},
 	}
 }
 
@@ -136,11 +141,19 @@ var DefaultMaxBody int64 = 1024 * 1024 * 1024 // 1GB
 // Get returns the response corresponding to key, and true, if
 // present in InputDir or OutputDir. Otherwise it returns nil and false.
 func (c *FetchCache) Get(key string) ([]byte, bool) {
-	if DebugCache {
+	// if strings.Index(key, "facebook") != -1 {
+	// 	panic("trying to get a facebook page")
+	// }
+
+	if resp, ok := c.responsesByKey[key]; ok {
+		return resp, ok
+	}
+
+	if DoDebug {
 		fmt.Println("fetch.FetchCache.Get()", "key", key)
 	}
 	p := ResponseFilename(c.inputDir, key)
-	if DebugCache {
+	if DoDebug {
 		fmt.Println("in fetch.FetchCache.Get()", "p", p)
 	}
 	resp, err := utils.ReadBytesFile(p)
@@ -165,6 +178,7 @@ func (c *FetchCache) Get(key string) ([]byte, bool) {
 	// if ShowHits {
 	// 	slog.Info("in filecache.Cache.Get(), cache hit", "key", key)
 	// }
+	c.responsesByKey[key] = resp
 	if c.outputDir != c.inputDir {
 		c.Set(key, resp)
 	}
@@ -173,7 +187,7 @@ func (c *FetchCache) Get(key string) ([]byte, bool) {
 
 // Set saves a response to the cache as key
 func (c *FetchCache) Set(key string, resp []byte) {
-	if DebugCache {
+	if DoDebug {
 		fmt.Println("fetch.FetchCache.Set()", "key", key, "len(resp)", len(resp))
 	}
 	p := ResponseFilename(c.outputDir, key)
@@ -187,7 +201,7 @@ func (c *FetchCache) Set(key string, resp []byte) {
 
 // Delete removes the response with key from the cache
 func (c *FetchCache) Delete(key string) {
-	if DebugCache {
+	if DoDebug {
 		fmt.Println("fetch.FetchCache.Delete()", "key", key)
 	}
 	p := ResponseFilename(c.outputDir, key)
@@ -220,7 +234,7 @@ func Filename(dir string, urlStr string) string {
 	// }
 	uHostSlug := utils.MakeURLStringSlug(u.Host)
 	uSlug := utils.MakeURLStringSlug(urlStr)
-	if DebugCache {
+	if DoDebug {
 		fmt.Println("in fetch.Filename()", "dir", dir, "uHostSlug", uHostSlug, "uSlug", uSlug)
 	}
 	return filepath.Join(dir, uHostSlug, uSlug)

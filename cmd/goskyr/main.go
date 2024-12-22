@@ -91,17 +91,17 @@ type GenerateCmd struct {
 	URL string `arg:"" help:"Automatically generate a config file for the given input url."`
 
 	Batch                     bool   `short:"b" long:"batch" default:true help:"Run batch (not interactively) to generate the config file."`
-	DoDetailPages             bool   `long:"do-detail-pages" default:true help:"Whether to generate configurations for detail page as well."`
-	OnlySameDomainDetailPages bool   `long:"only-same-domain-detail-pages" default:true help:"Only go to detail pages on the same domain (e.g. follow z.com to y.z.com but not x.com)."`
-	OnlyVaryingFields         bool   `long:"only-varying-fields" default:true help:"Only show fields that have varying values across the list of records."`
+	DoDetailPages             bool   `default:true help:"Whether to generate configurations for detail page as well."`
+	OnlySameDomainDetailPages bool   `default:true help:"Only go to detail pages on the same domain (e.g. follow z.com to y.z.com but not x.com)."`
+	OnlyVaryingFields         bool   `default:true help:"Only show fields that have varying values across the list of records."`
 	MinOcc                    int    `short:"m" long:"min" help:"The minimum number of records on a page. This is needed to filter out noise. Works in combination with the -g flag."`
-	CacheInputDir             string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
-	CacheOutputDir            string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will receive cached copies of the html page and linked pages."`
-	ConfigOutputDir           string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will recieve configuration files."`
+	CacheInputParentDir       string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
+	CacheOutputParentDir      string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will receive cached copies of the html page and linked pages."`
+	ConfigOutputParentDir     string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will recieve configuration files."`
 	Offline                   bool   `default:false help:"Run offline and don't fetch pages."`
 	PretrainedModelPath       string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
 	RenderJs                  bool   `short:"r" long:"renderjs" default:true help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
-	RequireString             string `long:"require-string" help:"Require a candidate configuration to extract the given text in order for it to be generated."`
+	RequireString             string `help:"Require a candidate configuration to extract the given text in order for it to be generated."`
 	WordsDir                  string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
 }
 
@@ -121,10 +121,10 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	}
 
 	opts, err := generate.InitOpts(generate.ConfigOptions{
-		Batch:                     cmd.Batch,
-		CacheInputDir:             cmd.CacheInputDir,
-		CacheOutputDir:            cmd.CacheOutputDir,
-		ConfigOutputDir:           cmd.ConfigOutputDir,
+		Batch: cmd.Batch,
+		// CacheInputDir:             cmd.CacheInputDir,
+		// CacheOutputDir:            cmd.CacheOutputDir,
+		ConfigOutputParentDir:     cmd.ConfigOutputParentDir,
 		DoDetailPages:             cmd.DoDetailPages,
 		URL:                       cmd.URL,
 		MinOccs:                   minOccs,
@@ -140,7 +140,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error initializing page options: %v", err)
 	}
 
-	cache := fetch.New(cmd.CacheInputDir, cmd.CacheOutputDir)
+	cache := fetch.New(cmd.CacheInputParentDir, cmd.CacheOutputParentDir)
 	cs, err := generate.ConfigurationsForPage(cache, opts)
 	if err != nil {
 		return fmt.Errorf("error generating page configs: %v", err)
@@ -155,7 +155,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	}
 	fmt.Printf("Generated %d detail page configurations in %q\n", len(subCs), opts.ConfigOutputDir)
 
-	if cmd.ConfigOutputDir != "" {
+	if cmd.ConfigOutputParentDir != "" {
 		for _, c := range cs {
 			if err := c.WriteToFile(opts.ConfigOutputDir); err != nil {
 				return err
@@ -215,9 +215,9 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 				DoDetailPages:             doDetailPages,
 				OnlySameDomainDetailPages: true,
 				OnlyVaryingFields:         true,
-				CacheInputDir:             cacheInDir,
-				CacheOutputDir:            cmd.CacheOutputDir,
-				ConfigOutputDir:           cmd.ConfigOutputDir,
+				CacheInputParentDir:       cacheInDir,
+				CacheOutputParentDir:      cmd.CacheOutputDir,
+				ConfigOutputParentDir:     cmd.ConfigOutputDir,
 				Offline:                   true,
 				RenderJs:                  true,
 				RequireString:             urlAndReq[1],
@@ -234,7 +234,7 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 				return fmt.Errorf("error getting config input paths with glob %q: %v", cGlob, err)
 			}
 			for _, cPath := range cPaths {
-				outPath := filepath.Join(cmd.ConfigOutputDir, testname+"_configs", filepath.Base(cPath))
+				outPath := filepath.Join(cmd.ConfigOutputParentDir, testname+"_configs", filepath.Base(cPath))
 				if _, err := utils.CopyStringFile(outPath, cPath); err != nil {
 					fmt.Printf("error copying %q to %q: %v\n", outPath, cPath, err)
 				}
@@ -257,14 +257,14 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 			fmt.Printf("Removed %d old cache files for test %q\n", len(cPaths), testname)
 
 			// Copy updated cache files to testdata cache dir.
-			cGlob = filepath.Join(cmd.CacheOutputDir, testname, "*")
+			cGlob = filepath.Join(cmd.CacheOutputParentDir, testname, "*")
 			// fmt.Printf("cGlob: %q\n", cGlob)
 			cPaths, err = filepath.Glob(cGlob)
 			if err != nil {
 				return fmt.Errorf("error getting cache output paths with glob %q: %v", cGlob, err)
 			}
 			for _, cPath := range cPaths {
-				inPath := filepath.Join(cmd.CacheInputDir, testname, filepath.Base(cPath))
+				inPath := filepath.Join(cmd.CacheInputParentDir, testname, filepath.Base(cPath))
 				if _, err := utils.CopyStringFile(cPath, inPath); err != nil {
 					return fmt.Errorf("error copying %q to %q: %v", cPath, inPath, err)
 				}
@@ -304,7 +304,7 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 
 	cache := fetch.New(cmd.OutputDir, cmd.OutputDir)
 	if len(conf.Scrapers) > 1 {
-		if err = scrape.DetailPages(cache, conf, &conf.Scrapers[1], recs); err != nil {
+		if err = scrape.DetailPages(cache, conf, &conf.Scrapers[1], recs, ""); err != nil {
 			return err
 		}
 	}
@@ -361,8 +361,8 @@ var urlsForTestnamesByDir = map[string]map[string][]string{
 	"scraping": {
 		"books-toscrape-com":  []string{"https://books.toscrape.com", "Soumission"},
 		"quotes-toscrape-com": []string{"https://quotes.toscrape.com", "Imperfection"},
-		// // "realpython-github-io": []string{"https://realpython.github.io/fake-jobs", ""},
-		// // "webscraper-io": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
+		// "realpython-github-io": []string{"https://realpython.github.io/fake-jobs", ""},
+		"webscraper-io":                       []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
 		"www-scrapethissite-com pages forms":  []string{"https://www.scrapethissite.com/pages/forms", ""},
 		"www-scrapethissite-com pages simple": []string{"https://www.scrapethissite.com/pages/simple", ""},
 	},

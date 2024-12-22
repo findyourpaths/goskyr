@@ -58,3 +58,9 @@ eclipse-*bin/
 .bazelversion
 # User-specific .bazelrc
 user.bazelrc
+
+# Go profiling outputs
+*.prof
+# Old and new files
+*-old
+*-new

@@ -83,8 +83,8 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 
 	urlAndReq := urlsForTestnamesByDir[dir][testname]
 	opts, err := generate.InitOpts(generate.ConfigOptions{
-		Batch:         true,
-		CacheInputDir: testInputDir,
+		Batch: true,
+		// CacheInputParentDir: testInputDir,
 		DoDetailPages: doDetailPages,
 		// MinOccs:           []int{5, 10, 20},
 		MinOccs:           []int{5},
@@ -288,7 +288,7 @@ func getRecords(dir string, testname string, config *scrape.Config) (output.Reco
 	// fmt.Printf("getItems(dir: %q, testname: %q, config)\n", dir, testname)
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
 		// We're looking at an event list page scraper. Scrape the page in the outer directory.
-		htmlPath := filepath.Join(testInputDir, dir, testname, testname+htmlSuffix)
+		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+htmlSuffix)
 		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
 	} else if config.ID.ID == "" && config.ID.Field != "" && config.ID.SubID != "" {
 		// We're looking at an event page scraper. Scrape the page in this directory.
@@ -296,7 +296,7 @@ func getRecords(dir string, testname string, config *scrape.Config) (output.Reco
 		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
 	} else {
 		// We're looking at a combined event list and page scraper. Scrape both pages.
-		htmlPath := filepath.Join(testInputDir, dir, testname, testname+htmlSuffix)
+		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+htmlSuffix)
 		itemMaps, err := scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
 		if err != nil {
 			return nil, err
@@ -309,7 +309,7 @@ func getRecords(dir string, testname string, config *scrape.Config) (output.Reco
 		// }
 		cacheDir := filepath.Join(testInputDir, dir)
 		cache := fetch.New(cacheDir, cacheDir)
-		err = scrape.DetailPages(cache, config, &config.Scrapers[1], itemMaps)
+		err = scrape.DetailPages(cache, config, &config.Scrapers[1], itemMaps, "")
 		return itemMaps, err
 	}
 }

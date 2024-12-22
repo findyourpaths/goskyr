@@ -14,14 +14,14 @@ import (
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
-	"github.com/gosimple/slug"
 	"github.com/jpillora/go-tld"
 )
 
 type ConfigOptions struct {
-	Batch                     bool
-	CacheInputDir             string
-	CacheOutputDir            string
+	Batch bool
+	// CacheInputDir             string
+	// CacheOutputDir            string
+	ConfigOutputParentDir     string
 	ConfigOutputDir           string
 	DoDetailPages             bool
 	MinOccs                   []int
@@ -46,19 +46,19 @@ func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	if err != nil {
 		return opts, fmt.Errorf("error parsing input URL %q: %v", opts.URL, err)
 	}
-	opts.configID.Slug = slug.Make(u.Host)
-	prefix := fetch.MakeURLStringSlug(u.String())
+	opts.configID.Slug = fetch.MakeURLStringSlug(opts.URL)
+	// prefix := fetch.MakeURLStringSlug(u.Host)
 
-	if opts.CacheInputDir != "" {
-		opts.CacheInputDir = filepath.Join(opts.CacheInputDir, prefix)
-	}
+	// if opts.CacheInputDir != "" {
+	// 	opts.CacheInputDir = filepath.Join(opts.CacheInputDir, prefix)
+	// }
 
-	if opts.CacheOutputDir != "" {
-		opts.CacheOutputDir = filepath.Join(opts.CacheOutputDir, prefix)
-	}
+	// if opts.CacheOutputDir != "" {
+	// 	opts.CacheOutputDir = filepath.Join(opts.CacheOutputDir, prefix)
+	// }
 
-	if opts.ConfigOutputDir != "" {
-		opts.ConfigOutputDir = filepath.Join(opts.ConfigOutputDir, prefix+"_configs")
+	if opts.ConfigOutputParentDir != "" {
+		opts.ConfigOutputDir = filepath.Join(opts.ConfigOutputParentDir, fetch.MakeURLStringSlug(u.Host)+"_configs")
 	}
 
 	return opts, nil
@@ -191,11 +191,16 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 
 	slog.Info("in expandAllPossibleConfigs()", "pags", pags)
 
+	u, err := url.Parse(opts.URL)
+	if err != nil {
+		return fmt.Errorf("failed to parse scraper URL: %q", opts.URL)
+	}
 	s := scrape.Scraper{
+		HostSlug:   fetch.MakeURLStringSlug(u.Host),
 		Name:       opts.configID.String(),
+		Paginators: pags,
 		RenderJs:   opts.RenderJS,
 		URL:        opts.URL,
-		Paginators: pags,
 	}
 
 	// s.Record = shortenRootSelector(rootSelector).string()
@@ -327,7 +332,7 @@ func ExtendPageConfigRecordsWithNext(opts ConfigOptions, pageC *scrape.Config, s
 
 	// FIXME
 	gqdocsByURL := map[string]*goquery.Document{}
-	// gqdocsByURL, err := fetchGQDocumentsByURL(uStrs, opts.CacheInputDir, opts.ConfigOutputDir)
+	// gqdocsByURL, err := fetchGQDocumentsByURL(uStrs, opts.CacheInputDir, opts.ConfigOutputFullDir)
 	// if err != nil {
 	// 	return fmt.Errorf("failed to fetch next pages: %v", err)
 	// }
@@ -421,7 +426,7 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 	defer slog.Info("ConfigurationsForAllDetailPages() returning")
 
 	slog.Info("in ConfigurationsForAllDetailPages()", "opts.URL", opts.URL)
-	slog.Info("in ConfigurationsForAllDetailPages()", "opts.ConfigOutputDir", opts.ConfigOutputDir)
+	slog.Info("in ConfigurationsForAllDetailPages()", "opts.ConfigOutputFullDir", opts.ConfigOutputDir)
 	slog.Debug("in ConfigurationsForAllDetailPages()", "opts", opts)
 
 	pageCIDs := []string{}
@@ -473,16 +478,15 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 				}
 
 				// fmt.Printf("rel: %q, %#v\n", rerel)
-				if absURL.Scheme != "http" && absURL.Scheme != "https" {
+				if !scrape.KeepSubURLScheme[absURL.Scheme] {
 					slog.Debug("skipping sub URL with non-http(s) scheme", "fj.value", fj.value)
 					continue
 				}
 
-				if opts.OnlySameDomainDetailPages {
-					if uBase.Domain != absURL.Domain {
-						slog.Debug("skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value)
-						continue
-					}
+				// fmt.Println("checking skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value, "opts.OnlySameDomainDetailPages", opts.OnlySameDomainDetailPages, "uBase.Domain != absURL.Domain", uBase.Domain != absURL.Domain)
+				if opts.OnlySameDomainDetailPages && uBase.Domain != absURL.Domain {
+					slog.Debug("skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value)
+					continue
 				}
 
 				fj.url = fetch.TrimURLScheme(absURL.String())
@@ -500,7 +504,7 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 			return nil, fmt.Errorf("failed to write detail page URLs list: %v", err)
 		}
 	}
-	slog.Debug("in ConfigurationsForAllDetailPages()", "opts.CacheInputDir", opts.CacheInputDir)
+	// slog.Debug("in ConfigurationsForAllDetailPages()", "opts.CacheInputDir", opts.CacheInputDir)
 
 	var cs map[string]*scrape.Config
 	rs := map[string]*scrape.Config{}
@@ -560,6 +564,16 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 	// }
 
 	// slog.Debug("in ConfigurationsForDetailPages()", "mergedCConfigBase", mergedCConfigBase)
+
+	domain := ""
+	if opts.OnlySameDomainDetailPages {
+		uBase, err := tld.Parse(opts.URL)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing input url %q: %v", opts.URL, err)
+		}
+		domain = uBase.Domain
+	}
+
 	for _, c := range cs {
 		slog.Debug("looking at", "c.ID", c.ID)
 		rs[c.ID.String()] = c
@@ -574,7 +588,7 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 			mergedC.ID.SubID = c.ID.SubID
 			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
 
-			if err := scrape.DetailPages(cache, mergedC, &subScraper, mergedC.Records); err != nil {
+			if err := scrape.DetailPages(cache, mergedC, &subScraper, mergedC.Records, domain); err != nil {
 				// fmt.Printf("skipping generating configuration for detail pages for merged config %q: %v\n", mergedC.ID.String(), err)
 				slog.Info("skipping generating configuration for detail pages for merged config", "mergedC.ID", mergedC.ID.String(), "err", err)
 				continue
@@ -605,12 +619,18 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 	// str := ""
 	// if !found {
 
+	// for _, u := range us {
+	// 	fmt.Println("in generate.joinPageJoinsGQDocuments()", "u", u)
+	// }
+
 	// Concatenate all of the detail pages pointed to by the field with this name in the parent pages.
 	gqdocs := []*goquery.Document{}
 	for _, u := range us {
 		gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch page to join %q (found: %t): %v", u, found, err)
+			err = fmt.Errorf("failed to fetch page to join %q (found: %t): %v", u, found, err)
+			slog.Warn("in generate.joinPageJoinsGQDocuments()", "err", err)
+			continue
 		}
 		gqdocs = append(gqdocs, gqdoc)
 	}
