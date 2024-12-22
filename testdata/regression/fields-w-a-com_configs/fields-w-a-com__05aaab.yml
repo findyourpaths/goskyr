@@ -1,0 +1,17 @@
+id:
+    slug: fields-w-a-com
+    id: 05aaab
+    field: ""
+    subid: ""
+scrapers:
+    - name: fields-w-a-com__05aaab
+      url: https://fields-w-a.com
+      selector: body > div.SF > div.SF1 > div.SFpne > div.SFcrdlst > a.SFcrd > img.SFcrdlgo.SFcrdlgt
+      fields:
+        - name: F3f1f79ab-src-0
+          type: url
+          location:
+            - attr: src
+          can_be_empty: true
+      render_js: true
+records: []

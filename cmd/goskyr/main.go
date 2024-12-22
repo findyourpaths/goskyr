@@ -350,7 +350,6 @@ var urlsForTestnamesByDir = map[string]map[string][]string{
 		"basic-field-w-div-com":             []string{"https://basic-field-w-div.com", ""},
 		"basic-fields-w-div-com":            []string{"https://basic-fields-w-div.com", ""},
 		"basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
-		"basic-fields-w-div-w-divc-com":     []string{"https://basic-fields-w-div-w-div.com", ""},
 		"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
 		"basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},
 		"basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},

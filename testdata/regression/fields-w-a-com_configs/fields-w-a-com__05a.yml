@@ -1,0 +1,44 @@
+id:
+    slug: fields-w-a-com
+    id: 05a
+    field: ""
+    subid: ""
+scrapers:
+    - name: fields-w-a-com__05a
+      url: https://fields-w-a.com
+      selector: body > div.SF > div.SF1 > div.SFpne
+      fields:
+        - name: F3f1f79ab-src-0
+          type: url
+          location:
+            - selector: div.SFcrdlst > a.SFcrd > img.SFcrdlgo.SFcrdlgt
+              attr: src
+          can_be_empty: true
+        - name: F55c24925--0
+          type: text
+          location:
+            - selector: div.SFcrdlst > a.SFcrd > div.SFcrdtxt > div.SFcrdnam > strong
+          can_be_empty: true
+        - name: F5fd9ee90--0
+          type: text
+          location:
+            - selector: div.SFfnd > button.SFfndopt > span
+          can_be_empty: true
+        - name: F625c52b6-href-0
+          type: url
+          location:
+            - selector: div.SFcrdlst > a.SFcrd
+              attr: href
+          can_be_empty: true
+        - name: F89fb66d--0
+          type: text
+          location:
+            - selector: div.SFcrdlst > a.SFcrd > div.SFcrdtxt > div.SFcrdcnm
+          can_be_empty: true
+        - name: Fa0510f1--0
+          type: text
+          location:
+            - selector: div.SFcrdlst > a.SFcrd > div.SFcrdtxt > div.SFcrdctc > strong
+          can_be_empty: true
+      render_js: true
+records: []
