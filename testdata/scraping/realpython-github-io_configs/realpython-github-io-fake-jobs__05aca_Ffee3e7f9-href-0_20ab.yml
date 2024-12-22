@@ -1,10 +1,10 @@
 id:
-    slug: realpython-github-io
+    slug: realpython-github-io-fake-jobs
     id: 05aca
     field: Ffee3e7f9-href-0
     subid: 20ab
 scrapers:
-    - name: realpython-github-io__05aca
+    - name: realpython-github-io-fake-jobs__05aca
       url: https://realpython.github.io/fake-jobs
       selector: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content > footer.card-footer > a.card-footer-item
       fields:
@@ -19,7 +19,7 @@ scrapers:
             - attr: href
           can_be_empty: true
       render_js: true
-    - name: realpython-github-io__Ffee3e7f9-href-0_20ab
+    - name: realpython-github-io-fake-jobs__Ffee3e7f9-href-0_20ab
       url: https://realpython.github.io/fake-jobs
       selector: section.section
       fields:

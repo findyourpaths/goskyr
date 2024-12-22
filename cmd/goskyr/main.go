@@ -359,9 +359,9 @@ var urlsForTestnamesByDir = map[string]map[string][]string{
 		"fields-w-a-com_cache":              []string{"https://fields-w-a.com", ""},
 	},
 	"scraping": {
-		"books-toscrape-com":  []string{"https://books.toscrape.com", "Soumission"},
-		"quotes-toscrape-com": []string{"https://quotes.toscrape.com", "Imperfection"},
-		// "realpython-github-io": []string{"https://realpython.github.io/fake-jobs", ""},
+		"books-toscrape-com":                  []string{"https://books.toscrape.com", "Soumission"},
+		"quotes-toscrape-com":                 []string{"https://quotes.toscrape.com", "Imperfection"},
+		"realpython-github-io":                []string{"https://realpython.github.io/fake-jobs", ""},
 		"webscraper-io":                       []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
 		"www-scrapethissite-com pages forms":  []string{"https://www.scrapethissite.com/pages/forms", ""},
 		"www-scrapethissite-com pages simple": []string{"https://www.scrapethissite.com/pages/simple", ""},
