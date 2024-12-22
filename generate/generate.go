@@ -597,48 +597,53 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 		}
 	}
 
-	key := "http://" + opts.configID.String() + ".html"
-	r, found, err := fetch.GetGQDocument(cache, key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch joined page %q: %v", key, err)
-	}
-	str := ""
-	if !found {
-		// Concatenate all of the detail pages pointed to by the field with this name in the parent pages.
-		gqdocs := []*goquery.Document{}
-		fmt.Printf("us: %#v\n", us)
-		for _, u := range us {
-			gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
-			if !found || err != nil {
-				return nil, fmt.Errorf("failed to fetch page to join %q (found: %t): %v", u, found, err)
-			}
-			gqdocs = append(gqdocs, gqdoc)
-		}
-
-		str, r, err = joinGQDocuments(gqdocs) // ./opts, us, gqdocsByURL)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if opts.CacheOutputDir != "" {
-		fetch.SetGQDocument(cache, key, str)
-	}
-	// if opts.CacheOutputDir != "" {
-	// 	outPath := filepath.Join(opts.CacheOutputDir, opts.configID.String()+".html")
-	// 	slog.Debug("in joinPageJoinsGQDocuments(), writing to disk cache", "len(str)", len(str), "outPath", outPath)
-	// 	if str == "" {
-	// 		if _, err := utils.CopyStringFile(inPath, outPath); err != nil {
-	// 			return nil, fmt.Errorf("error copying joined detail pages to %q: %v", inPath, err)
-	// 		}
-	// 	} else {
-	// 		if err := utils.WriteStringFile(outPath, str); err != nil {
-	// 			return nil, fmt.Errorf("error writing joined detail pages to %q: %v", inPath, err)
-	// 		}
-	// 	}
+	// key := "http://" + opts.configID.String() + ".html"
+	// r, found, err := fetch.GetGQDocument(cache, key)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to fetch joined page %q: %v", key, err)
 	// }
-	return r, nil
+	// str := ""
+	// if !found {
+
+	// Concatenate all of the detail pages pointed to by the field with this name in the parent pages.
+	gqdocs := []*goquery.Document{}
+	fmt.Printf("us: %#v\n", us)
+	for _, u := range us {
+		gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
+		if !found || err != nil {
+			return nil, fmt.Errorf("failed to fetch page to join %q (found: %t): %v", u, found, err)
+		}
+		gqdocs = append(gqdocs, gqdoc)
+	}
+
+	_, r, err := joinGQDocuments(gqdocs) // ./opts, us, gqdocsByURL)
+	return r, err
 }
+
+// if err != nil {
+// 	return nil, err
+// }
+// }
+
+// if opts.CacheOutputDir != "" {
+// 	fetch.SetGQDocument(cache, key, str)
+// }
+
+// if opts.CacheOutputDir != "" {
+// 	outPath := filepath.Join(opts.CacheOutputDir, opts.configID.String()+".html")
+// 	slog.Debug("in joinPageJoinsGQDocuments(), writing to disk cache", "len(str)", len(str), "outPath", outPath)
+// 	if str == "" {
+// 		if _, err := utils.CopyStringFile(inPath, outPath); err != nil {
+// 			return nil, fmt.Errorf("error copying joined detail pages to %q: %v", inPath, err)
+// 		}
+// 	} else {
+// 		if err := utils.WriteStringFile(outPath, str); err != nil {
+// 			return nil, fmt.Errorf("error writing joined detail pages to %q: %v", inPath, err)
+// 		}
+// 	}
+// }
+// 	return r, nil
+// }
 
 // func joinGQDocuments(opts ConfigOptions, us []string, gqdocsByURL map[string]*goquery.Document) (string, *goquery.Document, error) {
 
