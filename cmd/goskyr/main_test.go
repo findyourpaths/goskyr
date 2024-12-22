@@ -168,7 +168,7 @@ func testGenerateConfig(t *testing.T, testname string, config *scrape.Config, ou
 	}
 }
 
-func DontTestScrape(t *testing.T) {
+func TestScrape(t *testing.T) {
 	f, err := os.Create("test-scrape.prof")
 	if err != nil {
 		t.Fatalf("error initializing pprof: %v", err)

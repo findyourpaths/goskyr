@@ -607,7 +607,6 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 
 	// Concatenate all of the detail pages pointed to by the field with this name in the parent pages.
 	gqdocs := []*goquery.Document{}
-	fmt.Printf("us: %#v\n", us)
 	for _, u := range us {
 		gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
 		if !found || err != nil {
