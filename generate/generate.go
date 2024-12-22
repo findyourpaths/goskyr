@@ -76,7 +76,7 @@ func ConfigurationsForPage(cache fetch.Cache, opts ConfigOptions) (map[string]*s
 	defer slog.Info("ConfigurationsForPage() returning")
 
 	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
-	if !found || err != nil {
+	if err != nil {
 		return nil, fmt.Errorf("failed to get page %s (found: %t): %v", opts.URL, found, err)
 	}
 	return ConfigurationsForGQDocument(cache, opts, gqdoc)
@@ -266,8 +266,8 @@ func ExtendPageConfigsWithNexts(cache fetch.Cache, opts ConfigOptions, pageConfi
 		pageCIDs = append(pageCIDs, pageC.ID.String())
 	}
 
-	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL)
-	if !found || err != nil {
+	gqdoc, _, err := fetch.GetGQDocument(cache, opts.URL)
+	if err != nil {
 		return fmt.Errorf("failed to get next page %s: %v", opts.URL, err)
 	}
 
@@ -609,7 +609,7 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 	gqdocs := []*goquery.Document{}
 	for _, u := range us {
 		gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
-		if !found || err != nil {
+		if err != nil {
 			return nil, fmt.Errorf("failed to fetch page to join %q (found: %t): %v", u, found, err)
 		}
 		gqdocs = append(gqdocs, gqdoc)

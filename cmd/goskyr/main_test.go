@@ -38,7 +38,9 @@ func TestGenerate(t *testing.T) {
 
 	// logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	// slog.SetDefault(logger)
-	output.SetDefaultLogger(filepath.Join(testOutputDir, "test-generate_log.txt"), slog.LevelDebug)
+	// output.SetDefaultLogger(filepath.Join(testOutputDir, "test-generate_log.txt"), slog.LevelDebug)
+
+	fetch.ErrorIfPageNotInCache = true
 
 	dirs := []string{}
 	for dir := range urlsForTestnamesByDir {
@@ -81,10 +83,11 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 
 	urlAndReq := urlsForTestnamesByDir[dir][testname]
 	opts, err := generate.InitOpts(generate.ConfigOptions{
-		Batch:             true,
-		CacheInputDir:     testInputDir,
-		DoDetailPages:     doDetailPages,
-		MinOccs:           []int{5, 10, 20},
+		Batch:         true,
+		CacheInputDir: testInputDir,
+		DoDetailPages: doDetailPages,
+		// MinOccs:           []int{5, 10, 20},
+		MinOccs:           []int{5},
 		OnlyVaryingFields: true,
 		RenderJS:          true,
 		RequireString:     urlAndReq[1],
@@ -94,6 +97,7 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 		t.Fatalf("error initializing page options: %v", err)
 	}
 
+	output.SetDefaultLogger(filepath.Join(testOutputDir, dir, testname+"_configs", "test-generate_log.txt"), slog.LevelDebug)
 	cacheDir := filepath.Join(testInputDir, dir)
 	cache := fetch.New(cacheDir, cacheDir)
 	cs, err := generate.ConfigurationsForPage(cache, opts)

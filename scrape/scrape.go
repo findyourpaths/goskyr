@@ -1335,7 +1335,7 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records) 
 		subURL := uBase.ResolveReference(rel).String()
 		slog.Debug("in scrape.DetailPages()", "i", i, "subURL", subURL)
 		subGQDoc, found, err := fetch.GetGQDocument(cache, subURL)
-		if !found || err != nil {
+		if err != nil {
 			return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
 		}
 		if err := SubGQDocument(c, s, rec, c.ID.Field, subGQDoc); err != nil {

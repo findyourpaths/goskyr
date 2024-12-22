@@ -115,6 +115,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	defer pprof.StopCPUProfile()
 
 	minOccs := []int{5, 10, 20}
+	minOccs = []int{5}
 	if cmd.MinOcc != 0 {
 		minOccs = []int{cmd.MinOcc}
 	}
@@ -345,25 +346,25 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 //	go run main.go --debug regenerate
 var urlsForTestnamesByDir = map[string]map[string][]string{
 	"regression": {
-		// "basic-detail-pages-com":            []string{"https://basic-detail-pages.com", ""},
+		"basic-detail-pages-com": []string{"https://basic-detail-pages.com", ""},
 		"basic-field-com":        []string{"https://basic-field.com", ""},
 		"basic-field-w-div-com":  []string{"https://basic-field-w-div.com", ""},
 		"basic-fields-w-div-com": []string{"https://basic-fields-w-div.com", ""},
 		// "basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
 		"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
 		"basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},
-		// "basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},
-		"basic-fields-w-style-com":         []string{"https://basic-fields-w-style.com", ""},
-		"css-class-with-special-chars-com": []string{"https://css-class-with-special-chars.com", ""},
-		"fields-w-a-com_cache":             []string{"https://fields-w-a.com", ""},
+		"basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},
+		"basic-fields-w-style-com":          []string{"https://basic-fields-w-style.com", ""},
+		"css-class-with-special-chars-com":  []string{"https://css-class-with-special-chars.com", ""},
+		"fields-w-a-com_cache":              []string{"https://fields-w-a.com", ""},
 	},
 	"scraping": {
-		"books-toscrape-com": []string{"https://books.toscrape.com", "Soumission"},
-		// "quotes-toscrape-com": []string{"https://quotes.toscrape.com", "Imperfection"},
+		"books-toscrape-com":  []string{"https://books.toscrape.com", "Soumission"},
+		"quotes-toscrape-com": []string{"https://quotes.toscrape.com", "Imperfection"},
 		// "realpython-github-io": []string{"https://realpython.github.io/fake-jobs", ""},
 		// "webscraper-io": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
-		// 	// "www-scrapethissite-com pages forms":  []string{"https://www.scrapethissite.com/pages/forms", ""},
-		// 	// "www-scrapethissite-com pages simple": []string{"https://www.scrapethissite.com/pages/simple", ""},
+		// "www-scrapethissite-com pages forms":  []string{"https://www.scrapethissite.com/pages/forms", ""},
+		// "www-scrapethissite-com pages simple": []string{"https://www.scrapethissite.com/pages/simple", ""},
 	},
 }
 

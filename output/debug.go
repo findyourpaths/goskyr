@@ -17,6 +17,7 @@ type logState struct {
 }
 
 func SetDefaultLogger(logPath string, level slog.Level) (*logState, error) {
+	// fmt.Printf("logPath: %q\n", logPath)
 	prevLogger := slog.Default()
 	if err := os.MkdirAll(filepath.Dir(logPath), 0770); err != nil {
 		return nil, fmt.Errorf("error creating parent directories for log output file %q: %v", logPath, err)

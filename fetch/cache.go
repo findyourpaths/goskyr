@@ -36,24 +36,40 @@ type Cache interface {
 	Delete(key string)
 }
 
+var fetcher = NewDynamicFetcher("", 0) //s.PageLoadWait)
+
+var ErrorIfPageNotInCache = false
+
 func GetGQDocument(cache Cache, u string) (*goquery.Document, bool, error) {
 	respBytes, ok := cache.Get(u) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
-	if !ok {
-		fmt.Printf("didn't find page in cache: %q\n", u)
-		return nil, false, nil
+	if ok {
+		r, err := ResponseBytesToGQDocument(respBytes)
+		return r, true, err
 	}
-	r, err := ResponseBytesToGQDocument(respBytes)
-	return r, true, err
+
+	if ErrorIfPageNotInCache {
+		return nil, false, fmt.Errorf("didn't find page in cache: %q", u)
+	}
+	// return nil, false, nil
+	gqdoc, err := GQDocument(fetcher, u, nil)
+	SetGQDocument(cache, u, gqdoc)
+	return gqdoc, false, err
 }
 
-func SetGQDocument(cache Cache, u string, str string) {
+func SetGQDocument(cache Cache, u string, gqdoc *goquery.Document) {
+	str, err := goquery.OuterHtml(gqdoc.Children())
+	if err != nil {
+		fmt.Printf("got error setting cache: %v\n", err)
+		return
+	}
 	resp := &http.Response{
 		Body: io.NopCloser(strings.NewReader(str)),
 	}
 	respBytes, err := httputil.DumpResponse(resp, true)
 	if err != nil {
-		cache.Set(u, respBytes)
+		fmt.Printf("got error setting cache: %v\n", err)
 	}
+	cache.Set(u, respBytes)
 }
 
 func ResponseBytesToGQDocument(respBytes []byte) (*goquery.Document, error) {
