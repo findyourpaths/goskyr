@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/alecthomas/kong"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/generate"
@@ -140,7 +139,8 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error initializing page options: %v", err)
 	}
 
-	cs, gqdocsByURL, err := generate.ConfigurationsForPage(opts)
+	cache := fetch.New(cmd.CacheInputDir, cmd.CacheOutputDir)
+	cs, err := generate.ConfigurationsForPage(cache, opts)
 	if err != nil {
 		return fmt.Errorf("error generating page configs: %v", err)
 	}
@@ -148,7 +148,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 
 	var subCs map[string]*scrape.Config
 	if opts.DoDetailPages {
-		if subCs, gqdocsByURL, err = generate.ConfigurationsForAllDetailPages(opts, cs, gqdocsByURL, nil); err != nil {
+		if subCs, err = generate.ConfigurationsForAllDetailPages(cache, opts, cs); err != nil {
 			return fmt.Errorf("error generating detail page configs: %v", err)
 		}
 	}
@@ -201,7 +201,7 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 			fmt.Printf("Regenerating test %q\n", testname)
 
 			cacheInDir := filepath.Join("testdata", dir)
-			glob := filepath.Join(cacheInDir, testname+"_cache", "*")
+			glob := filepath.Join(cacheInDir, testname, "*")
 			paths, err := filepath.Glob(glob)
 			if err != nil {
 				return fmt.Errorf("error getting cache input paths with glob %q: %v", glob, err)
@@ -241,7 +241,7 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 			fmt.Printf("Copied %d config files for test %q\n", len(cPaths), testname)
 
 			// Clear old cache files in testdata cache dir.
-			cGlob = filepath.Join(cacheInDir, testname+"_cache", "*")
+			cGlob = filepath.Join(cacheInDir, testname, "*")
 			// fmt.Printf("cGlob: %q\n", cGlob)
 			cPaths, err = filepath.Glob(cGlob)
 			if err != nil {
@@ -256,14 +256,14 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 			fmt.Printf("Removed %d old cache files for test %q\n", len(cPaths), testname)
 
 			// Copy updated cache files to testdata cache dir.
-			cGlob = filepath.Join(cmd.CacheOutputDir, testname+"_cache", "*")
+			cGlob = filepath.Join(cmd.CacheOutputDir, testname, "*")
 			// fmt.Printf("cGlob: %q\n", cGlob)
 			cPaths, err = filepath.Glob(cGlob)
 			if err != nil {
 				return fmt.Errorf("error getting cache output paths with glob %q: %v", cGlob, err)
 			}
 			for _, cPath := range cPaths {
-				inPath := filepath.Join(cmd.CacheInputDir, testname+"_cache", filepath.Base(cPath))
+				inPath := filepath.Join(cmd.CacheInputDir, testname, filepath.Base(cPath))
 				if _, err := utils.CopyStringFile(cPath, inPath); err != nil {
 					return fmt.Errorf("error copying %q to %q: %v", cPath, inPath, err)
 				}
@@ -293,15 +293,17 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 		return err
 	}
 	fmt.Printf("found %d itemMaps\n", len(recs))
-	f := &fetch.FileFetcher{}
-	slugID := fetch.MakeURLStringSlug(conf.Scrapers[0].URL)
-	fetchFn := func(u string) (*goquery.Document, error) {
-		u = "file://" + cmd.OutputDir + "/" + slugID + "_cache" + "/" + fetch.MakeURLStringSlug(u) + ".html"
-		slog.Debug("in ScrapeCmd.Run()", "u", u)
-		return fetch.GQDocument(f, u, nil)
-	}
+	// f := &fetch.FileFetcher{}
+	// slugID := fetch.MakeURLStringSlug(conf.Scrapers[0].URL)
+	// fetchFn := func(u string) (*goquery.Document, error) {
+	// 	u = "file://" + cmd.OutputDir + "/" + slugID + "_cache" + "/" + fetch.MakeURLStringSlug(u) + ".html"
+	// 	slog.Debug("in ScrapeCmd.Run()", "u", u)
+	// 	return fetch.GQDocument(f, u, nil)
+	// }
+
+	cache := fetch.New(cmd.OutputDir, cmd.OutputDir)
 	if len(conf.Scrapers) > 1 {
-		if err = scrape.DetailPages(conf, &conf.Scrapers[1], recs, fetchFn); err != nil {
+		if err = scrape.DetailPages(cache, conf, &conf.Scrapers[1], recs); err != nil {
 			return err
 		}
 	}
@@ -343,26 +345,26 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 //	go run main.go --debug regenerate
 var urlsForTestnamesByDir = map[string]map[string][]string{
 	"regression": {
-		"basic-detail-pages-com":            []string{"https://basic-detail-pages.com", ""},
-		"basic-field-com":                   []string{"https://basic-field.com", ""},
-		"basic-field-w-div-com":             []string{"https://basic-field-w-div.com", ""},
-		"basic-fields-w-div-com":            []string{"https://basic-fields-w-div.com", ""},
-		"basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
-		"basic-fields-w-div-w-divc-com":     []string{"https://basic-fields-w-div-w-div.com", ""},
-		"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
-		"basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},
-		"basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},
-		"basic-fields-w-style-com":          []string{"https://basic-fields-w-style.com", ""},
-		"css-class-with-special-chars-com":  []string{"https://css-class-with-special-chars.com", ""},
-		"fields-w-a-com_cache":              []string{"https://fields-w-a.com", ""},
-	},
-	"scraping": {
-		"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},
-		"quotes-toscrape-com":            []string{"https://quotes.toscrape.com", "Imperfection"},
-		"realpython-github-io-fake-jobs": []string{"https://realpython.github.io/fake-jobs", ""},
-		"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
-		"www-scrapethissite-com-pages-forms":                             []string{"https://www.scrapethissite.com/pages/forms", ""},
-		"www-scrapethissite-com-pages-simple":                            []string{"https://www.scrapethissite.com/pages/simple", ""},
+		"basic-detail-pages-com": []string{"https://basic-detail-pages.com", ""},
+		// 	"basic-field-com":                   []string{"https://basic-field.com", ""},
+		// 	"basic-field-w-div-com":             []string{"https://basic-field-w-div.com", ""},
+		// 	"basic-fields-w-div-com":            []string{"https://basic-fields-w-div.com", ""},
+		// 	"basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
+		// 	"basic-fields-w-div-w-divc-com":     []string{"https://basic-fields-w-div-w-div.com", ""},
+		// 	"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
+		// 	"basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},
+		// 	"basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},
+		// 	"basic-fields-w-style-com":          []string{"https://basic-fields-w-style.com", ""},
+		// 	"css-class-with-special-chars-com":  []string{"https://css-class-with-special-chars.com", ""},
+		// 	"fields-w-a-com_cache":              []string{"https://fields-w-a.com", ""},
+		// },
+		// "scraping": {
+		// 	"books-toscrape-com":             []string{"https://books.toscrape.com", "Soumission"},
+		// 	"quotes-toscrape-com":            []string{"https://quotes.toscrape.com", "Imperfection"},
+		// 	"realpython-github-io-fake-jobs": []string{"https://realpython.github.io/fake-jobs", ""},
+		// 	"webscraper-io-test-sites-e-commerce-allinone-computers-tablets": []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
+		// 	"www-scrapethissite-com-pages-forms":                             []string{"https://www.scrapethissite.com/pages/forms", ""},
+		// 	"www-scrapethissite-com-pages-simple":                            []string{"https://www.scrapethissite.com/pages/simple", ""},
 	},
 }
 

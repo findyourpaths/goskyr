@@ -22,6 +22,17 @@ func CopyStringFile(src string, dest string) (string, error) {
 	return str, nil
 }
 
+// ReadBytesFile returns the data at the given path declared in a "data"
+// attribute of a BUILD.bazel rule.
+func ReadBytesFile(path string) ([]byte, error) {
+	// path, err := GetRunfilePath(path)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	return os.ReadFile(path)
+}
+
 // ReadStringFile returns a string with the data at the given path declared in a
 // "data" attribute of a BUILD.bazel rule.
 func ReadStringFile(path string) (string, error) {

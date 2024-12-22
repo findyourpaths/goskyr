@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -49,14 +48,13 @@ func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	}
 	opts.configID.Slug = slug.Make(u.Host)
 	prefix := fetch.MakeURLStringSlug(u.String())
-	// panic(fmt.Sprintf("CacheInputDir: %s\n", filepath.Join(opts.CacheInputDir, prefix+"_cache")))
 
 	if opts.CacheInputDir != "" {
-		opts.CacheInputDir = filepath.Join(opts.CacheInputDir, prefix+"_cache")
+		opts.CacheInputDir = filepath.Join(opts.CacheInputDir, prefix)
 	}
 
 	if opts.CacheOutputDir != "" {
-		opts.CacheOutputDir = filepath.Join(opts.CacheOutputDir, prefix+"_cache")
+		opts.CacheOutputDir = filepath.Join(opts.CacheOutputDir, prefix)
 	}
 
 	if opts.ConfigOutputDir != "" {
@@ -66,35 +64,34 @@ func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	return opts, nil
 }
 
-func ConfigurationsForPage(opts ConfigOptions) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForPage(cache fetch.Cache, opts ConfigOptions) (map[string]*scrape.Config, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForPage_log.txt"), slog.LevelDebug)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		defer output.RestoreDefaultLogger(prevLogger)
 	}
 	slog.Info("ConfigurationsForPage()", "opts", opts)
 	defer slog.Info("ConfigurationsForPage() returning")
 
-	gqdoc, gqdocsByURL, err := fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch page: %v", err)
+	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
+	if !found || err != nil {
+		return nil, fmt.Errorf("failed to get page %s (found: %t): %v", opts.URL, found, err)
 	}
-
-	return ConfigurationsForGQDocument(opts, gqdoc, gqdocsByURL)
+	return ConfigurationsForGQDocument(cache, opts, gqdoc)
 }
 
-func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *goquery.Document) (map[string]*scrape.Config, error) {
 	var cims map[string]*scrape.Config
 	var err error
 	rs := map[string]*scrape.Config{}
 	// Generate configs for each of the minimum occs.
 	for _, minOcc := range opts.MinOccs {
 		slog.Debug("calling ConfigurationsForGQDocument()", "minOcc", minOcc)
-		cims, gqdocsByURL, err = ConfigurationsForGQDocumentWithMinOccurrence(opts, gqdoc, minOcc, gqdocsByURL)
+		cims, err = ConfigurationsForGQDocumentWithMinOccurrence(cache, opts, gqdoc, minOcc)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		for k, v := range cims {
 			rs[k] = v
@@ -102,7 +99,7 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, gq
 	}
 
 	slog.Debug("in ConfigurationsForPage()", "len(rs)", len(rs))
-	return rs, gqdocsByURL, nil
+	return rs, nil
 }
 
 // func ConfigurationsForGQDocuments(opts ConfigOptions, gqdocs []*goquery.Document, minOcc int, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
@@ -113,7 +110,7 @@ func ConfigurationsForGQDocument(opts ConfigOptions, gqdoc *goquery.Document, gq
 // 	return ConfigurationsForGQDocumentWithMinOccurrence(opts, gqdoc, minOcc, gqdocsByURL)
 // }
 
-func ConfigurationsForGQDocumentWithMinOccurrence(opts ConfigOptions, gqdoc *goquery.Document, minOcc int, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts ConfigOptions, gqdoc *goquery.Document, minOcc int) (map[string]*scrape.Config, error) {
 	minOccStr := fmt.Sprintf("%02da", minOcc)
 	if opts.configID.Field != "" {
 		opts.configID.SubID = minOccStr
@@ -124,7 +121,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(opts ConfigOptions, gqdoc *goq
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForGQDocument_log.txt"), slog.LevelDebug)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		defer output.RestoreDefaultLogger(prevLogger)
 	}
@@ -133,16 +130,16 @@ func ConfigurationsForGQDocumentWithMinOccurrence(opts ConfigOptions, gqdoc *goq
 
 	htmlStr, err := goquery.OuterHtml(gqdoc.Children())
 	if err != nil {
-		return nil, nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
+		return nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
 	}
 
 	lps, pagProps, err := analyzePage(opts, htmlStr, minOcc)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
+		return nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
 	}
 	if len(lps) == 0 {
 		// No fields were found, so just return.
-		return nil, gqdocsByURL, nil
+		return nil, nil
 	}
 
 	// slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(a.LocMan)", len(a.LocMan))
@@ -156,11 +153,11 @@ func ConfigurationsForGQDocumentWithMinOccurrence(opts ConfigOptions, gqdoc *goq
 	// }
 
 	if err := expandAllPossibleConfigs(gqdoc, opts, lps, findSharedRootSelector(lps), "", pagProps, rs); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	slog.Debug("in ConfigurationsForGQDocument()", "len(rs)", len(rs))
-	return rs, gqdocsByURL, nil
+	return rs, nil
 }
 
 func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, parentRecsStr string, pagProps []*locationProps, results map[string]*scrape.Config) error {
@@ -263,17 +260,15 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 	return nil
 }
 
-func ExtendPageConfigsWithNexts(opts ConfigOptions, pageConfigs map[string]*scrape.Config, gqdocsByURL map[string]*goquery.Document) error {
+func ExtendPageConfigsWithNexts(cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) error {
 	pageCIDs := []string{}
 	for _, pageC := range pageConfigs {
 		pageCIDs = append(pageCIDs, pageC.ID.String())
 	}
 
-	var gqdoc *goquery.Document
-	var err error
-	gqdoc, gqdocsByURL, err = fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), gqdocsByURL)
-	if err != nil {
-		return fmt.Errorf("failed to fetch page: %v", err)
+	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL)
+	if !found || err != nil {
+		return fmt.Errorf("failed to get next page %s: %v", opts.URL, err)
 	}
 
 	// path := filepath.Join(opts.InputDir, fetch.MakeURLStringSlug(opts.URL)+".html")
@@ -401,6 +396,7 @@ func pageJoinsURLs(pageJoinsMap map[string][]*pageJoin) []string {
 	for _, pjs := range pageJoinsMap {
 		for _, pj := range pjs {
 			for _, fj := range pj.fieldJoins {
+				// fmt.Printf("fj: %#v\n", fj)
 				us[fj.url] = true
 			}
 		}
@@ -413,11 +409,11 @@ func pageJoinsURLs(pageJoinsMap map[string][]*pageJoin) []string {
 	return rs
 }
 
-func ConfigurationsForAllDetailPages(opts ConfigOptions, pageConfigs map[string]*scrape.Config, gqdocsByURL map[string]*goquery.Document, fetchFn func(string) (*goquery.Document, error)) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForAllDetailPages_log.txt"), slog.LevelDebug)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		defer output.RestoreDefaultLogger(prevLogger)
 	}
@@ -435,7 +431,7 @@ func ConfigurationsForAllDetailPages(opts ConfigOptions, pageConfigs map[string]
 
 	uBase, err := tld.Parse(opts.URL)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error parsing input url %q: %v", opts.URL, err)
+		return nil, fmt.Errorf("error parsing input url %q: %v", opts.URL, err)
 	}
 
 	pageJoinsByFieldName := map[string][]*pageJoin{}
@@ -447,12 +443,17 @@ func ConfigurationsForAllDetailPages(opts ConfigOptions, pageConfigs map[string]
 			pj := &pageJoin{config: pageC}
 			pageJoinsByFieldName[pageF.Name] = append(pageJoinsByFieldName[pageF.Name], pj)
 			for _, pageIM := range pageC.Records {
+				// Not sure why we need this...
+				if pageIM[pageF.Name] == "" {
+					continue
+				}
 				fj := &fieldJoin{
 					// pageConfig: pageC
 					// pageItemMap: pageIM
 					name:  pageF.Name,
 					value: fmt.Sprintf("%v", pageIM[pageF.Name]),
 				}
+				// fmt.Printf("created fj: %#v with %#v\n", fj, pageIM[pageF.Name])
 
 				if scrape.SkipSubURLExt[filepath.Ext(fj.value)] {
 					slog.Debug("skipping sub URL due to extension", "fj.value", fj.value)
@@ -485,6 +486,7 @@ func ConfigurationsForAllDetailPages(opts ConfigOptions, pageConfigs map[string]
 				}
 
 				fj.url = fetch.TrimURLScheme(absURL.String())
+				// fmt.Printf("adding fj: %#v\n", fj)
 				pj.fieldJoins = append(pj.fieldJoins, fj)
 			}
 		}
@@ -495,7 +497,7 @@ func ConfigurationsForAllDetailPages(opts ConfigOptions, pageConfigs map[string]
 	if opts.ConfigOutputDir != "" {
 		urlsPath := filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_urls.txt")
 		if err := utils.WriteStringFile(urlsPath, strings.Join(subURLs, "\n")); err != nil {
-			return nil, nil, fmt.Errorf("failed to write detail page URLs list: %v", err)
+			return nil, fmt.Errorf("failed to write detail page URLs list: %v", err)
 		}
 	}
 	slog.Debug("in ConfigurationsForAllDetailPages()", "opts.CacheInputDir", opts.CacheInputDir)
@@ -504,9 +506,9 @@ func ConfigurationsForAllDetailPages(opts ConfigOptions, pageConfigs map[string]
 	rs := map[string]*scrape.Config{}
 	for fname, pjs := range pageJoinsByFieldName {
 		opts.configID.Field = fname
-		cs, gqdocsByURL, err = ConfigurationsForDetailPages(opts, pjs, gqdocsByURL, nil)
+		cs, err = ConfigurationsForDetailPages(cache, opts, pjs)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error generating configuration for detail pages for field %q: %v", fname, err)
+			return nil, fmt.Errorf("error generating configuration for detail pages for field %q: %v", fname, err)
 		}
 		for id, c := range cs {
 			rs[id] = c
@@ -514,48 +516,48 @@ func ConfigurationsForAllDetailPages(opts ConfigOptions, pageConfigs map[string]
 	}
 
 	slog.Debug("in ConfigurationsForAllDetailPages()", "len(rs)", len(rs))
-	return rs, gqdocsByURL, nil
+	return rs, nil
 }
 
 // ConfigurationsForDetailPages collects the URL values for a candidate detail
 // page field, retrieves the pages at those URLs, concatenates them, trains a
 // scraper to extract from those detail pages, and merges the resulting records
 // into the parent page, outputting the result.
-func ConfigurationsForDetailPages(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL map[string]*goquery.Document, fetchFn func(string) (*goquery.Document, error)) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*pageJoin) (map[string]*scrape.Config, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForDetailPages_log.txt"), slog.LevelDebug)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		defer output.RestoreDefaultLogger(prevLogger)
 	}
 	slog.Info("ConfigurationsForDetailPages()", "opts", opts)
 	defer slog.Info("ConfigurationsForDetailPages() returning")
 
-	gqdoc, err := joinPageJoinsGQDocuments(opts, pjs, gqdocsByURL)
+	gqdoc, err := joinPageJoinsGQDocuments(cache, opts, pjs)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	// Prepare for calling general page generator.
 	opts.DoDetailPages = false
 	opts.RequireString = ""
-	cs, gqdocsByURL, err := ConfigurationsForGQDocument(opts, gqdoc, gqdocsByURL)
+	cs, err := ConfigurationsForGQDocument(cache, opts, gqdoc)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Traverse the fieldJoins for all of the page configs that have a field with this name.
 	rs := map[string]*scrape.Config{}
-	if fetchFn == nil {
-		fetchFn = func(u string) (*goquery.Document, error) {
-			u = fetch.TrimURLScheme(u)
-			r := gqdocsByURL[u]
-			if r == nil {
-				return nil, fmt.Errorf("didn't find %q", u)
-			}
-			return r, nil
-		}
-	}
+	// if fetchFn == nil {
+	// 	fetchFn = func(u string) (*goquery.Document, error) {
+	// 		u = fetch.TrimURLScheme(u)
+	// 		r := gqdocsByURL[u]
+	// 		if r == nil {
+	// 			return nil, fmt.Errorf("didn't find %q", u)
+	// 		}
+	// 		return r, nil
+	// 	}
+	// }
 
 	// slog.Debug("in ConfigurationsForDetailPages()", "mergedCConfigBase", mergedCConfigBase)
 	for _, c := range cs {
@@ -572,7 +574,7 @@ func ConfigurationsForDetailPages(opts ConfigOptions, pjs []*pageJoin, gqdocsByU
 			mergedC.ID.SubID = c.ID.SubID
 			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
 
-			if err := scrape.DetailPages(mergedC, &subScraper, mergedC.Records, fetchFn); err != nil {
+			if err := scrape.DetailPages(cache, mergedC, &subScraper, mergedC.Records); err != nil {
 				// fmt.Printf("skipping generating configuration for detail pages for merged config %q: %v\n", mergedC.ID.String(), err)
 				slog.Info("skipping generating configuration for detail pages for merged config", "mergedC.ID", mergedC.ID.String(), "err", err)
 				continue
@@ -582,98 +584,10 @@ func ConfigurationsForDetailPages(opts ConfigOptions, pjs []*pageJoin, gqdocsByU
 	}
 
 	slog.Debug("in ConfigurationsForAllDetailPages()", "len(rs)", len(rs))
-	return rs, gqdocsByURL, nil
+	return rs, nil
 }
 
-func fetchGQDocument(opts ConfigOptions, u string, gqdocsByURL map[string]*goquery.Document) (*goquery.Document, map[string]*goquery.Document, error) {
-	// if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
-	// 	prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_fetchGQDocument_log.txt"), slog.LevelDebug)
-	// 	if err != nil {
-	// 		return nil, nil, err
-	// 	}
-	// 	defer output.RestoreDefaultLogger(prevLogger)
-	// }
-	slog.Info("fetchGQDocument()", "u", u)
-	slog.Info("fetchGQDocument()", "len(gqdocsByURL)", len(gqdocsByURL))
-	defer slog.Info("fetchGQDocument() returning")
-
-	if gqdocsByURL == nil {
-		gqdocsByURL = map[string]*goquery.Document{}
-	}
-
-	// Check if we have it in memory.
-	gqdoc, found := gqdocsByURL[u]
-	str := ""
-	var err error
-
-	if found {
-		slog.Debug("fetchGQDocument(), memory cache hit")
-	} else {
-		// Not in memory, so check if it's in our cache on disk.
-		cacheInPath := filepath.Join(opts.CacheInputDir, fetch.MakeURLStringSlug(u)+".html")
-		slog.Debug("fetchGQDocument(), looking on disk at", "cacheInPath", cacheInPath)
-		str, err = utils.ReadStringFile(cacheInPath)
-		if err == nil {
-			slog.Debug("fetchGQDocument(), disk cache hit", "len(str)", len(str))
-		} else {
-			if opts.Offline {
-				return nil, nil, fmt.Errorf("running offline and unable to retrieve %q", u)
-			}
-			var fetcher fetch.Fetcher
-			if opts.RenderJS {
-				fetcher = fetch.NewDynamicFetcher("", 0)
-			} else {
-				fetcher = &fetch.StaticFetcher{}
-			}
-
-			str, err = fetcher.Fetch("http://"+u, nil)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error fetching GQDocument: %v", err)
-			}
-			slog.Debug("fetchGQDocument(), retrieved html", "len(str)", len(str))
-		}
-
-		// If on disk, use the cached html string. Otherwise, use the retrieved html.
-		//
-		// Original goskyr comment:
-		// A bit hacky. But goquery seems to manipulate the html (I only know of goquery adding tbody tags if missing)
-		// so we rely on goquery to read the html for both scraping AND figuring out the scraping config.
-		gqdoc, err = goquery.NewDocumentFromReader(strings.NewReader(str))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		gqdocsByURL[u] = gqdoc
-	}
-
-	slog.Debug("fetchGQDocument()", "len(str)", len(str))
-
-	// Now write to the new cache if there is one and the page isn't already there.
-	if opts.CacheOutputDir != "" {
-		cacheOutPath := filepath.Join(opts.CacheOutputDir, fetch.MakeURLStringSlug(u)+".html")
-		_, err = os.Stat(cacheOutPath)
-		if err == nil {
-			slog.Debug("fetchGQDocument(), already written to disk cache", "cacheOutPath", cacheOutPath)
-		} else {
-			if str == "" {
-				// Now we have to translate the goquery doc back into a string
-				str, err = goquery.OuterHtml(gqdoc.Children())
-				if err != nil {
-					return nil, nil, err
-				}
-			}
-
-			slog.Debug("in fetchGQDocument(), writing to disk cache", "cacheOutPath", cacheOutPath)
-			if err := utils.WriteStringFile(cacheOutPath, str); err != nil {
-				return nil, nil, fmt.Errorf("failed to write html file: %v", err)
-			}
-		}
-	}
-
-	return gqdoc, gqdocsByURL, nil
-}
-
-func joinPageJoinsGQDocuments(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL map[string]*goquery.Document) (*goquery.Document, error) {
+func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*pageJoin) (*goquery.Document, error) {
 	// Get all URLs appearing in the values of the fields with this name in the parent pages.
 	us := pageJoinsURLs(map[string][]*pageJoin{"": pjs})
 	if opts.ConfigOutputDir != "" {
@@ -683,18 +597,20 @@ func joinPageJoinsGQDocuments(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL m
 		}
 	}
 
-	inPath := filepath.Join(opts.CacheInputDir, opts.configID.String()+".html")
-	r, found := gqdocsByURL[inPath]
+	key := "http://" + opts.configID.String() + ".html"
+	r, found, err := fetch.GetGQDocument(cache, key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch joined page %q: %v", key, err)
+	}
 	str := ""
-	var err error
 	if !found {
 		// Concatenate all of the detail pages pointed to by the field with this name in the parent pages.
 		gqdocs := []*goquery.Document{}
+		fmt.Printf("us: %#v\n", us)
 		for _, u := range us {
-			var gqdoc *goquery.Document
-			gqdoc, gqdocsByURL, err = fetchGQDocument(opts, u, gqdocsByURL)
-			if err != nil {
-				return nil, fmt.Errorf("failed to fetch page: %v", err)
+			gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
+			if !found || err != nil {
+				return nil, fmt.Errorf("failed to fetch page to join %q (found: %t): %v", u, found, err)
 			}
 			gqdocs = append(gqdocs, gqdoc)
 		}
@@ -706,18 +622,21 @@ func joinPageJoinsGQDocuments(opts ConfigOptions, pjs []*pageJoin, gqdocsByURL m
 	}
 
 	if opts.CacheOutputDir != "" {
-		outPath := filepath.Join(opts.CacheOutputDir, opts.configID.String()+".html")
-		slog.Debug("in joinPageJoinsGQDocuments(), writing to disk cache", "len(str)", len(str), "outPath", outPath)
-		if str == "" {
-			if _, err := utils.CopyStringFile(inPath, outPath); err != nil {
-				return nil, fmt.Errorf("error copying joined detail pages to %q: %v", inPath, err)
-			}
-		} else {
-			if err := utils.WriteStringFile(outPath, str); err != nil {
-				return nil, fmt.Errorf("error writing joined detail pages to %q: %v", inPath, err)
-			}
-		}
+		fetch.SetGQDocument(cache, key, str)
 	}
+	// if opts.CacheOutputDir != "" {
+	// 	outPath := filepath.Join(opts.CacheOutputDir, opts.configID.String()+".html")
+	// 	slog.Debug("in joinPageJoinsGQDocuments(), writing to disk cache", "len(str)", len(str), "outPath", outPath)
+	// 	if str == "" {
+	// 		if _, err := utils.CopyStringFile(inPath, outPath); err != nil {
+	// 			return nil, fmt.Errorf("error copying joined detail pages to %q: %v", inPath, err)
+	// 		}
+	// 	} else {
+	// 		if err := utils.WriteStringFile(outPath, str); err != nil {
+	// 			return nil, fmt.Errorf("error writing joined detail pages to %q: %v", inPath, err)
+	// 		}
+	// 	}
+	// }
 	return r, nil
 }
 

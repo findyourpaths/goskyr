@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "fetch",
-    srcs = ["fetcher.go"],
+    srcs = [
+        "cache.go",
+        "fetcher.go",
+    ],
     importpath = "github.com/findyourpaths/goskyr/fetch",
     visibility = ["//visibility:public"],
     deps = [

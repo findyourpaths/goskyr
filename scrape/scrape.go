@@ -1311,7 +1311,7 @@ var SkipSubURLExt = map[string]bool{
 	".png":  true,
 }
 
-func DetailPages(c *Config, s *Scraper, recs output.Records, fetchFn func(string) (*goquery.Document, error)) error {
+func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records) error {
 	if DoDebug {
 		slog.Debug("scrape.DetailPages()")
 		defer slog.Debug("scrape.DetailPages() returning")
@@ -1334,15 +1334,9 @@ func DetailPages(c *Config, s *Scraper, recs output.Records, fetchFn func(string
 		}
 		subURL := uBase.ResolveReference(rel).String()
 		slog.Debug("in scrape.DetailPages()", "i", i, "subURL", subURL)
-		var subGQDoc *goquery.Document
-		if fetchFn != nil {
-			subGQDoc, err = fetchFn(subURL)
-		} else {
-			return fmt.Errorf("need to fetch detail page")
-		}
-		// fmt.Printf("adding subURL: %q\n", subURL)
-		if err != nil {
-			return fmt.Errorf("error fetching detail page GQDocument at %q: %v", subURL, err)
+		subGQDoc, found, err := fetch.GetGQDocument(cache, subURL)
+		if !found || err != nil {
+			return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
 		}
 		if err := SubGQDocument(c, s, rec, c.ID.Field, subGQDoc); err != nil {
 			return fmt.Errorf("error extending records: %v", err)

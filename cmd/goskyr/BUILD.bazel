@@ -12,7 +12,6 @@ go_library(
         "//scrape",
         "//utils",
         "@com_github_alecthomas_kong//:kong",
-        "@com_github_puerkitobio_goquery//:goquery",
     ],
 )
 
@@ -28,7 +27,6 @@ go_test(
         "//scrape",
         "//utils",
         "@com_github_nsf_jsondiff//:jsondiff",
-        "@com_github_puerkitobio_goquery//:goquery",
         "@com_github_sergi_go_diff//diffmatchpatch",
     ],
 )

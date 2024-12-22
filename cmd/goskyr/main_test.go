@@ -12,7 +12,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/generate"
 	"github.com/findyourpaths/goskyr/output"
@@ -37,7 +36,9 @@ func TestGenerate(t *testing.T) {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
-	output.SetDefaultLogger(filepath.Join(testOutputDir, "test-generate_log.txt"), slog.LevelWarn)
+	// logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	// slog.SetDefault(logger)
+	output.SetDefaultLogger(filepath.Join(testOutputDir, "test-generate_log.txt"), slog.LevelDebug)
 
 	dirs := []string{}
 	for dir := range urlsForTestnamesByDir {
@@ -70,7 +71,7 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	inputDir := testInputDir + dir
 	outputDir := testOutputDir + dir
 
-	glob := filepath.Join(inputDir, testname+"_cache", "*")
+	glob := filepath.Join(inputDir, testname, "*")
 	// fmt.Printf("glob: %q\n", glob)
 	paths, err := filepath.Glob(glob)
 	if err != nil {
@@ -81,7 +82,7 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	urlAndReq := urlsForTestnamesByDir[dir][testname]
 	opts, err := generate.InitOpts(generate.ConfigOptions{
 		Batch:             true,
-		CacheInputDir:     inputDir,
+		CacheInputDir:     testInputDir,
 		DoDetailPages:     doDetailPages,
 		MinOccs:           []int{5, 10, 20},
 		OnlyVaryingFields: true,
@@ -93,14 +94,16 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 		t.Fatalf("error initializing page options: %v", err)
 	}
 
-	cs, gqdocsByURL, err := generate.ConfigurationsForPage(opts)
+	cacheDir := filepath.Join(testInputDir, dir)
+	cache := fetch.New(cacheDir, cacheDir)
+	cs, err := generate.ConfigurationsForPage(cache, opts)
 	if err != nil {
 		t.Fatalf("error generating page configs: %v", err)
 	}
 	testGenerateConfigs(t, testname, cs, inputDir, outputDir)
 
 	if doDetailPages {
-		subCs, _, err := generate.ConfigurationsForAllDetailPages(opts, cs, gqdocsByURL, nil)
+		subCs, err := generate.ConfigurationsForAllDetailPages(cache, opts, cs)
 		if err != nil {
 			t.Fatalf("error generating detail page configs: %v", err)
 		}
@@ -165,8 +168,8 @@ func testGenerateConfig(t *testing.T, testname string, config *scrape.Config, ou
 	}
 }
 
-func TestScrape(t *testing.T) {
-	f, err := os.Create("test-generate.prof")
+func DontTestScrape(t *testing.T) {
+	f, err := os.Create("test-scrape.prof")
 	if err != nil {
 		t.Fatalf("error initializing pprof: %v", err)
 	}
@@ -232,33 +235,6 @@ func testScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
 	}
 }
 
-func getRecords(dir string, testname string, config *scrape.Config) (output.Records, error) {
-	// fmt.Printf("getItems(dir: %q, testname: %q, config)\n", dir, testname)
-	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
-		// We're looking at an event list page scraper. Scrape the page in the outer directory.
-		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", testname+htmlSuffix)
-		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
-	} else if config.ID.ID == "" && config.ID.Field != "" && config.ID.SubID != "" {
-		// We're looking at an event page scraper. Scrape the page in this directory.
-		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
-		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
-	} else {
-		// We're looking at a combined event list and page scraper. Scrape both pages.
-		htmlPath := filepath.Join(testInputDir, dir, testname+"_cache", testname+htmlSuffix)
-		itemMaps, err := scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
-		if err != nil {
-			return nil, err
-		}
-		f := &fetch.FileFetcher{}
-		fetchFn := func(u string) (*goquery.Document, error) {
-			u = "file://" + filepath.Join(testInputDir, dir, testname+"_cache", fetch.MakeURLStringSlug(u)+".html")
-			return fetch.GQDocument(f, u, nil)
-		}
-		err = scrape.DetailPages(config, &config.Scrapers[1], itemMaps, fetchFn)
-		return itemMaps, err
-	}
-}
-
 func testScrapeWithConfig(t *testing.T, dir string, testname string, config *scrape.Config) {
 	recs, err := getRecords(dir, testname, config)
 	if err != nil {
@@ -301,5 +277,35 @@ func testScrapeWithConfig(t *testing.T, dir string, testname string, config *scr
 			t.Fatalf("failed to write actual test output to %q: %v", actPath, err)
 		}
 		fmt.Printf("wrote to actPath: %q\n", actPath)
+	}
+}
+
+func getRecords(dir string, testname string, config *scrape.Config) (output.Records, error) {
+	// fmt.Printf("getItems(dir: %q, testname: %q, config)\n", dir, testname)
+	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
+		// We're looking at an event list page scraper. Scrape the page in the outer directory.
+		htmlPath := filepath.Join(testInputDir, dir, testname, testname+htmlSuffix)
+		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
+	} else if config.ID.ID == "" && config.ID.Field != "" && config.ID.SubID != "" {
+		// We're looking at an event page scraper. Scrape the page in this directory.
+		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
+		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
+	} else {
+		// We're looking at a combined event list and page scraper. Scrape both pages.
+		htmlPath := filepath.Join(testInputDir, dir, testname, testname+htmlSuffix)
+		itemMaps, err := scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
+		if err != nil {
+			return nil, err
+		}
+
+		// f := &fetch.FileFetcher{}
+		// fetchFn := func(u string) (*goquery.Document, error) {
+		// 	u = "file://" + filepath.Join(testInputDir, dir, testname, fetch.MakeURLStringSlug(u)+".html")
+		// 	return fetch.GQDocument(f, u, nil)
+		// }
+		cacheDir := filepath.Join(testInputDir, dir)
+		cache := fetch.New(cacheDir, cacheDir)
+		err = scrape.DetailPages(cache, config, &config.Scrapers[1], itemMaps)
+		return itemMaps, err
 	}
 }

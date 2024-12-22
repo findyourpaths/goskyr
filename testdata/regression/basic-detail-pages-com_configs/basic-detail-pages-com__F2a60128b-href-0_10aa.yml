@@ -6,18 +6,17 @@ id:
 scrapers:
     - name: basic-detail-pages-com__F2a60128b-href-0_10aa
       url: https://basic-detail-pages.com
-      selector: body > htmls > div.a-0.b-0
+      selector: body > htmls > div.x-0.y-0
       fields:
-        - name: F649ac349--0
+        - name: F14fd4c6e--0
           type: text
           location:
-            - selector: div.a-1.b-1 > div.a-2.b-2 > div
+            - selector: div.x-1.y-1 > div.x-2.y-2 > div.city
           can_be_empty: true
-        - name: Fb43635ab-href-0
-          type: url
+        - name: F21de3337--0
+          type: text
           location:
-            - selector: div.a-1.b-1 > div.a-2.b-2 > div > a
-              attr: href
+            - selector: div.x-1.y-1 > div.x-2.y-2 > div.street
           can_be_empty: true
       render_js: true
 records: []
