@@ -115,7 +115,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	defer pprof.StopCPUProfile()
 
 	minOccs := []int{5, 10, 20}
-	minOccs = []int{5}
+	// minOccs = []int{5}
 	if cmd.MinOcc != 0 {
 		minOccs = []int{cmd.MinOcc}
 	}

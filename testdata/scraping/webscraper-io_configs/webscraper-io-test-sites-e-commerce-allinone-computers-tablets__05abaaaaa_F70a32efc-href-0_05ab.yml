@@ -35,7 +35,6 @@ scrapers:
             - selector: div.card.thumbnail > div.card-body.product-wrapper > div.caption > p.card-text.description
           can_be_empty: true
       render_js: true
-      hostslug: webscraper-io
     - name: webscraper-io-test-sites-e-commerce-allinone-computers-tablets__F70a32efc-href-0_05ab
       url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
       selector: div.wrapper
@@ -82,5 +81,4 @@ scrapers:
             - selector: div.container.test-site > div.row > div.col-lg-9 > div.card.thumbnail > div.card-body.product-wrapper > div.row > div.col-xl-10 > div.caption > h4.card-title.title
           can_be_empty: true
       render_js: true
-      hostslug: webscraper-io
 records: []

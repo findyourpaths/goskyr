@@ -191,12 +191,7 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 
 	slog.Info("in expandAllPossibleConfigs()", "pags", pags)
 
-	u, err := url.Parse(opts.URL)
-	if err != nil {
-		return fmt.Errorf("failed to parse scraper URL: %q", opts.URL)
-	}
 	s := scrape.Scraper{
-		HostSlug:   fetch.MakeURLStringSlug(u.Host),
 		Name:       opts.configID.String(),
 		Paginators: pags,
 		RenderJs:   opts.RenderJS,

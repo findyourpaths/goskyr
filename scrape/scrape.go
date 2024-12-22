@@ -170,13 +170,13 @@ func ReadConfig(configPath string) (*Config, error) {
 	if config.Global.UserAgent == "" {
 		config.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
 	}
-	for _, s := range config.Scrapers {
-		u, err := url.Parse(s.URL)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse scraper URL: %q", s.URL)
-		}
-		s.HostSlug = fetch.MakeURLStringSlug(u.Host)
-	}
+	// for _, s := range config.Scrapers {
+	// 	u, err := url.Parse(s.URL)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to parse scraper URL: %q", s.URL)
+	// 	}
+	// 	s.HostSlug = fetch.MakeURLStringSlug(u.Host)
+	// }
 	return &config, nil
 }
 
@@ -337,8 +337,9 @@ type Paginator struct {
 // A Scraper contains all the necessary config parameters and structs needed
 // to extract the desired information from a website
 type Scraper struct {
-	Name         string               `yaml:"name"`
-	URL          string               `yaml:"url"`
+	Name string `yaml:"name"`
+	URL  string `yaml:"url"`
+	// HostSlug     string               `yaml:"hostslug"`
 	Selector     string               `yaml:"selector"`
 	Fields       []Field              `yaml:"fields,omitempty"`
 	Filters      []*Filter            `yaml:"filters,omitempty"`
@@ -347,8 +348,17 @@ type Scraper struct {
 	PageLoadWait int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
 	Interaction  []*fetch.Interaction `yaml:"interaction,omitempty"`
 
-	fetcher  fetch.Fetcher
-	HostSlug string
+	fetcher fetch.Fetcher
+}
+
+func (s Scraper) HostSlug() string {
+	host := s.URL[strings.Index(s.URL, "//")+2:]
+	end := strings.Index(host, "/")
+	if end == -1 {
+		end = len(host)
+	}
+	host = host[:end]
+	return fetch.MakeURLStringSlug(host)
 }
 
 // Page fetches and returns all records from a webpage according to the
@@ -360,7 +370,7 @@ type Scraper struct {
 func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug+"_configs/"+c.ID.String()+"_scrape_GQPage_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQPage_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -489,7 +499,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug+"_configs/"+c.ID.String()+"_scrape_GQDocument_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQDocument_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -534,7 +544,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.Record, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
 			if err != nil {
 				return nil, err
 			}
@@ -1387,7 +1397,7 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, 
 func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc *goquery.Document) error {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
-			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug+"_configs/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
+			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
 			if err != nil {
 				return err
 			}
