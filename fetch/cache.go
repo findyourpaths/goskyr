@@ -25,6 +25,9 @@ import (
 	"github.com/findyourpaths/goskyr/utils"
 )
 
+// var DebugCache = true
+var DebugCache = false
+
 // A Cache interface is used by the Transport to store and retrieve responses.
 type Cache interface {
 	// Get returns the []byte representation of a cached response and a bool
@@ -133,9 +136,13 @@ var DefaultMaxBody int64 = 1024 * 1024 * 1024 // 1GB
 // Get returns the response corresponding to key, and true, if
 // present in InputDir or OutputDir. Otherwise it returns nil and false.
 func (c *FetchCache) Get(key string) ([]byte, bool) {
-	// fmt.Println("cache.FetchCache.Get()", "key", key)
+	if DebugCache {
+		fmt.Println("fetch.FetchCache.Get()", "key", key)
+	}
 	p := ResponseFilename(c.inputDir, key)
-	// fmt.Printf("in fetch.FetchCache.Get(), ResponseFilename: %q\n", p)
+	if DebugCache {
+		fmt.Println("in fetch.FetchCache.Get()", "p", p)
+	}
 	resp, err := utils.ReadBytesFile(p)
 	if err != nil {
 		p := ResponseFilename(c.outputDir, key)
@@ -147,7 +154,7 @@ func (c *FetchCache) Get(key string) ([]byte, bool) {
 	// }
 	if err != nil {
 		if ShowHits {
-			fmt.Println("in filecache.Cache.Get(), cache miss", "key", key)
+			fmt.Println("in fetch.Cache.Get(), cache miss", "key", key)
 		}
 		if PanicOnCacheMiss {
 			panic("cache miss for key: " + key)
@@ -166,7 +173,9 @@ func (c *FetchCache) Get(key string) ([]byte, bool) {
 
 // Set saves a response to the cache as key
 func (c *FetchCache) Set(key string, resp []byte) {
-	// fmt.Println("filecache.Cache.Set()", "key", key, "len(resp)", len(resp))
+	if DebugCache {
+		fmt.Println("fetch.FetchCache.Set()", "key", key, "len(resp)", len(resp))
+	}
 	p := ResponseFilename(c.outputDir, key)
 	// if ShowHits {
 	// 	slog.Info("in filecache.Cache.Set(), writing response to", "p", p)
@@ -178,7 +187,9 @@ func (c *FetchCache) Set(key string, resp []byte) {
 
 // Delete removes the response with key from the cache
 func (c *FetchCache) Delete(key string) {
-	fmt.Println("filecache.Cache.Delete()", "key", key)
+	if DebugCache {
+		fmt.Println("fetch.FetchCache.Delete()", "key", key)
+	}
 	p := ResponseFilename(c.outputDir, key)
 	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
 		// p = keyToFilename(InputDir, key)
@@ -207,8 +218,12 @@ func Filename(dir string, urlStr string) string {
 	// if ShowHits {
 	// 	slog.Info("in filecache.Filename()", "u.Host", u.Host, "urlStr", urlStr)
 	// }
-	// fmt.Println("join", dir, utils.MakeURLStringSlug(u.Host), utils.MakeURLStringSlug(urlStr))
-	return filepath.Join(dir, utils.MakeURLStringSlug(u.Host), utils.MakeURLStringSlug(urlStr))
+	uHostSlug := utils.MakeURLStringSlug(u.Host)
+	uSlug := utils.MakeURLStringSlug(urlStr)
+	if DebugCache {
+		fmt.Println("in fetch.Filename()", "dir", dir, "uHostSlug", uHostSlug, "uSlug", uSlug)
+	}
+	return filepath.Join(dir, uHostSlug, uSlug)
 }
 
 // func fetchGQDocument(opts ConfigOptions, u string) (*goquery.Document, error) {
