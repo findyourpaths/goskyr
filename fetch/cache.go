@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/findyourpaths/goskyr/utils"
@@ -116,17 +117,19 @@ func ResponseBytesToGQDocument(respBytes []byte) (*goquery.Document, error) {
 
 // Cache is an implementation of Geziyor cache.Cache that stores html pages on disk.
 type FetchCache struct {
-	inputDir       string
-	outputDir      string
-	responsesByKey map[string][]byte
+	inputDir            string
+	outputDir           string
+	responsesByKey      map[string][]byte
+	responsesByKeyMutex *sync.Mutex
 }
 
 // New returns a new Cache that will store files in dir.
 func New(inputDir string, outputDir string) *FetchCache {
 	return &FetchCache{
-		inputDir:       inputDir,
-		outputDir:      outputDir,
-		responsesByKey: map[string][]byte{},
+		inputDir:            inputDir,
+		outputDir:           outputDir,
+		responsesByKey:      map[string][]byte{},
+		responsesByKeyMutex: &sync.Mutex{},
 	}
 }
 
@@ -145,7 +148,10 @@ func (c *FetchCache) Get(key string) ([]byte, bool) {
 	// 	panic("trying to get a facebook page")
 	// }
 
-	if resp, ok := c.responsesByKey[key]; ok {
+	c.responsesByKeyMutex.Lock()
+	resp, ok := c.responsesByKey[key]
+	c.responsesByKeyMutex.Unlock()
+	if ok {
 		return resp, ok
 	}
 
@@ -178,7 +184,10 @@ func (c *FetchCache) Get(key string) ([]byte, bool) {
 	// if ShowHits {
 	// 	slog.Info("in filecache.Cache.Get(), cache hit", "key", key)
 	// }
+	c.responsesByKeyMutex.Lock()
 	c.responsesByKey[key] = resp
+	c.responsesByKeyMutex.Unlock()
+
 	if c.outputDir != c.inputDir {
 		c.Set(key, resp)
 	}
