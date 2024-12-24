@@ -56,13 +56,11 @@ func (n node) equals(n2 node) bool {
 // the html tree to a specific node
 type path []node
 
-var pathStringsCache map[*node]string
-
 func (p path) last() *node {
 	return &p[len(p)-1]
 }
 
-func (p path) memoString() string {
+func (p path) memoString(pathStringsCache map[*node]string) string {
 	if len(p) == 0 {
 		return ""
 	}
@@ -73,7 +71,7 @@ func (p path) memoString() string {
 	}
 
 	str := last.string()
-	if prefix := p[0 : len(p)-1].memoString(); prefix != "" {
+	if prefix := p[0 : len(p)-1].memoString(pathStringsCache); prefix != "" {
 		str = prefix + " > " + str
 	}
 	pathStringsCache[last] = str
@@ -107,17 +105,18 @@ type Analyzer struct {
 	Depth       int
 	InBody      bool
 	FindNext    bool
+
+	currentAAttrs    map[string]string
+	currentAText     *strings.Builder
+	pathStringsCache map[*node]string
 }
 
 func (a *Analyzer) Parse() {
-	pathStringsCache = map[*node]string{}
+	a.pathStringsCache = map[*node]string{}
 	// start analyzing the html
 	for keepGoing := true; keepGoing; keepGoing = a.ParseToken(a.Tokenizer.Next()) {
 	}
 }
-
-var currentAAttrs map[string]string
-var currentAText *strings.Builder
 
 // ParseToken returns whether to keep going with the parsing.
 func (a *Analyzer) ParseToken(tt html.TokenType) bool {
@@ -136,7 +135,7 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			return true
 		}
 
-		p := a.NodePath.memoString()
+		p := a.NodePath.memoString(a.pathStringsCache)
 		// fmt.Printf("path: %q\n", p)
 		text := string(a.Tokenizer.Text())
 		// fmt.Printf("in Analyzer.ParseToken(tt: %s), text: %q\n", tt, text)
@@ -149,8 +148,8 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 		}
 		a.NumChildren[p] += 1
 
-		if currentAAttrs != nil {
-			currentAText.WriteString(text)
+		if a.currentAAttrs != nil {
+			a.currentAText.WriteString(text)
 		}
 
 	case html.StartTagToken, html.EndTagToken:
@@ -164,7 +163,7 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			return true
 		}
 
-		p := a.NodePath.memoString()
+		p := a.NodePath.memoString(a.pathStringsCache)
 
 		// fmt.Printf("in Analyzer.ParseToken(tt: %s), tag name: %q\n", tt, tagNameStr)
 		// br can also be self closing tag, see later case statement
@@ -175,21 +174,21 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 		}
 
 		if tt != html.StartTagToken {
-			if currentAAttrs != nil {
+			if a.currentAAttrs != nil {
 				// fmt.Printf("looking for pagination candidate %q, %#v\n", tagNameStr, currentAAttrs) //, a.NodePath)
-				href := currentAAttrs["href"]
+				href := a.currentAAttrs["href"]
 				lp := makeLocationProps(a.NodePath, href, false)
-				if strings.ToLower(currentAAttrs["aria-label"]) == "next" {
+				if strings.ToLower(a.currentAAttrs["aria-label"]) == "next" {
 					// fmt.Printf("found pagination candidate %q, %#v\n", tagNameStr, attrs) // , a.NodePath)
 					a.NextPaths = append(a.NextPaths, &lp)
-				} else if strings.ToLower(currentAText.String()) == "next" {
+				} else if strings.ToLower(a.currentAText.String()) == "next" {
 					a.NextPaths = append(a.NextPaths, &lp)
 				} else {
 					// text := string(a.Tokenizer.Text())
 					a.PagMan = append(a.PagMan, &lp)
 				}
-				currentAAttrs = nil
-				currentAText = nil
+				a.currentAAttrs = nil
+				a.currentAText = nil
 			}
 
 			n := true
@@ -231,8 +230,8 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 
 		if a.FindNext {
 			if name == "a" && attrs["href"] != "" {
-				currentAAttrs = attrs
-				currentAText = &strings.Builder{}
+				a.currentAAttrs = attrs
+				a.currentAText = &strings.Builder{}
 			}
 		}
 		// if tagNameStr == "a" {
@@ -261,7 +260,7 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 			return true
 		}
 
-		p := a.NodePath.memoString()
+		p := a.NodePath.memoString(a.pathStringsCache)
 		attrs, cls, pCls := getTagMetadata(tagNameStr, a.Tokenizer, a.ChildNodes[p])
 		a.NumChildren[p] += 1
 		a.ChildNodes[p] = append(a.ChildNodes[p], node{tagName: tagNameStr, classes: cls})

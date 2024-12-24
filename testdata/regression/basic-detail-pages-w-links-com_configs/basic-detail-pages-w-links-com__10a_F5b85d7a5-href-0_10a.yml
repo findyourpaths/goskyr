@@ -1,0 +1,49 @@
+id:
+    slug: basic-detail-pages-w-links-com
+    id: 10a
+    field: F5b85d7a5-href-0
+    subid: 10a
+scrapers:
+    - name: basic-detail-pages-w-links-com__10a
+      url: https://basic-detail-pages-w-links.com
+      selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
+      fields:
+        - name: F5b85d7a5-href-0
+          type: url
+          location:
+            - selector: div > span.a-3y > a
+              attr: href
+          can_be_empty: true
+        - name: F66e5fe15-href-0
+          type: url
+          location:
+            - selector: div > span.a-3x > a
+              attr: href
+          can_be_empty: true
+        - name: Fa5ccda70--0
+          type: text
+          location:
+            - selector: div
+          can_be_empty: true
+      render_js: true
+    - name: basic-detail-pages-w-links-com__F5b85d7a5-href-0_10a
+      url: https://basic-detail-pages-w-links.com
+      selector: ""
+      fields:
+        - name: F14fd4c6e--0
+          type: text
+          location:
+            - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div.city
+          can_be_empty: true
+        - name: F21de3337--0
+          type: text
+          location:
+            - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div.street
+          can_be_empty: true
+        - name: Fd179bb67--0
+          type: text
+          location:
+            - selector: title
+          can_be_empty: true
+      render_js: true
+records: []

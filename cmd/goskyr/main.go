@@ -348,10 +348,11 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 //	go run main.go --debug regenerate
 var urlsForTestnamesByDir = map[string]map[string][]string{
 	"regression": {
-		"basic-detail-pages-com": []string{"https://basic-detail-pages.com", ""},
-		"basic-field-com":        []string{"https://basic-field.com", ""},
-		"basic-field-w-div-com":  []string{"https://basic-field-w-div.com", ""},
-		"basic-fields-w-div-com": []string{"https://basic-fields-w-div.com", ""},
+		"basic-detail-pages-com":         []string{"https://basic-detail-pages.com", ""},
+		"basic-detail-pages-w-links-com": []string{"https://basic-detail-pages-w-links.com", ""},
+		"basic-field-com":                []string{"https://basic-field.com", ""},
+		"basic-field-w-div-com":          []string{"https://basic-field-w-div.com", ""},
+		"basic-fields-w-div-com":         []string{"https://basic-fields-w-div.com", ""},
 		// "basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
 		"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
 		"basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},

@@ -1368,6 +1368,7 @@ var SkipSubURLExt = map[string]bool{
 	".jfif": true,
 	".jpeg": true,
 	".jpg":  true,
+	".pdf":  true,
 	".png":  true,
 	".zip":  true,
 }

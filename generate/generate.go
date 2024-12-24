@@ -279,23 +279,16 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 }
 
 func ExtendPageConfigsWithNexts(cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) error {
-	pageCIDs := []string{}
-	for _, pageC := range pageConfigs {
-		pageCIDs = append(pageCIDs, pageC.ID.String())
-	}
-
 	gqdoc, _, err := fetch.GetGQDocument(cache, opts.URL)
 	if err != nil {
 		return fmt.Errorf("failed to get next page %s: %v", opts.URL, err)
 	}
 
-	// path := filepath.Join(opts.InputDir, fetch.MakeURLStringSlug(opts.URL)+".html")
-	// f := &fetch.FileFetcher{}
-	// gqdoc, err := fetch.GQDocument(f, "file://"+path, nil)
-	// // fmt.Printf("adding subURL: %q\n", subURL)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error fetching page at: %v", err)
-	// }
+	pageCIDs := []string{}
+	for _, pageC := range pageConfigs {
+		pageCIDs = append(pageCIDs, pageC.ID.String())
+	}
+	sort.Strings(pageCIDs)
 
 	for _, id := range pageCIDs {
 		if err := ExtendPageConfigRecordsWithNext(opts, pageConfigs[id], gqdoc.Selection); err != nil {
@@ -443,10 +436,10 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 	slog.Info("in ConfigurationsForAllDetailPages()", "opts.ConfigOutputFullDir", opts.ConfigOutputDir)
 	slog.Debug("in ConfigurationsForAllDetailPages()", "opts", opts)
 
-	pageCIDs := []string{}
-	for _, pageC := range pageConfigs {
-		pageCIDs = append(pageCIDs, pageC.ID.String())
-	}
+	// pageCIDs := []string{}
+	// for _, pageC := range pageConfigs {
+	// 	pageCIDs = append(pageCIDs, pageC.ID.String())
+	// }
 
 	uBase, err := tld.Parse(opts.URL)
 	if err != nil {
@@ -454,8 +447,9 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 	}
 
 	pageJoinsByFieldName := map[string][]*pageJoin{}
+	fieldURLsByFieldName := map[string][]string{}
 	for _, pageC := range pageConfigs {
-		pageCIDs = append(pageCIDs, pageC.ID.String())
+		// pageCIDs = append(pageCIDs, pageC.ID.String())
 		pageS := pageC.Scrapers[0]
 		// fmt.Printf("found %d detail page URL fields\n", len(s.GetDetailPageURLFields()))
 		for _, pageF := range pageS.GetDetailPageURLFields() {
@@ -504,12 +498,12 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 				}
 
 				fj.url = fetch.TrimURLScheme(absURL.String())
-				// fmt.Printf("adding fj: %#v\n", fj)
+				fieldURLsByFieldName[fj.name] = append(fieldURLsByFieldName[fj.name], fj.url)
+				// fmt.Printf("adding to pj.config.ID: %q fj: %#v\n", pj.config.ID, fj)
 				pj.fieldJoins = append(pj.fieldJoins, fj)
 			}
 		}
 	}
-	sort.Strings(pageCIDs)
 
 	subURLs := pageJoinsURLs(pageJoinsByFieldName)
 	if opts.ConfigOutputDir != "" {
@@ -520,9 +514,31 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 	}
 	// slog.Debug("in ConfigurationsForAllDetailPages()", "opts.CacheInputDir", opts.CacheInputDir)
 
+	for _, fURLs := range fieldURLsByFieldName {
+		sort.Strings(fURLs)
+	}
+
+	fnames := []string{}
+	for fname := range pageJoinsByFieldName {
+		fnames = append(fnames, fname)
+	}
+	sort.Strings(fnames)
 	// var cs map[string]*scrape.Config
 	rs := map[string]*scrape.Config{}
-	for fname, pjs := range pageJoinsByFieldName {
+	fieldURLsSeen := map[string]string{}
+	for _, fname := range fnames {
+		fURLs := strings.Join(fieldURLsByFieldName[fname], "\n")
+		if prevFName, found := fieldURLsSeen[fURLs]; found {
+			// Avoid creating redundant configurations when each entry in a list page
+			// has multiple links to its detail page, e.g. from the event title, the
+			// profile picture, the "register now" link, etc. Instead, just creates a
+			// config for the first link path and skips the rest.
+			slog.Debug("skipping making configurations for new field with the same URL values as old field", "fname", fname, "prevFName", prevFName)
+			continue
+		}
+		fieldURLsSeen[fURLs] = fname
+
+		pjs := pageJoinsByFieldName[fname]
 		// fmt.Println("in ConfigurationsForAllDetailPages()", "fname", fname)
 		opts.configID.Field = fname
 		sort.Slice(pjs, func(i, j int) bool {
@@ -618,7 +634,7 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 	for _, id := range configIDs {
 		c := configsByID[id]
 		slog.Debug("looking at", "c.ID", c.ID)
-		// fmt.Println("looking at", "c.ID", c.ID)
+		// fmt.Println("config", c.ID)
 
 		// fmt.Println("skipping storing updated", "c.ID", c.ID)
 		// recsStr := c.Records.String()
@@ -629,8 +645,8 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 		// // 	continue
 		// // }
 		// rs[recsStr] = c
-
 		// rs[c.ID] = c
+
 		subScraper := c.Scrapers[0]
 		// Separate these out because this may be the whole selector, not just a
 		// prefix (in which case it doesn't have the trailing arrow).
@@ -639,12 +655,13 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 
 		for _, pj := range pjs {
 			slog.Debug("looking at", "pj.config.ID", pj.config.ID)
-			// fmt.Println("looking at", "pj.config.ID", pj.config.ID)
+			// fmt.Println("    merging with", pj.config.ID)
 
 			mergedC := pj.config.Copy()
 			mergedC.ID.Field = opts.configID.Field
 			mergedC.ID.SubID = c.ID.SubID
 			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
+			// fmt.Println("    merged as", mergedC.ID)
 
 			if err := scrape.DetailPages(cache, mergedC, &subScraper, mergedC.Records, domain); err != nil {
 				// fmt.Printf("skipping generating configuration for detail pages for merged config %q: %v\n", mergedC.ID, err)
