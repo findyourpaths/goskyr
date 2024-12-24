@@ -1,17 +1,17 @@
 id:
-    slug: basic-fields-w-link-com
-    id: 05aa
+    slug: basic-fields-w-link-div-com
+    id: 10aa
     field: ""
     subid: ""
 scrapers:
-    - name: basic-fields-w-link-com__05aa
-      url: https://basic-fields-w-link.com
+    - name: basic-fields-w-link-div-com__10aa
+      url: https://basic-fields-w-link-div.com
       selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
       fields:
-        - name: F764b75b3-href-0
+        - name: F2a60128b-href-0
           type: url
           location:
-            - selector: a
+            - selector: div > a
               attr: href
           can_be_empty: true
         - name: F91a2c1be--0

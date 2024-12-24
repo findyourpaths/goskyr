@@ -1,41 +1,41 @@
 id:
     slug: webscraper-io-test-sites-e-commerce-allinone-computers-tablets
-    id: 05abaaaaa
+    id: 20a
     field: F70a32efc-href-0
-    subid: 05ab
+    subid: 20ab
 scrapers:
-    - name: webscraper-io-test-sites-e-commerce-allinone-computers-tablets__05abaaaaa
+    - name: webscraper-io-test-sites-e-commerce-allinone-computers-tablets__20a
       url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
-      selector: body > div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4
+      selector: body > div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper
       fields:
         - name: F6c24067a--0
           type: text
           location:
-            - selector: div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4.card-title.float-end.price.pull-right
+            - selector: div.caption > h4.card-title.float-end.price.pull-right
           can_be_empty: true
         - name: F70a32efc--0
           type: text
           location:
-            - selector: div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4 > a.title
+            - selector: div.caption > h4 > a.title
           can_be_empty: true
         - name: F70a32efc-href-0
           type: url
           location:
-            - selector: div.card.thumbnail > div.card-body.product-wrapper > div.caption > h4 > a.title
+            - selector: div.caption > h4 > a.title
               attr: href
           can_be_empty: true
         - name: F8a8d0d95--0
           type: text
           location:
-            - selector: div.card.thumbnail > div.card-body.product-wrapper > div.ratings > p.float-end.review-count
+            - selector: div.ratings > p.float-end.review-count
           can_be_empty: true
         - name: F8acac8cc--0
           type: text
           location:
-            - selector: div.card.thumbnail > div.card-body.product-wrapper > div.caption > p.card-text.description
+            - selector: div.caption > p.card-text.description
           can_be_empty: true
       render_js: true
-    - name: webscraper-io-test-sites-e-commerce-allinone-computers-tablets__F70a32efc-href-0_05ab
+    - name: webscraper-io-test-sites-e-commerce-allinone-computers-tablets__F70a32efc-href-0_20ab
       url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
       selector: div.wrapper
       fields:

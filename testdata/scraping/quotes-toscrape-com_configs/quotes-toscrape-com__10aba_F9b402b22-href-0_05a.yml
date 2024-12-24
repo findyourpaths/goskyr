@@ -1,10 +1,10 @@
 id:
     slug: quotes-toscrape-com
-    id: 05aba
+    id: 10aba
     field: F9b402b22-href-0
     subid: 05a
 scrapers:
-    - name: quotes-toscrape-com__05aba
+    - name: quotes-toscrape-com__10aba
       url: https://quotes.toscrape.com
       selector: body > div.container > div.row > div.col-md-8 > div.quote
       fields:

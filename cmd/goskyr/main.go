@@ -157,11 +157,13 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 
 	if cmd.ConfigOutputParentDir != "" {
 		for _, c := range cs {
+			// fmt.Println("writing config", "len(key)", len(key), "c.ID.String()", c.ID.String())
 			if err := c.WriteToFile(opts.ConfigOutputDir); err != nil {
 				return err
 			}
 		}
 		for _, c := range subCs {
+			// fmt.Println("writing subconfig", "len(key)", len(key), "c.ID.String()", c.ID.String())
 			if err := c.WriteToFile(opts.ConfigOutputDir); err != nil {
 				return err
 			}

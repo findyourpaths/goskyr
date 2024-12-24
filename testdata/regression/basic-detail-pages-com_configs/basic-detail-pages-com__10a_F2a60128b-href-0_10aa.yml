@@ -1,10 +1,10 @@
 id:
     slug: basic-detail-pages-com
-    id: 05a
+    id: 10a
     field: F2a60128b-href-0
-    subid: 05aa
+    subid: 10aa
 scrapers:
-    - name: basic-detail-pages-com__05a
+    - name: basic-detail-pages-com__10a
       url: https://basic-detail-pages.com
       selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
       fields:
@@ -20,7 +20,7 @@ scrapers:
             - selector: div
           can_be_empty: true
       render_js: true
-    - name: basic-detail-pages-com__F2a60128b-href-0_05aa
+    - name: basic-detail-pages-com__F2a60128b-href-0_10aa
       url: https://basic-detail-pages.com
       selector: div.x-0.y-0
       fields:
