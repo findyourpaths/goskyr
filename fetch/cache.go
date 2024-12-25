@@ -10,25 +10,22 @@ package fetch
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/findyourpaths/goskyr/utils"
 )
 
 // var DoDebug = true
 
 var DoDebug = false
+
+// var ShowCaching = true
+
+var ShowCaching = false
 
 // A Cache interface is used by the Transport to store and retrieve responses.
 type Cache interface {
@@ -47,20 +44,11 @@ var ErrorIfPageNotInCache = false
 
 func GetGQDocument(cache Cache, u string) (*goquery.Document, bool, error) {
 	respBytes, ok := cache.Get(u) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
-	if ok {
-		r, err := ResponseBytesToGQDocument(respBytes)
-		return r, true, err
+	if !ok {
+		return nil, false, nil
 	}
-
-	if ErrorIfPageNotInCache {
-		return nil, false, fmt.Errorf("didn't find page in cache: %q", u)
-	}
-	// return nil, false, nil
-	gqdoc, err := GQDocument(fetcher, u, nil)
-	if gqdoc != nil {
-		SetGQDocument(cache, u, gqdoc)
-	}
-	return gqdoc, false, err
+	r, err := ResponseBytesToGQDocument(respBytes)
+	return r, true, err
 }
 
 func SetGQDocument(cache Cache, u string, gqdoc *goquery.Document) {
@@ -113,140 +101,6 @@ func ResponseBytesToGQDocument(respBytes []byte) (*goquery.Document, error) {
 	}
 
 	return goquery.NewDocumentFromReader(bytes.NewReader(body))
-}
-
-// Cache is an implementation of Geziyor cache.Cache that stores html pages on disk.
-type FetchCache struct {
-	inputDir            string
-	outputDir           string
-	responsesByKey      map[string][]byte
-	responsesByKeyMutex *sync.Mutex
-}
-
-// New returns a new Cache that will store files in dir.
-func New(inputDir string, outputDir string) *FetchCache {
-	return &FetchCache{
-		inputDir:            inputDir,
-		outputDir:           outputDir,
-		responsesByKey:      map[string][]byte{},
-		responsesByKeyMutex: &sync.Mutex{},
-	}
-}
-
-var cacheResponseSuffix = ".html"
-
-var ShowHits = false
-
-var PanicOnCacheMiss = false
-
-var DefaultMaxBody int64 = 1024 * 1024 * 1024 // 1GB
-
-// Get returns the response corresponding to key, and true, if
-// present in InputDir or OutputDir. Otherwise it returns nil and false.
-func (c *FetchCache) Get(key string) ([]byte, bool) {
-	// if strings.Index(key, "facebook") != -1 {
-	// 	panic("trying to get a facebook page")
-	// }
-
-	c.responsesByKeyMutex.Lock()
-	resp, ok := c.responsesByKey[key]
-	c.responsesByKeyMutex.Unlock()
-	if ok {
-		return resp, ok
-	}
-
-	if DoDebug {
-		fmt.Println("fetch.FetchCache.Get()", "key", key)
-	}
-	p := ResponseFilename(c.inputDir, key)
-	if DoDebug {
-		fmt.Println("in fetch.FetchCache.Get()", "p", p)
-	}
-	resp, err := utils.ReadBytesFile(p)
-	if err != nil {
-		p := ResponseFilename(c.outputDir, key)
-		resp, err = utils.ReadBytesFile(p)
-	}
-
-	// if ShowHits {
-	// 	slog.Info("in filecache.Cache.Get(), looking for", "c.dir", c.dir, "p", p, "err", err)
-	// }
-	if err != nil {
-		if ShowHits {
-			fmt.Println("in fetch.Cache.Get(), cache miss", "key", key)
-		}
-		if PanicOnCacheMiss {
-			panic("cache miss for key: " + key)
-		}
-		return nil, false
-	}
-
-	// if ShowHits {
-	// 	slog.Info("in filecache.Cache.Get(), cache hit", "key", key)
-	// }
-	c.responsesByKeyMutex.Lock()
-	c.responsesByKey[key] = resp
-	c.responsesByKeyMutex.Unlock()
-
-	if c.outputDir != c.inputDir {
-		c.Set(key, resp)
-	}
-	return resp, true
-}
-
-// Set saves a response to the cache as key
-func (c *FetchCache) Set(key string, resp []byte) {
-	if DoDebug {
-		fmt.Println("fetch.FetchCache.Set()", "key", key, "len(resp)", len(resp))
-	}
-	p := ResponseFilename(c.outputDir, key)
-	// if ShowHits {
-	// 	slog.Info("in filecache.Cache.Set(), writing response to", "p", p)
-	// }
-	if err := utils.WriteBytesFile(p, resp); err != nil {
-		slog.Warn("failed to write to cache at", "path", p, "error", err.Error())
-	}
-}
-
-// Delete removes the response with key from the cache
-func (c *FetchCache) Delete(key string) {
-	if DoDebug {
-		fmt.Println("fetch.FetchCache.Delete()", "key", key)
-	}
-	p := ResponseFilename(c.outputDir, key)
-	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		// p = keyToFilename(InputDir, key)
-		// if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		slog.Warn("failed to find cache entry at", "path", p, "error", err.Error())
-		// }
-	}
-	if err := os.Remove(p); err != nil {
-		slog.Warn("failed to remove cache entry at", "path", p, "error", err.Error())
-	}
-}
-
-func ResponseFilename(dir string, urlStr string) string {
-	return Filename(dir, urlStr) + cacheResponseSuffix
-}
-
-func Filename(dir string, urlStr string) string {
-	if dir == "" {
-		panic("need to set Filename dir")
-		// dir = InputDir
-	}
-	u, err := url.Parse(urlStr)
-	if err != nil {
-		panic(err)
-	}
-	// if ShowHits {
-	// 	slog.Info("in filecache.Filename()", "u.Host", u.Host, "urlStr", urlStr)
-	// }
-	uHostSlug := utils.MakeURLStringSlug(u.Host)
-	uSlug := utils.MakeURLStringSlug(urlStr)
-	if DoDebug {
-		fmt.Println("in fetch.Filename()", "dir", dir, "uHostSlug", uHostSlug, "uSlug", uSlug)
-	}
-	return filepath.Join(dir, uHostSlug, uSlug)
 }
 
 // func fetchGQDocument(opts ConfigOptions, u string) (*goquery.Document, error) {

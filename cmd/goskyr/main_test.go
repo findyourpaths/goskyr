@@ -98,8 +98,10 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 	}
 
 	output.SetDefaultLogger(filepath.Join(testOutputDir, dir, testname+"_configs", "test-generate_log.txt"), slog.LevelDebug)
-	cacheDir := filepath.Join(testInputDir, dir)
-	cache := fetch.New(cacheDir, cacheDir)
+	var cache fetch.Cache
+	cache = fetch.NewFileCache(nil, filepath.Join(testInputDir, dir), false)
+	cache = fetch.NewFileCache(cache, filepath.Join(testOutputDir, dir), true)
+	cache = fetch.NewMemoryCache(cache)
 	cs, err := generate.ConfigurationsForPage(cache, opts)
 	if err != nil {
 		t.Fatalf("error generating page configs: %v", err)
@@ -285,8 +287,10 @@ func testScrapeWithConfig(t *testing.T, dir string, testname string, config *scr
 }
 
 func getRecords(dir string, testname string, config *scrape.Config) (output.Records, error) {
-	cacheDir := filepath.Join(testInputDir, dir)
-	cache := fetch.New(cacheDir, cacheDir)
+	var cache fetch.Cache
+	cache = fetch.NewFileCache(nil, filepath.Join(testInputDir, dir), false)
+	cache = fetch.NewFileCache(cache, filepath.Join(testOutputDir, dir), true)
+	cache = fetch.NewMemoryCache(cache)
 
 	// fmt.Printf("getItems(dir: %q, testname: %q, config)\n", dir, testname)
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {

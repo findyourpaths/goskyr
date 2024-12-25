@@ -140,7 +140,12 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error initializing page options: %v", err)
 	}
 
-	cache := fetch.New(cmd.CacheInputParentDir, cmd.CacheOutputParentDir)
+	var cache fetch.Cache
+	cache = fetch.NewFetchCache(nil)
+	cache = fetch.NewFileCache(cache, cmd.CacheInputParentDir, false)
+	cache = fetch.NewFileCache(cache, cmd.CacheOutputParentDir, true)
+	cache = fetch.NewMemoryCache(cache)
+
 	cs, err := generate.ConfigurationsForPage(cache, opts)
 	if err != nil {
 		return fmt.Errorf("error generating page configs: %v", err)
@@ -288,7 +293,12 @@ type ScrapeCmd struct {
 }
 
 func (cmd *ScrapeCmd) Run(globals *Globals) error {
-	cache := fetch.New(cmd.CacheInputParentDir, cmd.CacheOutputParentDir)
+	var cache fetch.Cache
+	cache = fetch.NewFetchCache(nil)
+	cache = fetch.NewFileCache(cache, cmd.CacheInputParentDir, false)
+	cache = fetch.NewFileCache(cache, cmd.CacheOutputParentDir, true)
+	cache = fetch.NewMemoryCache(cache)
+
 	conf, err := scrape.ReadConfig(cmd.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("error reading config: %v", err)
