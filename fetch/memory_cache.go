@@ -25,23 +25,21 @@ func (c *MemoryCache) Get(key string) ([]byte, bool) {
 	c.mu.RLock()
 	resp, ok := c.items[key]
 	c.mu.RUnlock()
-
 	if ok {
 		return resp, true
 	}
 
 	if ShowCaching {
-		fmt.Println("in fetch.MemoryCache.Get, cache miss", "key", key)
+		fmt.Println("in fetch.MemoryCache.Get(), cache miss", "key", key)
 	}
 	if c.fallback == nil {
-		fmt.Println("in fetch.MemoryCache.Get, no fallback")
-		// if PanicOnCacheMiss {
-		panic("memorycache fail for key: " + key)
+		fmt.Println("in fetch.MemoryCache.Get(), no fallback")
+		return nil, false
 	}
+
 	resp, ok = c.fallback.Get(key)
 	if !ok {
-		panic("memorycache fail for key: " + key)
-		// return nil, false
+		return nil, false
 	}
 	c.Set(key, resp)
 	return resp, true

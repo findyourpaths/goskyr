@@ -4,10 +4,10 @@ go_library(
     name = "fetch",
     srcs = [
         "cache.go",
-        "fetchcache.go",
+        "fetch_cache.go",
         "fetcher.go",
-        "filecache.go",
-        "memorycache.go",
+        "file_cache.go",
+        "memory_cache.go",
     ],
     importpath = "github.com/findyourpaths/goskyr/fetch",
     visibility = ["//visibility:public"],

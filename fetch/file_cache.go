@@ -48,7 +48,7 @@ func (c *FileCache) Get(key string) ([]byte, bool) {
 	resp, err := utils.ReadBytesFile(p)
 	if err == nil {
 		if ShowCaching {
-			fmt.Println("in fetch.FileCache.Get, cache hit", "key", key, "c.parentDir", c.parentDir)
+			fmt.Println("in fetch.FileCache.Get(), cache hit", "key", key, "c.parentDir", c.parentDir)
 		}
 		if c.writeable {
 			c.Set(key, resp)
@@ -57,20 +57,18 @@ func (c *FileCache) Get(key string) ([]byte, bool) {
 	}
 
 	if ShowCaching {
-		fmt.Println("in fetch.FileCache.Get, cache miss", "key", key, "c.parentDir", c.parentDir)
+		fmt.Println("in fetch.FileCache.Get(), cache miss", "key", key, "c.parentDir", c.parentDir)
 	}
 	if c.fallback == nil {
-		fmt.Println("in fetch.FileCache.Get, no fallback")
-		// if PanicOnCacheMiss {
-		panic("filecache fail for key: " + key)
+		fmt.Println("in fetch.FileCache.Get(), no fallback")
+		return nil, false
 	}
 
 	var ok bool
 	resp, ok = c.fallback.Get(key)
 	if !ok {
-		fmt.Println("in fetch.FileCache.Get, fallback failed")
-		// if PanicOnCacheMiss {
-		panic("filecache fail for key: " + key)
+		fmt.Println("in fetch.FileCache.Get(), fallback failed")
+		return nil, false
 	}
 
 	if c.writeable {
@@ -89,7 +87,7 @@ func (c *FileCache) Set(key string, resp []byte) {
 	}
 	p := ResponseFilename(c.parentDir, key)
 	if err := utils.WriteBytesFile(p, resp); err != nil {
-		slog.Warn("failed to write to cache at", "path", p, "error", err.Error())
+		slog.Warn("fetch.FileCache.Set(), failed to write to cache at", "path", p, "error", err.Error())
 	}
 }
 
@@ -102,11 +100,11 @@ func (c *FileCache) Delete(key string) {
 	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
 		// p = keyToFilename(InputDir, key)
 		// if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		slog.Warn("failed to find cache entry at", "path", p, "error", err.Error())
+		slog.Warn("fetch.FileCache.Delete(), failed to find cache entry at", "path", p, "error", err.Error())
 		// }
 	}
 	if err := os.Remove(p); err != nil {
-		slog.Warn("failed to remove cache entry at", "path", p, "error", err.Error())
+		slog.Warn("fetch.FileCache.Delete(), failed to remove cache entry at", "path", p, "error", err.Error())
 	}
 }
 
