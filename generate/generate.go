@@ -661,9 +661,9 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 			mergedC.ID.Field = opts.configID.Field
 			mergedC.ID.SubID = c.ID.SubID
 			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
+			mergedC.SetCache(cache)
 			// fmt.Println("    merged as", mergedC.ID)
-
-			if err := scrape.DetailPages(cache, mergedC, &subScraper, mergedC.Records, domain); err != nil {
+			if err := scrape.DetailPages(mergedC, &subScraper, mergedC.Records, domain); err != nil {
 				// fmt.Printf("skipping generating configuration for detail pages for merged config %q: %v\n", mergedC.ID, err)
 				slog.Info("skipping generating configuration for detail pages for merged config", "mergedC.ID", mergedC.ID, "err", err)
 				continue

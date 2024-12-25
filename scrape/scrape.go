@@ -55,6 +55,12 @@ type Config struct {
 	Scrapers []Scraper           `yaml:"scrapers,omitempty"`
 	Global   GlobalConfig        `yaml:"global,omitempty"`
 	Records  output.Records
+
+	cache fetch.Cache
+}
+
+func (c *Config) SetCache(cache fetch.Cache) {
+	c.cache = cache
 }
 
 type ConfigID struct {
@@ -132,7 +138,7 @@ func (c Config) WriteToFile(dir string) error {
 	return nil
 }
 
-func ReadConfig(configPath string) (*Config, error) {
+func ReadConfig(configPath string, cache fetch.Cache) (*Config, error) {
 	var config Config
 	fileInfo, err := os.Stat(configPath)
 	if err != nil {
@@ -170,6 +176,7 @@ func ReadConfig(configPath string) (*Config, error) {
 	if config.Global.UserAgent == "" {
 		config.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
 	}
+
 	// for _, s := range config.Scrapers {
 	// 	u, err := url.Parse(s.URL)
 	// 	if err != nil {
@@ -177,6 +184,7 @@ func ReadConfig(configPath string) (*Config, error) {
 	// 	}
 	// 	s.HostSlug = fetch.MakeURLStringSlug(u.Host)
 	// }
+	config.cache = cache
 	return &config, nil
 }
 
@@ -347,8 +355,6 @@ type Scraper struct {
 	RenderJs     bool                 `yaml:"render_js,omitempty"`
 	PageLoadWait int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
 	Interaction  []*fetch.Interaction `yaml:"interaction,omitempty"`
-
-	fetcher fetch.Fetcher
 }
 
 func (s Scraper) HostSlug() string {
@@ -388,18 +394,19 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 	// fmt.Println("in scrape.Page()", "s.URL", s.URL)
 	u := s.URL
 	if path != "" {
-		s.fetcher = &fetch.FileFetcher{}
+		// 	s.fetcher = &fetch.FileFetcher{}
 		u = path
-	} else if s.RenderJs {
-		dynFetcher := fetch.NewDynamicFetcher(globalConfig.UserAgent, s.PageLoadWait)
-		defer dynFetcher.Cancel()
-		s.fetcher = dynFetcher
-	} else {
-		s.fetcher = &fetch.StaticFetcher{
-			UserAgent: globalConfig.UserAgent,
-			// UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-		}
 	}
+	// } else if s.RenderJs {
+	// 	dynFetcher := fetch.NewDynamicFetcher(globalConfig.UserAgent, s.PageLoadWait)
+	// 	defer dynFetcher.Cancel()
+	// 	s.fetcher = dynFetcher
+	// } else {
+	// 	s.fetcher = &fetch.StaticFetcher{
+	// 		UserAgent: globalConfig.UserAgent,
+	// 		// UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+	// 	}
+	// }
 	// fmt.Println("in scrape.Page()", "u", u)
 
 	rs := output.Records{}
@@ -413,7 +420,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 	currentPage := 0
 	var gqdoc *goquery.Document
 
-	hasNextPage, pageURL, gqdoc, err := s.fetchPage(nil, currentPage, u, globalConfig.UserAgent, s.Interaction)
+	hasNextPage, pageURL, gqdoc, err := s.fetchPage(c.cache, nil, currentPage, u, globalConfig.UserAgent, s.Interaction)
 	if err != nil {
 		// slog.Debug("pageURL: %q", pageURL)
 		return nil, fmt.Errorf("failed to fetch next page: %w", err)
@@ -487,7 +494,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 		})
 
 		currentPage++
-		hasNextPage, pageURL, gqdoc, err = s.fetchPage(gqdoc, currentPage, pageURL, globalConfig.UserAgent, nil)
+		hasNextPage, pageURL, gqdoc, err = s.fetchPage(c.cache, gqdoc, currentPage, pageURL, globalConfig.UserAgent, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch next page: %w", err)
 		}
@@ -629,14 +636,15 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, 
 			dpURL := fmt.Sprint(rs[f.OnDetailPage])
 			_, found := dpDocs[dpURL]
 			if !found {
-				dpRes, err := s.fetcher.Fetch(dpURL, nil)
+				// dpRes, err := s.fetcher.Fetch(dpURL, nil)
+				dpDoc, _, err := fetch.GetGQDocument(c.cache, dpURL)
 				if err != nil {
 					return nil, fmt.Errorf("error while fetching detail page: %v. Skipping record %v.", err, rs)
 				}
-				dpDoc, err := goquery.NewDocumentFromReader(strings.NewReader(dpRes))
-				if err != nil {
-					return nil, fmt.Errorf("error while reading detail page document: %v. Skipping record %v", err, rs)
-				}
+				// dpDoc, err := goquery.NewDocumentFromReader(strings.NewReader(dpRes))
+				// if err != nil {
+				// 	return nil, fmt.Errorf("error while reading detail page document: %v. Skipping record %v", err, rs)
+				// }
 				dpDocs[dpURL] = dpDoc
 			}
 
@@ -796,10 +804,10 @@ func (c *Scraper) GetDetailPageURLFields() []Field {
 	return rs
 }
 
-func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageURL, userAgent string, i []*fetch.Interaction) (bool, string, *goquery.Document, error) {
+func (c *Scraper) fetchPage(cache fetch.Cache, doc *goquery.Document, nextPageI int, currentPageURL, userAgent string, i []*fetch.Interaction) (bool, string, *goquery.Document, error) {
 
 	if nextPageI == 0 {
-		newDoc, err := fetch.GQDocument(c.fetcher, currentPageURL, &fetch.FetchOpts{Interaction: i})
+		newDoc, _, err := fetch.GetGQDocument(cache, currentPageURL) //, &fetch.FetchOpts{Interaction: i})
 		if err != nil {
 			return false, "", nil, err
 		}
@@ -816,14 +824,14 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageURL
 		pagSelector := doc.Find(pag.Location.Selector)
 		if len(pagSelector.Nodes) > 0 {
 			if nextPageI < pag.MaxPages || pag.MaxPages == 0 {
-				ia := []*fetch.Interaction{
-					{
-						Selector: pag.Location.Selector,
-						Type:     fetch.InteractionTypeClick,
-						Count:    nextPageI, // we always need to 'restart' the clicks because we always re-fetch the page
-					},
-				}
-				nextPageDoc, err := fetch.GQDocument(c.fetcher, currentPageURL, &fetch.FetchOpts{Interaction: ia})
+				// ia := []*fetch.Interaction{
+				// 	{
+				// 		Selector: pag.Location.Selector,
+				// 		Type:     fetch.InteractionTypeClick,
+				// 		Count:    nextPageI, // we always need to 'restart' the clicks because we always re-fetch the page
+				// 	},
+				// }
+				nextPageDoc, _, err := fetch.GetGQDocument(cache, currentPageURL) //, &fetch.FetchOpts{Interaction: ia})
 				if err != nil {
 					return false, "", nil, err
 				}
@@ -843,7 +851,7 @@ func (c *Scraper) fetchPage(doc *goquery.Document, nextPageI int, currentPageURL
 		return false, "", nil, err
 	}
 	if nextPageURL != "" {
-		nextPageDoc, err := fetch.GQDocument(c.fetcher, nextPageURL, nil)
+		nextPageDoc, _, err := fetch.GetGQDocument(cache, nextPageURL) //, nil)
 		if err != nil {
 			return false, "", nil, err
 		}
@@ -1378,7 +1386,7 @@ var KeepSubURLScheme = map[string]bool{
 	"https": true,
 }
 
-func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, domain string) error {
+func DetailPages(c *Config, s *Scraper, recs output.Records, domain string) error {
 	if DoDebug {
 		slog.Debug("scrape.DetailPages()")
 		defer slog.Debug("scrape.DetailPages() returning")
@@ -1416,7 +1424,7 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, 
 
 		slog.Debug("in scrape.DetailPages()", "i", i, "subURL", subURL)
 		// fmt.Println("in scrape.DetailPages()", "i", i, "subURL", subURL)
-		subGQDoc, found, err := fetch.GetGQDocument(cache, subURL.String())
+		subGQDoc, found, err := fetch.GetGQDocument(c.cache, subURL.String())
 		if err != nil {
 			return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
 		}

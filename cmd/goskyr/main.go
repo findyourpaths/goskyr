@@ -76,7 +76,7 @@ type ExtractFeaturesCmd struct {
 }
 
 func (cmd *ExtractFeaturesCmd) Run(globals *Globals) error {
-	conf, err := scrape.ReadConfig(cmd.File)
+	conf, err := scrape.ReadConfig(cmd.File, nil)
 	if err != nil {
 		return fmt.Errorf("error reading config: %v", err)
 	}
@@ -278,15 +278,18 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 }
 
 type ScrapeCmd struct {
-	ConfigFile string `arg:"" description:"The location of the configuration file."` // . In case of generation, it should be a directory."`
-	File       string `help:"skip retrieving from the URL and use this saved copy of the page instead"`
-	OutputDir  string `default:"/tmp/goskyr/main/" help:"The output directory."`
-	ToStdout   bool   `short:"o" long:"stdout" default:"true" help:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
-	JSONFile   string `short:"j" long:"json" description:"Writes scraped data as JSON to the given file path."`
+	CacheInputParentDir  string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
+	CacheOutputParentDir string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will receive cached copies of the html page and linked pages."`
+	ConfigFile           string `arg:"" description:"The location of the configuration file."` // . In case of generation, it should be a directory."`
+	File                 string `help:"skip retrieving from the URL and use this saved copy of the page instead"`
+	// OutputDir            string `default:"/tmp/goskyr/main/" help:"The output directory."`
+	ToStdout bool   `short:"o" long:"stdout" default:"true" help:"If set to true the scraped data will be written to stdout despite any other existing writer configurations. In combination with the -generate flag the newly generated config will be written to stdout instead of to a file."`
+	JSONFile string `short:"j" long:"json" description:"Writes scraped data as JSON to the given file path."`
 }
 
 func (cmd *ScrapeCmd) Run(globals *Globals) error {
-	conf, err := scrape.ReadConfig(cmd.ConfigFile)
+	conf, err := scrape.ReadConfig(cmd.ConfigFile, fetch.New(cmd.CacheInputParentDir, cmd.CacheOutputParentDir))
+
 	if err != nil {
 		return fmt.Errorf("error reading config: %v", err)
 	}
@@ -304,9 +307,8 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 	// 	return fetch.GQDocument(f, u, nil)
 	// }
 
-	cache := fetch.New(cmd.OutputDir, cmd.OutputDir)
 	if len(conf.Scrapers) > 1 {
-		if err = scrape.DetailPages(cache, conf, &conf.Scrapers[1], recs, ""); err != nil {
+		if err = scrape.DetailPages(conf, &conf.Scrapers[1], recs, ""); err != nil {
 			return err
 		}
 	}
