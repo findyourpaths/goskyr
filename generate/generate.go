@@ -219,7 +219,7 @@ func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts C
 		Scrapers: []scrape.Scraper{s},
 	}
 
-	recs, err := scrape.GQDocument(cache, c, &s, gqdoc, true)
+	recs, err := scrape.GQDocument(c, &s, gqdoc, true)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, page
 
 		// fmt.Printf("read next page: %q\n", u)
 
-		recs, err := scrape.GQDocument(cache, pageC, &pageS, nextGQDoc, true)
+		recs, err := scrape.GQDocument(pageC, &pageS, nextGQDoc, true)
 		if err != nil {
 			return err
 		}
