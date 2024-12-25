@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 	"strings"
 
@@ -189,93 +190,104 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
-	// for _, cat := range sortedTestCategories() {
-	// 	for _, slug := range sortedTestSlugs(cat) {
-	// 		if err := cmd.regenerateTest(cat, slug); err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
+	for _, cat := range sortedTestCategories() {
+		for _, hostSlug := range sortedTestHostSlugs(cat) {
+			if err := cmd.regenerateTest(globals, cat, hostSlug); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
-// func (cmd *RegenerateCmd) regenerateTest(cat string, slug string) error {
-// 	fmt.Printf("Regenerating test %q\n", slug)
-// 	testCatInputDir := filepath.Join("testdata", cat)
+func (cmd *RegenerateCmd) regenerateTest(globals *Globals, cat string, hostSlug string) error {
+	fmt.Printf("Regenerating test %q\n", hostSlug)
+	testCatInputDir := filepath.Join("testdata", cat)
 
-// 	for _, t := range testsBySlugByCategory[cat][slug] {
-// 		ps, err := testDirPathsWithSuffix(testCatInputDir, slug, htmlSuffix)
-// 		if err != nil {
-// 			return fmt.Errorf("error getting cache directory paths: %v", err)
-// 		}
-// 		doDetailPages := len(ps) > 1
+	for _, t := range testsByHostSlugByCategory[cat][hostSlug] {
+		pageSlug := fetch.MakeURLStringSlug(t.url)
+		ps, err := testDirPathsWithPattern(testCatInputDir, hostSlug+"_configs", pageSlug+"*"+"href"+"*"+configSuffix)
+		if err != nil {
+			return fmt.Errorf("error getting cache directory paths: %v", err)
+		}
+		doDetailPages := len(ps) > 0
 
-// 		// glob := filepath.Join(testCatInputDir, name, "*")
-// 		// paths, err := filepath.Glob(glob)
-// 		// if err != nil {
-// 		// 	return fmt.Errorf("error getting cache input paths with glob %q: %v", glob, err)
-// 		// }
-// 		// doDetailPages := len(paths) > 1
+		// ps, err := testDirPathsWithPattern(testCatInputDir, slug, htmlSuffix)
+		// if err != nil {
+		// 	return fmt.Errorf("error getting cache directory paths: %v", err)
+		// }
+		// doDetailPages := len(ps) > 1
 
-// 		subCmd = GenerateCmd{
-// 			Batch:                     true,
-// 			DoDetailPages:             doDetailPages,
-// 			OnlySameDomainDetailPages: true,
-// 			OnlyVaryingFields:         true,
-// 			CacheInputParentDir:       testCatInputDir,
-// 			CacheOutputParentDir:      cmd.CacheOutputDir,
-// 			ConfigOutputParentDir:     cmd.ConfigOutputDir,
-// 			Offline:                   true,
-// 			RenderJs:                  true,
-// 			RequireString:             t.required,
-// 			URL:                       t.url,
-// 		}
-// 		if err := subCmd.Run(globals); err != nil {
-// 			return fmt.Errorf("error running generate with dir: %q, name: %q, url: %q: %v\n", cat, slug, url, err)
-// 		}
+		// glob := filepath.Join(testCatInputDir, name, "*")
+		// paths, err := filepath.Glob(glob)
+		// if err != nil {
+		// 	return fmt.Errorf("error getting cache input paths with glob %q: %v", glob, err)
+		// }
+		// doDetailPages := len(paths) > 1
 
-// 		// Copy updated config files to testdata config dir.
-// 		fmt.Println("testCatInputDir", testCatInputDir, "name+_configs", slug+"_configs")
-// 		ps, err = testDirPathsWithSuffix(testCatInputDir, slug+"_configs", "")
-// 		if err != nil {
-// 			return fmt.Errorf("error getting config input paths in %q: %v", testCatInputDir, err)
-// 		}
-// 		for _, p := range ps {
-// 			outPath := filepath.Join(cmd.ConfigOutputParentDir, slug+"_configs", filepath.Base(p))
-// 			if _, err := utils.CopyStringFile(outPath, p); err != nil {
-// 				fmt.Printf("error copying %q to %q: %v\n", outPath, p, err)
-// 			}
-// 		}
-// 		fmt.Printf("  Copied %d config files for test %q\n", len(ps), slug)
+		subCmd := GenerateCmd{
+			Batch:                     true,
+			DoDetailPages:             doDetailPages,
+			OnlySameDomainDetailPages: true,
+			OnlyVaryingFields:         true,
+			CacheInputParentDir:       testCatInputDir,
+			CacheOutputParentDir:      cmd.CacheOutputDir,
+			ConfigOutputParentDir:     cmd.ConfigOutputDir,
+			Offline:                   true,
+			RenderJs:                  true,
+			RequireString:             t.required,
+			URL:                       t.url,
+		}
+		if err := subCmd.Run(globals); err != nil {
+			return fmt.Errorf("error running generate with dir: %q, name: %q, url: %q: %v\n", cat, hostSlug, t.url, err)
+		}
 
-// 		// Clear old cache files in testdata cache dir.
-// 		ps, err = testDirPathsWithSuffix(testCatInputDir, slug, "")
-// 		if err != nil {
-// 			return fmt.Errorf("error getting cache output paths in %q: %v", testCatInputDir, err)
-// 		}
-// 		for _, p := range ps {
-// 			// fmt.Printf("removing path: %q\n", path)
-// 			if err := os.Remove(p); err != nil {
-// 				return fmt.Errorf("error removing old cache input path %q: %v", p, err)
-// 			}
-// 		}
-// 		fmt.Printf("  Removed %d old cache files for test %q\n", len(ps), slug)
+		// Copy updated config files to testdata config dir.
+		// fmt.Println("testCatInputDir", testCatInputDir, "name+_configs", hostSlug+"_configs")
+		ps, err = testDirPathsWithPattern(testCatInputDir, hostSlug+"_configs", pageSlug+"*")
+		if err != nil {
+			return fmt.Errorf("error getting config input paths in %q: %v", testCatInputDir, err)
+		}
+		count := 0
+		for _, p := range ps {
+			outPath := filepath.Join(subCmd.ConfigOutputParentDir, hostSlug+"_configs", filepath.Base(p))
+			if _, err := utils.CopyStringFile(outPath, p); err != nil {
+				fmt.Printf("error copying %q to %q: %v\n", outPath, p, err)
+				continue
+			}
+			count++
+		}
+		fmt.Printf("  Copied %d/%d config files for test %q\n", count, len(ps), hostSlug)
+	}
 
-// 		// Copy updated cache files to testdata cache dir.
-// 		ps, err = testDirPathsWithSuffix(cmd.CacheOutputParentDir, slug, "")
-// 		if err != nil {
-// 			return fmt.Errorf("error getting cache output paths in %q: %v", cmd.CacheOutputParentDir, err)
-// 		}
-// 		for _, p := range ps {
-// 			inPath := filepath.Join(cmd.CacheInputParentDir, slug, filepath.Base(p))
-// 			if _, err := utils.CopyStringFile(p, inPath); err != nil {
-// 				return fmt.Errorf("error copying %q to %q: %v", p, inPath, err)
-// 			}
-// 		}
-// 		fmt.Printf("  Copied %d cache files for test %q\n", len(ps), slug)
-// 	}
-// 	return nil
-// }
+	// Clear old cache files in testdata cache dir.
+	ps, err := testDirPathsWithPattern(testCatInputDir, hostSlug, "*")
+	if err != nil {
+		return fmt.Errorf("error getting cache output paths in %q: %v", testCatInputDir, err)
+	}
+	for _, p := range ps {
+		// fmt.Printf("removing path: %q\n", path)
+		if err := os.Remove(p); err != nil {
+			return fmt.Errorf("error removing old cache input path %q: %v", p, err)
+		}
+	}
+	fmt.Printf("  Removed %d old cache files for test %q\n", len(ps), hostSlug)
+
+	// Copy updated cache files to testdata cache dir.
+	ps, err = testDirPathsWithPattern(cmd.CacheOutputDir, hostSlug, "*")
+	if err != nil {
+		return fmt.Errorf("error getting cache output paths in %q: %v", cmd.CacheOutputDir, err)
+	}
+	for _, p := range ps {
+		inPath := filepath.Join(testCatInputDir, hostSlug, filepath.Base(p))
+		if _, err := utils.CopyStringFile(p, inPath); err != nil {
+			return fmt.Errorf("error copying %q to %q: %v", p, inPath, err)
+		}
+	}
+	fmt.Printf("  Copied %d cache files for test %q\n", len(ps), hostSlug)
+
+	return nil
+}
 
 type ScrapeCmd struct {
 	CacheInputParentDir  string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`

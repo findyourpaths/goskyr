@@ -46,7 +46,7 @@ func TestGenerate(t *testing.T) {
 }
 
 func testGenerateCategory(t *testing.T, cat string) {
-	for _, hostSlug := range sortedTestSlugs(cat) {
+	for _, hostSlug := range sortedTestHostSlugs(cat) {
 		t.Run(hostSlug, func(t *testing.T) {
 			testGenerateCategoryHost(t, cat, hostSlug)
 		})
@@ -54,7 +54,7 @@ func testGenerateCategory(t *testing.T, cat string) {
 }
 
 func testGenerateCategoryHost(t *testing.T, cat string, hostSlug string) {
-	for _, test := range testsByHostByCategory[cat][hostSlug] {
+	for _, test := range testsByHostSlugByCategory[cat][hostSlug] {
 		pageSlug := fetch.MakeURLStringSlug(test.url)
 		t.Run(pageSlug, func(t *testing.T) {
 			testGenerateCategoryHostPage(t, cat, hostSlug, test)
@@ -67,11 +67,11 @@ func testGenerateCategoryHostPage(t *testing.T, cat string, hostSlug string, tes
 	testCatOutputDir := filepath.Join(testOutputDir, cat)
 
 	pageSlug := fetch.MakeURLStringSlug(test.url)
-	detailCPs, err := testDirPathsWithPattern(testCatInputDir, hostSlug+"_configs", pageSlug+"*"+"href"+"*"+configSuffix)
+	ps, err := testDirPathsWithPattern(testCatInputDir, hostSlug+"_configs", pageSlug+"*"+"href"+"*"+configSuffix)
 	if err != nil {
 		t.Fatalf("error getting cache directory paths: %v", err)
 	}
-	doDetailPages := len(detailCPs) > 0
+	doDetailPages := len(ps) > 0
 	// fmt.Println("doDetailPages", doDetailPages)
 
 	opts, err := generate.InitOpts(generate.ConfigOptions{
@@ -209,7 +209,7 @@ func TestScrape(t *testing.T) {
 }
 
 func testScrapeCategory(t *testing.T, cat string) {
-	for _, hostSlug := range sortedTestSlugs(cat) {
+	for _, hostSlug := range sortedTestHostSlugs(cat) {
 		t.Run(hostSlug, func(t *testing.T) {
 			testScrapeCategoryHost(t, cat, hostSlug)
 		})
@@ -217,7 +217,7 @@ func testScrapeCategory(t *testing.T, cat string) {
 }
 
 func testScrapeCategoryHost(t *testing.T, cat string, hostSlug string) {
-	for _, test := range testsByHostByCategory[cat][hostSlug] {
+	for _, test := range testsByHostSlugByCategory[cat][hostSlug] {
 		pageSlug := fetch.MakeURLStringSlug(test.url)
 		t.Run(pageSlug, func(t *testing.T) {
 			testScrapeCategoryHostPage(t, cat, hostSlug, test)

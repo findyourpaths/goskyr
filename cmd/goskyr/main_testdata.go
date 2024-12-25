@@ -22,7 +22,7 @@ type maintest struct {
 // regenerate with
 //
 //	go run main.go --debug regenerate
-var testsByHostByCategory = map[string]map[string][]maintest{
+var testsByHostSlugByCategory = map[string]map[string][]maintest{
 	"regression": {
 		"basic-detail-pages-com":         []maintest{{"https://basic-detail-pages.com", ""}},
 		"basic-detail-pages-w-links-com": []maintest{{"https://basic-detail-pages-w-links.com", ""}},
@@ -50,16 +50,16 @@ var testsByHostByCategory = map[string]map[string][]maintest{
 
 func sortedTestCategories() []string {
 	rs := []string{}
-	for r := range testsByHostByCategory {
+	for r := range testsByHostSlugByCategory {
 		rs = append(rs, r)
 	}
 	sort.Strings(rs)
 	return rs
 }
 
-func sortedTestSlugs(cat string) []string {
+func sortedTestHostSlugs(cat string) []string {
 	rs := []string{}
-	for r := range testsByHostByCategory[cat] {
+	for r := range testsByHostSlugByCategory[cat] {
 		rs = append(rs, r)
 	}
 	sort.Strings(rs)
