@@ -229,8 +229,7 @@ func testScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
 		// fmt.Printf("path: %q\n", path)
 		// id := path[startLen : len(path)-endLen]
 		// fmt.Printf("id: %q\n", id)
-		cacheDir := filepath.Join(testInputDir, dir)
-		config, err := scrape.ReadConfig(path, fetch.New(cacheDir, cacheDir))
+		config, err := scrape.ReadConfig(path)
 		if err != nil {
 			t.Fatalf("cannot open config file path at %q: %v", path, err)
 		}
@@ -286,22 +285,25 @@ func testScrapeWithConfig(t *testing.T, dir string, testname string, config *scr
 }
 
 func getRecords(dir string, testname string, config *scrape.Config) (output.Records, error) {
+	cacheDir := filepath.Join(testInputDir, dir)
+	cache := fetch.New(cacheDir, cacheDir)
+
 	// fmt.Printf("getItems(dir: %q, testname: %q, config)\n", dir, testname)
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
 		// We're looking at an event list page scraper. Scrape the page in the outer directory.
 		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+htmlSuffix)
 		htmlPath = ""
-		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
+		return scrape.Page(cache, config, &config.Scrapers[0], &config.Global, true, htmlPath)
 	} else if config.ID.ID == "" && config.ID.Field != "" && config.ID.SubID != "" {
 		// We're looking at an event page scraper. Scrape the page in this directory.
 		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
 		htmlPath = ""
-		return scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
+		return scrape.Page(cache, config, &config.Scrapers[0], &config.Global, true, htmlPath)
 	} else {
 		// We're looking at a combined event list and page scraper. Scrape both pages.
 		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+htmlSuffix)
 		htmlPath = ""
-		itemMaps, err := scrape.Page(config, &config.Scrapers[0], &config.Global, true, htmlPath)
+		itemMaps, err := scrape.Page(cache, config, &config.Scrapers[0], &config.Global, true, htmlPath)
 		if err != nil {
 			return nil, err
 		}
@@ -311,7 +313,7 @@ func getRecords(dir string, testname string, config *scrape.Config) (output.Reco
 		// 	u = "file://" + filepath.Join(testInputDir, dir, testname, fetch.MakeURLStringSlug(u)+".html")
 		// 	return fetch.GQDocument(f, u, nil)
 		// }
-		err = scrape.DetailPages(config, &config.Scrapers[1], itemMaps, "")
+		err = scrape.DetailPages(cache, config, &config.Scrapers[1], itemMaps, "")
 		return itemMaps, err
 	}
 }

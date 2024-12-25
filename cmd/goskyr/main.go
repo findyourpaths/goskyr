@@ -76,7 +76,7 @@ type ExtractFeaturesCmd struct {
 }
 
 func (cmd *ExtractFeaturesCmd) Run(globals *Globals) error {
-	conf, err := scrape.ReadConfig(cmd.File, nil)
+	conf, err := scrape.ReadConfig(cmd.File)
 	if err != nil {
 		return fmt.Errorf("error reading config: %v", err)
 	}
@@ -288,13 +288,13 @@ type ScrapeCmd struct {
 }
 
 func (cmd *ScrapeCmd) Run(globals *Globals) error {
-	conf, err := scrape.ReadConfig(cmd.ConfigFile, fetch.New(cmd.CacheInputParentDir, cmd.CacheOutputParentDir))
-
+	cache := fetch.New(cmd.CacheInputParentDir, cmd.CacheOutputParentDir)
+	conf, err := scrape.ReadConfig(cmd.ConfigFile)
 	if err != nil {
 		return fmt.Errorf("error reading config: %v", err)
 	}
 
-	recs, err := scrape.Page(conf, &conf.Scrapers[0], &conf.Global, true, cmd.File)
+	recs, err := scrape.Page(cache, conf, &conf.Scrapers[0], &conf.Global, true, cmd.File)
 	if err != nil {
 		return err
 	}
@@ -308,7 +308,7 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 	// }
 
 	if len(conf.Scrapers) > 1 {
-		if err = scrape.DetailPages(conf, &conf.Scrapers[1], recs, ""); err != nil {
+		if err = scrape.DetailPages(cache, conf, &conf.Scrapers[1], recs, ""); err != nil {
 			return err
 		}
 	}

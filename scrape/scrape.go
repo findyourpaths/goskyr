@@ -55,12 +55,6 @@ type Config struct {
 	Scrapers []Scraper           `yaml:"scrapers,omitempty"`
 	Global   GlobalConfig        `yaml:"global,omitempty"`
 	Records  output.Records
-
-	cache fetch.Cache
-}
-
-func (c *Config) SetCache(cache fetch.Cache) {
-	c.cache = cache
 }
 
 type ConfigID struct {
@@ -138,7 +132,7 @@ func (c Config) WriteToFile(dir string) error {
 	return nil
 }
 
-func ReadConfig(configPath string, cache fetch.Cache) (*Config, error) {
+func ReadConfig(configPath string) (*Config, error) {
 	var config Config
 	fileInfo, err := os.Stat(configPath)
 	if err != nil {
@@ -184,7 +178,6 @@ func ReadConfig(configPath string, cache fetch.Cache) (*Config, error) {
 	// 	}
 	// 	s.HostSlug = fetch.MakeURLStringSlug(u.Host)
 	// }
-	config.cache = cache
 	return &config, nil
 }
 
@@ -373,7 +366,7 @@ func (s Scraper) HostSlug() string {
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not detail pages). This is used by the ML feature generation.
-func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.Records, error) {
+func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQPage_log.txt", slog.LevelDebug)
@@ -420,7 +413,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 	currentPage := 0
 	var gqdoc *goquery.Document
 
-	hasNextPage, pageURL, gqdoc, err := s.fetchPage(c.cache, nil, currentPage, u, globalConfig.UserAgent, s.Interaction)
+	hasNextPage, pageURL, gqdoc, err := s.fetchPage(cache, nil, currentPage, u, globalConfig.UserAgent, s.Interaction)
 	if err != nil {
 		// slog.Debug("pageURL: %q", pageURL)
 		return nil, fmt.Errorf("failed to fetch next page: %w", err)
@@ -482,7 +475,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 		// fmt.Println("in scrape.Page(), after", "len(found.Nodes)", len(found.Nodes))
 		found.Each(func(i int, sel *goquery.Selection) {
 			slog.Debug("in scrape.Page()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
-			rec, err := GQSelection(c, s, sel, baseURL, rawDyn)
+			rec, err := GQSelection(cache, c, s, sel, baseURL, rawDyn)
 			if err != nil {
 				slog.Error(err.Error())
 				return
@@ -494,7 +487,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 		})
 
 		currentPage++
-		hasNextPage, pageURL, gqdoc, err = s.fetchPage(c.cache, gqdoc, currentPage, pageURL, globalConfig.UserAgent, nil)
+		hasNextPage, pageURL, gqdoc, err = s.fetchPage(cache, gqdoc, currentPage, pageURL, globalConfig.UserAgent, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch next page: %w", err)
 		}
@@ -512,7 +505,7 @@ func Page(c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path s
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not detail pages). This is used by the ML feature generation.
-func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.Records, error) {
+func GQDocument(cache fetch.Cache, c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQDocument_log.txt", slog.LevelDebug)
@@ -543,7 +536,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 	}
 	found.Each(func(i int, sel *goquery.Selection) {
 		slog.Debug("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
-		record, err := GQSelection(c, s, sel, baseUrl, rawDyn)
+		record, err := GQSelection(cache, c, s, sel, baseUrl, rawDyn)
 		if err != nil {
 			slog.Warn("while scraping document got error", "baseUrl", baseUrl, "err", err.Error())
 			return
@@ -565,7 +558,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not detail pages). This is used by the ML feature generation.
-func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.Record, error) {
+func GQSelection(cache fetch.Cache, c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.Record, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
@@ -637,7 +630,7 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, 
 			_, found := dpDocs[dpURL]
 			if !found {
 				// dpRes, err := s.fetcher.Fetch(dpURL, nil)
-				dpDoc, _, err := fetch.GetGQDocument(c.cache, dpURL)
+				dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
 				if err != nil {
 					return nil, fmt.Errorf("error while fetching detail page: %v. Skipping record %v.", err, rs)
 				}
@@ -1386,7 +1379,7 @@ var KeepSubURLScheme = map[string]bool{
 	"https": true,
 }
 
-func DetailPages(c *Config, s *Scraper, recs output.Records, domain string) error {
+func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, domain string) error {
 	if DoDebug {
 		slog.Debug("scrape.DetailPages()")
 		defer slog.Debug("scrape.DetailPages() returning")
@@ -1424,18 +1417,18 @@ func DetailPages(c *Config, s *Scraper, recs output.Records, domain string) erro
 
 		slog.Debug("in scrape.DetailPages()", "i", i, "subURL", subURL)
 		// fmt.Println("in scrape.DetailPages()", "i", i, "subURL", subURL)
-		subGQDoc, found, err := fetch.GetGQDocument(c.cache, subURL.String())
+		subGQDoc, found, err := fetch.GetGQDocument(cache, subURL.String())
 		if err != nil {
 			return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
 		}
-		if err := SubGQDocument(c, s, rec, c.ID.Field, subGQDoc); err != nil {
+		if err := SubGQDocument(cache, c, s, rec, c.ID.Field, subGQDoc); err != nil {
 			return fmt.Errorf("error extending records: %v", err)
 		}
 	}
 	return nil
 }
 
-func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc *goquery.Document) error {
+func SubGQDocument(cache fetch.Cache, c *Config, s *Scraper, rec output.Record, fname string, gqdoc *goquery.Document) error {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
@@ -1449,7 +1442,7 @@ func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc
 		defer slog.Debug("scrape.SubGQDocument() returning")
 	}
 
-	subRecs, err := GQDocument(c, s, gqdoc, true)
+	subRecs, err := GQDocument(cache, c, s, gqdoc, true)
 	if err != nil {
 		return fmt.Errorf("error scraping detail page for field %q: %v", fname, err)
 	}

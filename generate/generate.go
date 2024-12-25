@@ -157,7 +157,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	pagProps = []*locationProps{}
 	// }
 
-	rs, err = expandAllPossibleConfigs(gqdoc, opts, lps, findSharedRootSelector(lps), pagProps, rs)
+	rs, err = expandAllPossibleConfigs(cache, gqdoc, opts, lps, findSharedRootSelector(lps), pagProps, rs)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	return rs, nil
 }
 
-func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -219,7 +219,7 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 		Scrapers: []scrape.Scraper{s},
 	}
 
-	recs, err := scrape.GQDocument(c, &s, gqdoc, true)
+	recs, err := scrape.GQDocument(cache, c, &s, gqdoc, true)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func expandAllPossibleConfigs(gqdoc *goquery.Document, opts ConfigOptions, lps [
 		}
 		nextLPs := clusters[clusterID]
 		nextRootSel := clusters[clusterID][0].path[0 : len(rootSelector)+1]
-		rs, err = expandAllPossibleConfigs(gqdoc, nextOpts, nextLPs, nextRootSel, pagProps, rs)
+		rs, err = expandAllPossibleConfigs(cache, gqdoc, nextOpts, nextLPs, nextRootSel, pagProps, rs)
 		if err != nil {
 			return nil, err
 		}
@@ -291,14 +291,14 @@ func ExtendPageConfigsWithNexts(cache fetch.Cache, opts ConfigOptions, pageConfi
 	sort.Strings(pageCIDs)
 
 	for _, id := range pageCIDs {
-		if err := ExtendPageConfigRecordsWithNext(opts, pageConfigs[id], gqdoc.Selection); err != nil {
+		if err := ExtendPageConfigRecordsWithNext(cache, opts, pageConfigs[id], gqdoc.Selection); err != nil {
 			return fmt.Errorf("error extending page config records with next page records: %v", err)
 		}
 	}
 	return nil
 }
 
-func ExtendPageConfigRecordsWithNext(opts ConfigOptions, pageC *scrape.Config, sel *goquery.Selection) error {
+func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, pageC *scrape.Config, sel *goquery.Selection) error {
 	// fmt.Printf("looking at %q\n", pageC.ID.String())
 	// fmt.Printf("looking at opts url %q\n", fetch.TrimURLScheme(opts.URL))
 
@@ -364,7 +364,7 @@ func ExtendPageConfigRecordsWithNext(opts ConfigOptions, pageC *scrape.Config, s
 
 		// fmt.Printf("read next page: %q\n", u)
 
-		recs, err := scrape.GQDocument(pageC, &pageS, nextGQDoc, true)
+		recs, err := scrape.GQDocument(cache, pageC, &pageS, nextGQDoc, true)
 		if err != nil {
 			return err
 		}
@@ -661,9 +661,8 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 			mergedC.ID.Field = opts.configID.Field
 			mergedC.ID.SubID = c.ID.SubID
 			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
-			mergedC.SetCache(cache)
 			// fmt.Println("    merged as", mergedC.ID)
-			if err := scrape.DetailPages(mergedC, &subScraper, mergedC.Records, domain); err != nil {
+			if err := scrape.DetailPages(cache, mergedC, &subScraper, mergedC.Records, domain); err != nil {
 				// fmt.Printf("skipping generating configuration for detail pages for merged config %q: %v\n", mergedC.ID, err)
 				slog.Info("skipping generating configuration for detail pages for merged config", "mergedC.ID", mergedC.ID, "err", err)
 				continue
