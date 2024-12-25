@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -26,6 +27,10 @@ var DoDebug = false
 // var ShowCaching = true
 
 var ShowCaching = false
+
+// var Synchronized = true
+
+var Synchronized = false
 
 // A Cache interface is used by the Transport to store and retrieve responses.
 type Cache interface {
@@ -43,12 +48,122 @@ var fetcher = NewDynamicFetcher("", 1) //s.PageLoadWait)
 var ErrorIfPageNotInCache = false
 
 func GetGQDocument(cache Cache, u string) (*goquery.Document, bool, error) {
+	if ShowCaching {
+		fmt.Println("fetch.GetGQDocument()", "u", u)
+	}
 	respBytes, ok := cache.Get(u) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
 	if !ok {
 		return nil, false, nil
 	}
 	r, err := ResponseBytesToGQDocument(respBytes)
-	return r, true, err
+	if err != nil {
+		return nil, true, err
+	}
+	uu, err := url.Parse(u)
+	if err != nil {
+		return nil, true, err
+	}
+	r.Url = uu
+	if ShowCaching {
+		fmt.Println("in fetch.GetGQDocument(), returning", "u", u)
+	}
+	return r, true, nil
+}
+
+// func GetGQDocuments(cache Cache, us []string) ([]*goquery.Document, []error) {
+// 	rs := []*goquery.Document{}
+// 	errs := []error{}
+// 	foundErr := false
+// 	for _, u := range us {
+// 		r, _, err := GetGQDocument(cache, u)
+// 		rs = append(rs, r)
+// 		errs = append(errs, err)
+// 		if err != nil {
+// 			foundErr = true
+// 		}
+// 	}
+// 	if !foundErr {
+// 		errs = nil
+// 	}
+// 	return rs, errs
+// }
+
+// Helper struct to hold page results
+type pageResult struct {
+	index int
+	gqdoc *goquery.Document
+	err   error
+}
+
+func GetGQDocuments(cache Cache, us []string) ([]*goquery.Document, []error) {
+	// func Pages(cache fetch.Cache, us []string, reqFn func(req *client.Request)) ([]*goquery.Document, []error) {
+	rs := make([]*goquery.Document, len(us))
+	errs := make([]error, len(us))
+
+	// Use a channel to receive results and errors.
+	results := make(chan *pageResult, len(us))
+
+	if ShowCaching {
+		fmt.Println("in cache.GetGQDocuments() retrieving", "len(us)", len(us))
+	}
+	uCount := 0
+	for i, u := range us {
+		if u == "" {
+			continue
+		}
+		if ShowCaching {
+			fmt.Println("in cache.GetGQDocuments(), retrieving", "i", i, "u", u)
+		}
+
+		// go func() {
+		fn := func() {
+			gqdoc, _, err := GetGQDocument(cache, u)
+			if err != nil {
+				if ShowCaching {
+					fmt.Println("in cache.GetGQDocuments(), got error", "i", i, "u", u, "err", err)
+				}
+				results <- &pageResult{index: i, err: err}
+				return
+			}
+			if ShowCaching {
+				fmt.Println("in cache.GetGQDocuments(), got gqdoc", "i", i, "u", u, "gqdoc == nil", gqdoc == nil)
+			}
+			results <- &pageResult{index: i, gqdoc: gqdoc}
+		}
+
+		if Synchronized {
+			fn()
+		} else {
+			go fn()
+		}
+		uCount++
+	}
+
+	// Collect results and errors from the channel.
+	foundErr := false
+	if ShowCaching {
+		fmt.Println("in cache.GetGQDocuments(), waiting for", "len(us)", len(us))
+	}
+	for i := 0; i < uCount; i++ {
+		if ShowCaching {
+			fmt.Println("in cache.GetGQDocuments(), waiting to receive", "i", i)
+		}
+		result := <-results
+		if ShowCaching {
+			fmt.Println("in cache.GetGQDocuments(), received", "i", i, "result.index", result.index)
+		}
+		if result.err != nil {
+			errs[result.index] = result.err
+			foundErr = true
+		} else {
+			rs[result.index] = result.gqdoc
+		}
+	}
+	if !foundErr {
+		errs = nil
+	}
+
+	return rs, errs
 }
 
 func SetGQDocument(cache Cache, u string, gqdoc *goquery.Document) {

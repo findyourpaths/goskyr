@@ -1,0 +1,127 @@
+id:
+    slug: scrapethissite-com-pages-forms
+    id: 20aaaaa
+    field: F9d03f032-href-0
+    subid: 20a
+scrapers:
+    - name: scrapethissite-com-pages-forms__20aaaaa
+      url: https://www.scrapethissite.com/pages/forms
+      selector: body > div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li
+      fields:
+        - name: F9d03f032--0
+          type: text
+          location:
+            - selector: a
+          can_be_empty: true
+        - name: F9d03f032-href-0
+          type: url
+          location:
+            - selector: a
+              attr: href
+          can_be_empty: true
+      render_js: true
+    - name: scrapethissite-com-pages-forms__F9d03f032-href-0_20a
+      url: https://www.scrapethissite.com/pages/forms
+      selector: ""
+      fields:
+        - name: F21ad7531--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.year
+          can_be_empty: true
+        - name: F34b4dea3--0
+          type: text
+          location:
+            - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a
+          can_be_empty: true
+        - name: F34b4dea3-aria-label-0
+          type: text
+          location:
+            - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a
+              attr: aria-label
+          can_be_empty: true
+        - name: F34b4dea3-href-0
+          type: url
+          location:
+            - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a
+              attr: href
+          can_be_empty: true
+        - name: F38f7d73f--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.wins
+          can_be_empty: true
+        - name: F5b7dae5e--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.ga
+          can_be_empty: true
+        - name: F67a96265--2
+          type: text
+          location:
+            - selector: nav > div.container > div.col-md-12 > ul.nav.nav-tabs > li > a.nav-link
+              child_index: 2
+          can_be_empty: true
+        - name: F67a96265-href-0
+          type: url
+          location:
+            - selector: nav > div.container > div.col-md-12 > ul.nav.nav-tabs > li > a.nav-link
+              attr: href
+          can_be_empty: true
+        - name: F6bd81d7e--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.ot-losses
+          can_be_empty: true
+        - name: F6d27d28f--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.text-success
+          can_be_empty: true
+        - name: F86f50b68--0
+          type: text
+          location:
+            - selector: div > section > div.container > div.row > div.col-md-12 > h1 > small
+          can_be_empty: true
+        - name: F928eab2e--0
+          type: text
+          location:
+            - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a > span
+          can_be_empty: true
+        - name: F9414709d--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.losses
+          can_be_empty: true
+        - name: F959c7569--0
+          type: text
+          location:
+            - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a > strong
+          can_be_empty: true
+        - name: Fc40c7800--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.name
+          can_be_empty: true
+        - name: Fc5193bfd--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.gf
+          can_be_empty: true
+        - name: Fc670dd6f--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr > th
+          can_be_empty: true
+        - name: Ffc520c4--0
+          type: text
+          location:
+            - selector: div > section > div.container > div.pagination-area.row > div.col-md-1 > select.col-md-3.form-control > option
+          can_be_empty: true
+        - name: Ffc8b57b6--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.text-danger
+          can_be_empty: true
+      render_js: true
+records: []

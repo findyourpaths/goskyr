@@ -60,14 +60,18 @@ func (c *FileCache) Get(key string) ([]byte, bool) {
 		fmt.Println("in fetch.FileCache.Get(), cache miss", "key", key, "c.parentDir", c.parentDir)
 	}
 	if c.fallback == nil {
-		fmt.Println("in fetch.FileCache.Get(), no fallback")
+		if ShowCaching {
+			fmt.Println("in fetch.FileCache.Get(), no fallback")
+		}
 		return nil, false
 	}
 
 	var ok bool
 	resp, ok = c.fallback.Get(key)
 	if !ok {
-		fmt.Println("in fetch.FileCache.Get(), fallback failed")
+		if ShowCaching {
+			fmt.Println("in fetch.FileCache.Get(), fallback failed")
+		}
 		return nil, false
 	}
 
@@ -115,7 +119,6 @@ func ResponseFilename(dir string, urlStr string) string {
 func Filename(dir string, urlStr string) string {
 	if dir == "" {
 		panic("need to set Filename dir")
-		// dir = InputDir
 	}
 	u, err := url.Parse(urlStr)
 	if err != nil {

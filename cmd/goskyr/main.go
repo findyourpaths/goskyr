@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"runtime/pprof"
-	"sort"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -191,96 +189,93 @@ func (cmd *RegenerateCmd) Run(globals *Globals) error {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
-	dirs := []string{}
-	for dir := range urlsForTestnamesByDir {
-		dirs = append(dirs, dir)
-	}
-	sort.Strings(dirs)
-
-	for _, dir := range dirs {
-		testnames := []string{}
-		for testname := range urlsForTestnamesByDir[dir] {
-			testnames = append(testnames, testname)
-		}
-		sort.Strings(testnames)
-
-		for _, testname := range testnames {
-			urlAndReq := urlsForTestnamesByDir[dir][testname]
-			fmt.Printf("Regenerating test %q\n", testname)
-
-			cacheInDir := filepath.Join("testdata", dir)
-			glob := filepath.Join(cacheInDir, testname, "*")
-			paths, err := filepath.Glob(glob)
-			if err != nil {
-				return fmt.Errorf("error getting cache input paths with glob %q: %v", glob, err)
-			}
-			doDetailPages := len(paths) > 1
-
-			url := urlAndReq[0]
-			cmd := GenerateCmd{
-				Batch:                     true,
-				DoDetailPages:             doDetailPages,
-				OnlySameDomainDetailPages: true,
-				OnlyVaryingFields:         true,
-				CacheInputParentDir:       cacheInDir,
-				CacheOutputParentDir:      cmd.CacheOutputDir,
-				ConfigOutputParentDir:     cmd.ConfigOutputDir,
-				Offline:                   true,
-				RenderJs:                  true,
-				RequireString:             urlAndReq[1],
-				URL:                       url,
-			}
-			if err := cmd.Run(globals); err != nil {
-				return fmt.Errorf("error running generate with dir: %q, testname: %q, url: %q: %v\n", dir, testname, url, err)
-			}
-
-			// Copy updated config files to testdata config dir.
-			cGlob := filepath.Join(strings.TrimPrefix(testInputDir, "../../"), dir, testname+"_configs", "*")
-			cPaths, err := filepath.Glob(cGlob)
-			if err != nil {
-				return fmt.Errorf("error getting config input paths with glob %q: %v", cGlob, err)
-			}
-			for _, cPath := range cPaths {
-				outPath := filepath.Join(cmd.ConfigOutputParentDir, testname+"_configs", filepath.Base(cPath))
-				if _, err := utils.CopyStringFile(outPath, cPath); err != nil {
-					fmt.Printf("error copying %q to %q: %v\n", outPath, cPath, err)
-				}
-			}
-			fmt.Printf("Copied %d config files for test %q\n", len(cPaths), testname)
-
-			// Clear old cache files in testdata cache dir.
-			cGlob = filepath.Join(cacheInDir, testname, "*")
-			// fmt.Printf("cGlob: %q\n", cGlob)
-			cPaths, err = filepath.Glob(cGlob)
-			if err != nil {
-				return fmt.Errorf("error getting cache output paths with glob %q: %v", cGlob, err)
-			}
-			for _, cPath := range cPaths {
-				// fmt.Printf("removing cPath: %q\n", cPath)
-				if err := os.Remove(cPath); err != nil {
-					return fmt.Errorf("error removing old cache input path %q: %v", cPath, err)
-				}
-			}
-			fmt.Printf("Removed %d old cache files for test %q\n", len(cPaths), testname)
-
-			// Copy updated cache files to testdata cache dir.
-			cGlob = filepath.Join(cmd.CacheOutputParentDir, testname, "*")
-			// fmt.Printf("cGlob: %q\n", cGlob)
-			cPaths, err = filepath.Glob(cGlob)
-			if err != nil {
-				return fmt.Errorf("error getting cache output paths with glob %q: %v", cGlob, err)
-			}
-			for _, cPath := range cPaths {
-				inPath := filepath.Join(cmd.CacheInputParentDir, testname, filepath.Base(cPath))
-				if _, err := utils.CopyStringFile(cPath, inPath); err != nil {
-					return fmt.Errorf("error copying %q to %q: %v", cPath, inPath, err)
-				}
-			}
-			fmt.Printf("Copied %d cache files for test %q\n", len(cPaths), testname)
-		}
-	}
+	// for _, cat := range sortedTestCategories() {
+	// 	for _, slug := range sortedTestSlugs(cat) {
+	// 		if err := cmd.regenerateTest(cat, slug); err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// }
 	return nil
 }
+
+// func (cmd *RegenerateCmd) regenerateTest(cat string, slug string) error {
+// 	fmt.Printf("Regenerating test %q\n", slug)
+// 	testCatInputDir := filepath.Join("testdata", cat)
+
+// 	for _, t := range testsBySlugByCategory[cat][slug] {
+// 		ps, err := testDirPathsWithSuffix(testCatInputDir, slug, htmlSuffix)
+// 		if err != nil {
+// 			return fmt.Errorf("error getting cache directory paths: %v", err)
+// 		}
+// 		doDetailPages := len(ps) > 1
+
+// 		// glob := filepath.Join(testCatInputDir, name, "*")
+// 		// paths, err := filepath.Glob(glob)
+// 		// if err != nil {
+// 		// 	return fmt.Errorf("error getting cache input paths with glob %q: %v", glob, err)
+// 		// }
+// 		// doDetailPages := len(paths) > 1
+
+// 		subCmd = GenerateCmd{
+// 			Batch:                     true,
+// 			DoDetailPages:             doDetailPages,
+// 			OnlySameDomainDetailPages: true,
+// 			OnlyVaryingFields:         true,
+// 			CacheInputParentDir:       testCatInputDir,
+// 			CacheOutputParentDir:      cmd.CacheOutputDir,
+// 			ConfigOutputParentDir:     cmd.ConfigOutputDir,
+// 			Offline:                   true,
+// 			RenderJs:                  true,
+// 			RequireString:             t.required,
+// 			URL:                       t.url,
+// 		}
+// 		if err := subCmd.Run(globals); err != nil {
+// 			return fmt.Errorf("error running generate with dir: %q, name: %q, url: %q: %v\n", cat, slug, url, err)
+// 		}
+
+// 		// Copy updated config files to testdata config dir.
+// 		fmt.Println("testCatInputDir", testCatInputDir, "name+_configs", slug+"_configs")
+// 		ps, err = testDirPathsWithSuffix(testCatInputDir, slug+"_configs", "")
+// 		if err != nil {
+// 			return fmt.Errorf("error getting config input paths in %q: %v", testCatInputDir, err)
+// 		}
+// 		for _, p := range ps {
+// 			outPath := filepath.Join(cmd.ConfigOutputParentDir, slug+"_configs", filepath.Base(p))
+// 			if _, err := utils.CopyStringFile(outPath, p); err != nil {
+// 				fmt.Printf("error copying %q to %q: %v\n", outPath, p, err)
+// 			}
+// 		}
+// 		fmt.Printf("  Copied %d config files for test %q\n", len(ps), slug)
+
+// 		// Clear old cache files in testdata cache dir.
+// 		ps, err = testDirPathsWithSuffix(testCatInputDir, slug, "")
+// 		if err != nil {
+// 			return fmt.Errorf("error getting cache output paths in %q: %v", testCatInputDir, err)
+// 		}
+// 		for _, p := range ps {
+// 			// fmt.Printf("removing path: %q\n", path)
+// 			if err := os.Remove(p); err != nil {
+// 				return fmt.Errorf("error removing old cache input path %q: %v", p, err)
+// 			}
+// 		}
+// 		fmt.Printf("  Removed %d old cache files for test %q\n", len(ps), slug)
+
+// 		// Copy updated cache files to testdata cache dir.
+// 		ps, err = testDirPathsWithSuffix(cmd.CacheOutputParentDir, slug, "")
+// 		if err != nil {
+// 			return fmt.Errorf("error getting cache output paths in %q: %v", cmd.CacheOutputParentDir, err)
+// 		}
+// 		for _, p := range ps {
+// 			inPath := filepath.Join(cmd.CacheInputParentDir, slug, filepath.Base(p))
+// 			if _, err := utils.CopyStringFile(p, inPath); err != nil {
+// 				return fmt.Errorf("error copying %q to %q: %v", p, inPath, err)
+// 			}
+// 		}
+// 		fmt.Printf("  Copied %d cache files for test %q\n", len(ps), slug)
+// 	}
+// 	return nil
+// }
 
 type ScrapeCmd struct {
 	CacheInputParentDir  string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
@@ -345,43 +340,3 @@ func (cmd *TrainCmd) Run(globals *Globals) error {
 	}
 	return nil
 }
-
-// urlsForTestnames stores the live URLs used to create tests. They are needed to resolve relative paths for event pages that appear in event-list pages. To add new tests, run:
-//
-//		go run ./cmd/goskyr --debug generate 'https://basic-field.com' --cache-input-dir testdata/regression --cache-output-dir testdata/regression --config-output-dir testdata/regression --do-detail-pages=false
-//
-//	 or
-//
-//	 rm -r /tmp/goskyr/main/basic-fields-w-link-com_configs/; \
-//	 time go run ./cmd/goskyr --log-level=debug generate 'https://basic-fields-w-link.com' --cache-input-dir testdata/regression --do-detail-pages=false
-//
-// regenerate with
-//
-//	go run main.go --debug regenerate
-var urlsForTestnamesByDir = map[string]map[string][]string{
-	"regression": {
-		"basic-detail-pages-com":         []string{"https://basic-detail-pages.com", ""},
-		"basic-detail-pages-w-links-com": []string{"https://basic-detail-pages-w-links.com", ""},
-		"basic-field-com":                []string{"https://basic-field.com", ""},
-		"basic-field-w-div-com":          []string{"https://basic-field-w-div.com", ""},
-		"basic-fields-w-div-com":         []string{"https://basic-fields-w-div.com", ""},
-		// "basic-fields-w-div-w-div-com":      []string{"https://basic-fields-w-div-w-div.com", ""},
-		"basic-fields-w-div-w-link-div-com": []string{"https://basic-fields-w-div-w-link-div.com", ""},
-		"basic-fields-w-link-com":           []string{"https://basic-fields-w-link.com", ""},
-		"basic-fields-w-link-div-com":       []string{"https://basic-fields-w-link-div.com", ""},
-		"basic-fields-w-style-com":          []string{"https://basic-fields-w-style.com", ""},
-		"css-class-with-special-chars-com":  []string{"https://css-class-with-special-chars.com", ""},
-		"fields-w-a-com_cache":              []string{"https://fields-w-a.com", ""},
-	},
-	"scraping": {
-		"books-toscrape-com":                  []string{"https://books.toscrape.com", "Soumission"},
-		"quotes-toscrape-com":                 []string{"https://quotes.toscrape.com", "Imperfection"},
-		"realpython-github-io":                []string{"https://realpython.github.io/fake-jobs", ""},
-		"webscraper-io":                       []string{"https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", "Android"},
-		"www-scrapethissite-com pages forms":  []string{"https://www.scrapethissite.com/pages/forms", ""},
-		"www-scrapethissite-com pages simple": []string{"https://www.scrapethissite.com/pages/simple", ""},
-	},
-}
-
-var testOutputDir = "/tmp/goskyr/main/"
-var testInputDir = "../../testdata/"

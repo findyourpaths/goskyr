@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
-	"sort"
+	"strings"
 	"testing"
 
 	"github.com/findyourpaths/goskyr/fetch"
@@ -20,10 +20,6 @@ import (
 	"github.com/nsf/jsondiff"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
-
-var htmlSuffix = ".html"
-var configSuffix = ".yml"
-var jsonSuffix = ".json"
 
 var writeActualTestOutputs = true
 
@@ -42,46 +38,42 @@ func TestGenerate(t *testing.T) {
 
 	fetch.ErrorIfPageNotInCache = true
 
-	dirs := []string{}
-	for dir := range urlsForTestnamesByDir {
-		dirs = append(dirs, dir)
-	}
-	sort.Strings(dirs)
-
-	for _, dir := range dirs {
-		t.Run(dir, func(t *testing.T) {
-			testGenerateAllDirConfigs(t, dir)
+	for _, cat := range sortedTestCategories() {
+		t.Run(cat, func(t *testing.T) {
+			testGenerateCategory(t, cat)
 		})
 	}
 }
 
-func testGenerateAllDirConfigs(t *testing.T, dir string) {
-	testnames := []string{}
-	for testname := range urlsForTestnamesByDir[dir] {
-		testnames = append(testnames, testname)
-	}
-	sort.Strings(testnames)
-
-	for _, testname := range testnames {
-		t.Run(testname, func(t *testing.T) {
-			testGenerateAllConfigs(t, dir, testname)
+func testGenerateCategory(t *testing.T, cat string) {
+	for _, hostSlug := range sortedTestSlugs(cat) {
+		t.Run(hostSlug, func(t *testing.T) {
+			testGenerateCategoryHost(t, cat, hostSlug)
 		})
 	}
 }
 
-func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
-	inputDir := testInputDir + dir
-	outputDir := testOutputDir + dir
+func testGenerateCategoryHost(t *testing.T, cat string, hostSlug string) {
+	for _, test := range testsByHostByCategory[cat][hostSlug] {
+		pageSlug := fetch.MakeURLStringSlug(test.url)
+		t.Run(pageSlug, func(t *testing.T) {
+			testGenerateCategoryHostPage(t, cat, hostSlug, test)
+		})
+	}
+}
 
-	glob := filepath.Join(inputDir, testname, "*")
-	// fmt.Printf("glob: %q\n", glob)
-	paths, err := filepath.Glob(glob)
+func testGenerateCategoryHostPage(t *testing.T, cat string, hostSlug string, test maintest) {
+	testCatInputDir := filepath.Join(testInputDir, cat)
+	testCatOutputDir := filepath.Join(testOutputDir, cat)
+
+	pageSlug := fetch.MakeURLStringSlug(test.url)
+	detailCPs, err := testDirPathsWithPattern(testCatInputDir, hostSlug+"_configs", pageSlug+"*"+"href"+"*"+configSuffix)
 	if err != nil {
-		t.Fatalf("error getting cache input paths with glob %q: %v", glob, err)
+		t.Fatalf("error getting cache directory paths: %v", err)
 	}
-	doDetailPages := len(paths) > 1
+	doDetailPages := len(detailCPs) > 0
+	// fmt.Println("doDetailPages", doDetailPages)
 
-	urlAndReq := urlsForTestnamesByDir[dir][testname]
 	opts, err := generate.InitOpts(generate.ConfigOptions{
 		Batch: true,
 		// CacheInputParentDir: testInputDir,
@@ -90,56 +82,80 @@ func testGenerateAllConfigs(t *testing.T, dir string, testname string) {
 		// MinOccs:           []int{5},
 		OnlyVaryingFields: true,
 		RenderJS:          true,
-		RequireString:     urlAndReq[1],
-		URL:               urlAndReq[0],
+		RequireString:     test.required,
+		URL:               test.url,
 	})
 	if err != nil {
 		t.Fatalf("error initializing page options: %v", err)
 	}
 
-	output.SetDefaultLogger(filepath.Join(testOutputDir, dir, testname+"_configs", "test-generate_log.txt"), slog.LevelDebug)
+	output.SetDefaultLogger(filepath.Join(testCatOutputDir, hostSlug+"_configs", "test-generate_log.txt"), slog.LevelDebug)
 	var cache fetch.Cache
-	cache = fetch.NewFileCache(nil, filepath.Join(testInputDir, dir), false)
-	cache = fetch.NewFileCache(cache, filepath.Join(testOutputDir, dir), true)
+	cache = fetch.NewFileCache(nil, testCatInputDir, false)
+	cache = fetch.NewFileCache(cache, testCatOutputDir, true)
 	cache = fetch.NewMemoryCache(cache)
 	cs, err := generate.ConfigurationsForPage(cache, opts)
 	if err != nil {
 		t.Fatalf("error generating page configs: %v", err)
 	}
-	testGenerateConfigs(t, testname, cs, inputDir, outputDir)
+
+	csByID := map[string]*scrape.Config{}
+	for _, c := range cs {
+		// fmt.Println("found config with ID", c.ID.String())
+		csByID[c.ID.String()] = c
+	}
 
 	if doDetailPages {
 		subCs, err := generate.ConfigurationsForAllDetailPages(cache, opts, cs)
 		if err != nil {
 			t.Fatalf("error generating detail page configs: %v", err)
 		}
-		testGenerateConfigs(t, testname, subCs, inputDir, outputDir)
+		// fmt.Println("len(subCs)", len(subCs))
+		for _, c := range subCs {
+			// fmt.Println("found subconfig with ID", c.ID.String())
+			csByID[c.ID.String()] = c
+		}
 	}
+
+	testGenerateCategoryHostPageConfigs(t, cat, hostSlug, test, csByID)
 }
 
-func testGenerateConfigs(t *testing.T, testname string, cs map[string]*scrape.Config, inputDir string, outputDir string) {
-	ids := []string{}
-	for id := range cs {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
+func testGenerateCategoryHostPageConfigs(t *testing.T, cat string, hostSlug string, test maintest, csByID map[string]*scrape.Config) {
+	testCatInputDir := filepath.Join(testInputDir, cat)
 
-	for _, id := range ids {
-		expPath := filepath.Join(inputDir, testname+"_configs", id+configSuffix)
-		if _, err := os.Stat(expPath); err != nil {
-			continue
+	pageSlug := fetch.MakeURLStringSlug(test.url)
+	expPs, err := testDirPathsWithPattern(testCatInputDir, hostSlug+"_configs", pageSlug+"*"+configSuffix)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, expP := range expPs {
+		// fmt.Println("in testGenerateCategoryHostPageConfigs()", "expP", expP)
+		if _, err := os.Stat(expP); err != nil {
+			t.Fatal(err)
 		}
-		exp, err := utils.ReadStringFile(expPath)
+		exp, err := utils.ReadStringFile(expP)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		id := filepath.Base(expP)
+		id = strings.TrimSuffix(id, filepath.Ext(id))
+		// fmt.Println("in testGenerateCategoryHostPageConfigs()", "id", id)
+		c := csByID[id]
+		if c == nil {
+			t.Fatal(fmt.Errorf("no config found with ID: %q", id))
+		}
+
 		t.Run(id, func(t *testing.T) {
-			testGenerateConfig(t, testname, cs[id], outputDir, exp)
+			testGenerateCategoryHostPageConfig(t, cat, hostSlug, c, exp)
 		})
 	}
 }
 
-func testGenerateConfig(t *testing.T, testname string, config *scrape.Config, outputDir string, exp string) {
+func testGenerateCategoryHostPageConfig(t *testing.T, cat string, hostSlug string, config *scrape.Config, exp string) {
+	testCatOutputDir := filepath.Join(testOutputDir, cat)
+
 	actC := config
 	// Strip the event list scraper paginators, which are generated but don't appear in the expected data.
 	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
@@ -159,18 +175,18 @@ func testGenerateConfig(t *testing.T, testname string, config *scrape.Config, ou
 	}
 
 	id := config.ID.String()
-	diffPath := filepath.Join(outputDir, testname+"_configs", id+configSuffix+".diff")
-	if err := utils.WriteStringFile(diffPath, diffStr); err != nil {
-		t.Fatalf("failed to write diff to %q: %v", diffPath, err)
+	diffP := filepath.Join(testCatOutputDir, hostSlug+"_configs", id+configSuffix+".diff")
+	if err := utils.WriteStringFile(diffP, diffStr); err != nil {
+		t.Fatalf("failed to write diff to %q: %v", diffP, err)
 	}
-	t.Errorf("actual output (%d) does not match expected output (%d) and wrote diff to %q", len(act), len(exp), diffPath)
+	t.Errorf("actual output (%d) does not match expected output (%d) and wrote diff to %q", len(act), len(exp), diffP)
 
 	if writeActualTestOutputs {
-		actPath := filepath.Join(outputDir, testname+"_configs", id+".actual"+configSuffix)
-		if err := utils.WriteStringFile(actPath, act); err != nil {
-			t.Fatalf("failed to write actual test output to %q: %v", actPath, err)
+		actP := filepath.Join(testCatOutputDir, hostSlug+"_configs", id+".actual"+configSuffix)
+		if err := utils.WriteStringFile(actP, act); err != nil {
+			t.Fatalf("failed to write actual test output to %q: %v", actP, err)
 		}
-		fmt.Printf("wrote to actPath: %q\n", actPath)
+		fmt.Printf("wrote to actPath: %q\n", actP)
 	}
 }
 
@@ -185,66 +201,57 @@ func TestScrape(t *testing.T) {
 
 	output.SetDefaultLogger(filepath.Join(testOutputDir, "test-generate_log.txt"), slog.LevelWarn)
 
-	dirs := []string{}
-	for dir := range urlsForTestnamesByDir {
-		dirs = append(dirs, dir)
-	}
-	sort.Strings(dirs)
-
-	for _, dir := range dirs {
-		t.Run(dir, func(t *testing.T) {
-			testScrapeWithAllDirConfigs(t, dir)
+	for _, cat := range sortedTestCategories() {
+		t.Run(cat, func(t *testing.T) {
+			testScrapeCategory(t, cat)
 		})
 	}
 }
 
-func testScrapeWithAllDirConfigs(t *testing.T, dir string) {
-	testnames := []string{}
-	for testname := range urlsForTestnamesByDir[dir] {
-		testnames = append(testnames, testname)
-	}
-	sort.Strings(testnames)
-
-	for _, testname := range testnames {
-		t.Run(testname, func(t *testing.T) {
-			testScrapeWithAllConfigs(t, dir, testname)
+func testScrapeCategory(t *testing.T, cat string) {
+	for _, hostSlug := range sortedTestSlugs(cat) {
+		t.Run(hostSlug, func(t *testing.T) {
+			testScrapeCategoryHost(t, cat, hostSlug)
 		})
 	}
 }
 
-func testScrapeWithAllConfigs(t *testing.T, dir string, testname string) {
-	glob := filepath.Join(testInputDir, dir, testname+"_configs", "*"+configSuffix)
-	// fmt.Printf("glob: %s\n", glob)
-	allPaths, err := filepath.Glob(glob)
+func testScrapeCategoryHost(t *testing.T, cat string, hostSlug string) {
+	for _, test := range testsByHostByCategory[cat][hostSlug] {
+		pageSlug := fetch.MakeURLStringSlug(test.url)
+		t.Run(pageSlug, func(t *testing.T) {
+			testScrapeCategoryHostPage(t, cat, hostSlug, test)
+		})
+	}
+}
+
+func testScrapeCategoryHostPage(t *testing.T, cat string, hostSlug string, test maintest) {
+	testCatInputDir := filepath.Join(testInputDir, cat)
+	pageSlug := fetch.MakeURLStringSlug(test.url)
+
+	ps, err := testDirPathsWithPattern(testCatInputDir, hostSlug+"_configs", pageSlug+"*"+configSuffix)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("error getting config directory paths: %v", err)
 	}
-	paths := []string{}
-	for _, path := range allPaths {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-
-	// startLen := len(filepath.Join(testInputDir, dir, cid.Slug+"__"))
-	// endLen := len(".p") + len(configSuffix)
-	for _, path := range paths {
-		// fmt.Printf("path: %q\n", path)
-		// id := path[startLen : len(path)-endLen]
-		// fmt.Printf("id: %q\n", id)
-		config, err := scrape.ReadConfig(path)
+	// fmt.Println("in testScrapeCategoryHost()", "len(ps)", len(ps))
+	for _, p := range ps {
+		c, err := scrape.ReadConfig(p)
 		if err != nil {
-			t.Fatalf("cannot open config file path at %q: %v", path, err)
+			t.Fatalf("cannot open config file path at %q: %v", p, err)
 		}
-		t.Run(config.ID.String(), func(t *testing.T) {
-			testScrapeWithConfig(t, dir, testname, config)
+		t.Run(c.ID.String(), func(t *testing.T) {
+			testScrapeCategoryHostPageConfig(t, cat, hostSlug, c)
 		})
 	}
 }
 
-func testScrapeWithConfig(t *testing.T, dir string, testname string, config *scrape.Config) {
-	recs, err := getRecords(dir, testname, config)
+func testScrapeCategoryHostPageConfig(t *testing.T, cat string, hostSlug string, c *scrape.Config) {
+	testCatInputDir := filepath.Join(testInputDir, cat)
+	testCatOutputDir := filepath.Join(testOutputDir, cat)
+
+	recs, err := getRecords(cat, hostSlug, c)
 	if err != nil {
-		t.Fatalf("failed to get items for scraper config %q: %v", config.ID.String(), err)
+		t.Fatalf("failed to get items for scraper config %q: %v", c.ID.String(), err)
 	}
 
 	act, err := json.MarshalIndent(recs, "", "  ")
@@ -255,10 +262,10 @@ func testScrapeWithConfig(t *testing.T, dir string, testname string, config *scr
 	// Each input file is expected to have a "golden output" file, with the
 	// same path except the .input extension is replaced by the golden suffix.
 	// jsonfile := path[:len(path)-len(configSuffix)] + jsonSuffix
-	jsonPath := filepath.Join(testInputDir, dir, testname+"_configs", config.ID.String()+jsonSuffix)
-	exp, err := os.ReadFile(jsonPath)
+	jsonP := filepath.Join(testCatInputDir, hostSlug+"_configs", c.ID.String()+jsonSuffix)
+	exp, err := os.ReadFile(jsonP)
 	if err != nil {
-		t.Fatalf("error reading golden file at %q: %v", jsonPath, err)
+		t.Fatalf("error reading golden file at %q: %v", jsonP, err)
 	}
 
 	// Compare the JSON outputs
@@ -270,54 +277,44 @@ func testScrapeWithConfig(t *testing.T, dir string, testname string, config *scr
 		return
 	}
 
-	id := config.ID.String()
-	diffPath := filepath.Join(testOutputDir, dir, testname+"_configs", id+jsonSuffix+".diff")
-	if err := utils.WriteStringFile(diffPath, diffStr); err != nil {
+	id := c.ID.String()
+	diffP := filepath.Join(testCatOutputDir, hostSlug+"_configs", id+jsonSuffix+".diff")
+	if err := utils.WriteStringFile(diffP, diffStr); err != nil {
 		t.Fatalf("failed to write diff to %q: %v", diffStr, err)
 	}
-	t.Errorf("actual output (%d) does not match expected output (%d) and wrote diff to %q", len(act), len(exp), diffPath)
+	t.Errorf("actual output (%d) does not match expected output (%d) and wrote diff to %q", len(act), len(exp), diffP)
 
 	if writeActualTestOutputs {
-		actPath := filepath.Join(testOutputDir, dir, testname+"_configs", id+".actual"+jsonSuffix)
-		if err := utils.WriteBytesFile(actPath, act); err != nil {
-			t.Fatalf("failed to write actual test output to %q: %v", actPath, err)
+		actP := filepath.Join(testCatOutputDir, hostSlug+"_configs", id+".actual"+jsonSuffix)
+		if err := utils.WriteBytesFile(actP, act); err != nil {
+			t.Fatalf("failed to write actual test output to %q: %v", actP, err)
 		}
-		fmt.Printf("wrote to actPath: %q\n", actPath)
+		fmt.Printf("wrote to actPath: %q\n", actP)
 	}
 }
 
-func getRecords(dir string, testname string, config *scrape.Config) (output.Records, error) {
+func getRecords(cat string, hostSlug string, c *scrape.Config) (output.Records, error) {
+	testCatInputDir := filepath.Join(testInputDir, cat)
+	testCatOutputDir := filepath.Join(testOutputDir, cat)
+
 	var cache fetch.Cache
-	cache = fetch.NewFileCache(nil, filepath.Join(testInputDir, dir), false)
-	cache = fetch.NewFileCache(cache, filepath.Join(testOutputDir, dir), true)
+	cache = fetch.NewFileCache(nil, testCatInputDir, false)
+	cache = fetch.NewFileCache(cache, testCatOutputDir, true)
 	cache = fetch.NewMemoryCache(cache)
 
-	// fmt.Printf("getItems(dir: %q, testname: %q, config)\n", dir, testname)
-	if config.ID.ID != "" && config.ID.Field == "" && config.ID.SubID == "" {
+	if c.ID.ID != "" && c.ID.Field == "" && c.ID.SubID == "" {
 		// We're looking at an event list page scraper. Scrape the page in the outer directory.
-		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+htmlSuffix)
-		htmlPath = ""
-		return scrape.Page(cache, config, &config.Scrapers[0], &config.Global, true, htmlPath)
-	} else if config.ID.ID == "" && config.ID.Field != "" && config.ID.SubID != "" {
+		return scrape.Page(cache, c, &c.Scrapers[0], &c.Global, true, "")
+	} else if c.ID.ID == "" && c.ID.Field != "" && c.ID.SubID != "" {
 		// We're looking at an event page scraper. Scrape the page in this directory.
-		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+"__"+config.ID.Field+htmlSuffix)
-		htmlPath = ""
-		return scrape.Page(cache, config, &config.Scrapers[0], &config.Global, true, htmlPath)
+		return scrape.Page(cache, c, &c.Scrapers[0], &c.Global, true, "")
 	} else {
 		// We're looking at a combined event list and page scraper. Scrape both pages.
-		htmlPath := filepath.Join(testInputDir, dir, testname, config.ID.Slug+htmlSuffix)
-		htmlPath = ""
-		itemMaps, err := scrape.Page(cache, config, &config.Scrapers[0], &config.Global, true, htmlPath)
+		recs, err := scrape.Page(cache, c, &c.Scrapers[0], &c.Global, true, "")
 		if err != nil {
 			return nil, err
 		}
-
-		// f := &fetch.FileFetcher{}
-		// fetchFn := func(u string) (*goquery.Document, error) {
-		// 	u = "file://" + filepath.Join(testInputDir, dir, testname, fetch.MakeURLStringSlug(u)+".html")
-		// 	return fetch.GQDocument(f, u, nil)
-		// }
-		err = scrape.DetailPages(cache, config, &config.Scrapers[1], itemMaps, "")
-		return itemMaps, err
+		err = scrape.DetailPages(cache, c, &c.Scrapers[1], recs, "")
+		return recs, err
 	}
 }

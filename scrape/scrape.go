@@ -413,6 +413,7 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 	currentPage := 0
 	var gqdoc *goquery.Document
 
+	// fmt.Println("fetching", "u", u)
 	hasNextPage, pageURL, gqdoc, err := s.fetchPage(cache, nil, currentPage, u, globalConfig.UserAgent, s.Interaction)
 	if err != nil {
 		// slog.Debug("pageURL: %q", pageURL)
@@ -420,6 +421,10 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 	}
 
 	for hasNextPage {
+		if gqdoc == nil {
+			// slog.Debug("pageURL: %q", pageURL)
+			return nil, fmt.Errorf("failed to fetch next page (gqdoc == nil: %t)", gqdoc == nil)
+		}
 		baseURL := getBaseURL(pageURL, gqdoc)
 		// fmt.Println("in scrape.Page()", "baseURL", baseURL)
 		// fmt.Println("in scrape.Page()", "pageURL", pageURL)
@@ -802,7 +807,7 @@ func (c *Scraper) GetDetailPageURLFields() []Field {
 }
 
 func (c *Scraper) fetchPage(cache fetch.Cache, doc *goquery.Document, nextPageI int, currentPageURL, userAgent string, i []*fetch.Interaction) (bool, string, *goquery.Document, error) {
-
+	// fmt.Println("scrape.Scraper.fetchPage()", "nextPageI", nextPageI, "currentPageURL", currentPageURL)
 	if nextPageI == 0 {
 		newDoc, _, err := fetch.GetGQDocument(cache, currentPageURL) //, &fetch.FetchOpts{Interaction: i})
 		if err != nil {
@@ -819,8 +824,10 @@ func (c *Scraper) fetchPage(cache fetch.Cache, doc *goquery.Document, nextPageI 
 		// check if node c.Paginator.Location.Selector is present in doc
 		pag := c.Paginators[0]
 		pagSelector := doc.Find(pag.Location.Selector)
+		fmt.Println("pagSelector", pagSelector)
 		if len(pagSelector.Nodes) > 0 {
 			if nextPageI < pag.MaxPages || pag.MaxPages == 0 {
+				fmt.Println("pag.Location.Selector", pag.Location.Selector)
 				// ia := []*fetch.Interaction{
 				// 	{
 				// 		Selector: pag.Location.Selector,

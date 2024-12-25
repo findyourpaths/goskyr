@@ -415,7 +415,7 @@ func pageJoinsURLs(pageJoinsMap map[string][]*pageJoin) []string {
 	}
 	rs := []string{}
 	for u := range us {
-		rs = append(rs, u)
+		rs = append(rs, "http://"+u)
 	}
 	sort.Strings(rs)
 	return rs
@@ -709,16 +709,23 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 	// }
 
 	// Concatenate all of the detail pages pointed to by the field with this name in the parent pages.
-	gqdocs := []*goquery.Document{}
-	for _, u := range us {
-		gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
-		if err != nil {
-			err = fmt.Errorf("failed to fetch page to join %q (found: %t): %v", u, found, err)
-			slog.Warn("in generate.joinPageJoinsGQDocuments()", "err", err)
-			continue
+	gqdocs, errs := fetch.GetGQDocuments(cache, us)
+	if errs != nil {
+		for _, err := range errs {
+			slog.Error("in generate.joinPageJoinsGQDocuments()", "err", err)
 		}
-		gqdocs = append(gqdocs, gqdoc)
+		return nil, fmt.Errorf("failed to join pages")
 	}
+	// gqdocs := []*goquery.Document{}
+	// for _, u := range us {
+	// 	gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
+	// 	if err != nil {
+	// 		err = fmt.Errorf("failed to fetch page to join %q (found: %t): %v", u, found, err)
+	// 		slog.Warn("in generate.joinPageJoinsGQDocuments()", "err", err)
+	// 		continue
+	// 	}
+	// 	gqdocs = append(gqdocs, gqdoc)
+	// }
 
 	_, r, err := joinGQDocuments(gqdocs) // ./opts, us, gqdocsByURL)
 	return r, err
@@ -758,6 +765,10 @@ func joinGQDocuments(gqdocs []*goquery.Document) (string, *goquery.Document, err
 	var gqdoc *goquery.Document
 	var err error
 	for _, gqdoc := range gqdocs {
+		if gqdoc == nil {
+			slog.Warn("in generate.joinGQDocuments(), skipping empty gqdoc")
+			continue
+		}
 		str, err := goquery.OuterHtml(gqdoc.Children())
 		if err != nil {
 			return "", nil, err

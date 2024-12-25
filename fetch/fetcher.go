@@ -56,6 +56,7 @@ func TrimURLScheme(u string) string {
 	u = strings.TrimPrefix(u, "file://")
 	u = strings.TrimPrefix(u, "http://")
 	u = strings.TrimPrefix(u, "https://")
+	u = strings.TrimPrefix(u, "www.")
 	return u
 }
 
@@ -114,7 +115,7 @@ func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, error) {
 	}
 	client := &http.Client{Transport: tr}
 
-	fmt.Printf("static fetching: %q\n", url)
+	// fmt.Printf("static fetching: %q\n", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return resString, fmt.Errorf("when fetching url, error in creating new request: %w", err)
