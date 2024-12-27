@@ -28,9 +28,9 @@ var DoDebug = false
 
 var ShowCaching = false
 
-// var Synchronized = true
+var Synchronized = true
 
-var Synchronized = false
+// var Synchronized = false
 
 // A Cache interface is used by the Transport to store and retrieve responses.
 type Cache interface {

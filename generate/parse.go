@@ -130,7 +130,7 @@ func (a *Analyzer) ParseToken(tt html.TokenType) bool {
 		}
 
 		name := a.NodePath.last().tagName
-		if scrape.DoPruning && scrape.SkipTag[name] {
+		if DoPruning && scrape.SkipTag[name] {
 			slog.Debug("in generate.Analyzer.ParseToken(), skipping", "name", name)
 			return true
 		}

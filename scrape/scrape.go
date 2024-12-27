@@ -1187,8 +1187,6 @@ func GetURL(e *ElementLocation, sel *goquery.Selection, baseURL string) (*url.UR
 // 	return urlRes, nil
 // }
 
-var DoPruning = true
-
 var SkipTag = map[string]bool{
 	"noscript": true,
 	"script":   true,

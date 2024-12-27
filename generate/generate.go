@@ -17,6 +17,8 @@ import (
 	"github.com/jpillora/go-tld"
 )
 
+var DoPruning = true
+
 type ConfigOptions struct {
 	Batch bool
 	// CacheInputDir             string
@@ -248,8 +250,8 @@ func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts C
 	if include {
 		prevConfig, found := rs[recsStr]
 		// fmt.Println("in generate.expandAllPossibleConfigs()", "found", found, "len(recsStr)", len(recsStr), "c.ID", c.ID)
-		if found {
-			slog.Info("candidate configuration failed to produce different records, excluding", "prevID", prevConfig.ID, "opts.configID", opts.configID)
+		if DoPruning && found {
+			slog.Info("candidate configuration failed to produce different records, pruning", "prevID", prevConfig.ID, "opts.configID", opts.configID)
 			include = false
 			// return rs, nil
 		}
@@ -664,21 +666,26 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 			// fmt.Println("    merged as", mergedC.ID)
 			if err := scrape.DetailPages(cache, mergedC, &subScraper, mergedC.Records, domain); err != nil {
 				// fmt.Printf("skipping generating configuration for detail pages for merged config %q: %v\n", mergedC.ID, err)
-				slog.Info("skipping generating configuration for detail pages for merged config", "mergedC.ID", mergedC.ID, "err", err)
+				slog.Info("skipping generating configuration for detail pages for merged config with error", "mergedC.ID", mergedC.ID, "err", err)
+				continue
+			}
+
+			if DoPruning && len(mergedC.Records) < 2 {
+				slog.Info("candidate detail page configuration failed to produce more than one record, pruning", "opts.configID", opts.configID)
 				continue
 			}
 
 			recsStr := mergedC.Records.String()
+			if !DoPruning {
+				recsStr = mergedC.ID.String() + "\n" + recsStr
+			}
+
 			prevConfig, found := rs[recsStr]
-			// fmt.Println("in generate.ConfigurationsForDetailPages(), merged", "found", found, "len(recsStr)", len(recsStr), "mergedC.ID", mergedC.ID)
-			if found {
-				// if scrape.DoPruning {
-				slog.Info("candidate detail page configuration failed to produce different records, excluding", "prevID", prevConfig.ID, "opts.configID", opts.configID)
+			if DoPruning && found {
+				slog.Info("candidate detail page configuration failed to produce different records, pruning", "prevID", prevConfig.ID, "opts.configID", opts.configID)
 				continue
 			}
 			rs[recsStr] = mergedC
-			// results[opts.configID.String()] = c
-			// rs[mergedC.ID.String()] = mergedC
 		}
 	}
 

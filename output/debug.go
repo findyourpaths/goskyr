@@ -28,6 +28,8 @@ func SetDefaultLogger(logPath string, level slog.Level) (*logState, error) {
 		return nil, fmt.Errorf("error opening log output file %q: %v", logPath, err)
 	}
 	// defer logF.Close()
+	// newLevel = level
+	// level = slog.LevelWarn
 	slog.SetDefault(slog.New(slog.NewTextHandler(logF, &slog.HandlerOptions{Level: level})))
 	return &logState{prevLogger: prevLogger, logF: logF}, nil
 }
