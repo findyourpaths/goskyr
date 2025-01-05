@@ -34,6 +34,8 @@ var DoDebug = false
 
 var DebugGQFind = true
 
+// var DebugGQFind = false
+
 func init() {
 	utils.WriteStringFile("/tmp/goskyr/main/scrape_Page_log.txt", "")
 	utils.WriteStringFile("/tmp/goskyr/main/scrape_GQDocument_log.txt", "")
@@ -425,57 +427,12 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 			// slog.Debug("pageURL: %q", pageURL)
 			return nil, fmt.Errorf("failed to fetch next page (gqdoc == nil: %t)", gqdoc == nil)
 		}
-		baseURL := getBaseURL(pageURL, gqdoc)
-		// fmt.Println("in scrape.Page()", "baseURL", baseURL)
-		// fmt.Println("in scrape.Page()", "pageURL", pageURL)
 
-		// if len(doc.Find(c.Record).Nodes) == 0 {
-		// 	slog.Debug("in Scraper.Page(), no records found, shortening selector to find the longest prefix that selects records")
-		// 	itemPath := c.Record
-		// 	for {
-		// 		slog.Debug("in Scraper.Page(), itemPath: %#v", itemPath)
-		// 		if len(doc.Find(itemPath).Nodes) != 0 {
-		// 			slog.Debug("in Scraper.Page(), len(doc.Find(itemPath).Nodes): %d", len(doc.Find(itemPath).Nodes))
-		// 			for _, node := range doc.Find(itemPath).Nodes {
-		// 				slog.Debug("%#v", node)
-		// 			}
-		// 			break
-		// 		}
-		// 		itemPathParts := strings.Split(itemPath, " > ")
-		// 		itemPath = strings.Join(itemPathParts[0:len(itemPathParts)-1], " > ")
-		// 	}
-		// }
-
-		slog.Debug("in scrape.Page()", "s.Selector", s.Selector)
-		slog.Debug("in scrape.Page()", "len(gqdoc.Find(s.Selector).Nodes)", len(gqdoc.Find(s.Selector).Nodes))
-		// fmt.Println("in scrape.Page()", "s.Selector", s.Selector)
-
-		found := gqdoc.Selection
-		// fmt.Println("in scrape.Page()", "len(gqdoc.Selection.Nodes)", len(gqdoc.Selection.Nodes))
-		if s.Selector != "" {
-			found = found.Find(s.Selector)
-			// fmt.Println("in scrape.Page(), during", "len(found.Nodes)", len(found.Nodes))
-			if DebugGQFind && len(found.Nodes) == 0 {
-				fmt.Printf("Trying to scrape from %q\n", pageURL)
-				fmt.Printf("Found no nodes for original selector: %q\n", s.Selector)
-				printGQFindDebug(gqdoc, s.Selector)
-				return nil, nil
-			}
+		recs, err := GQDocument(c, s, gqdoc, rawDyn)
+		if err != nil {
+			return nil, err
 		}
-
-		// fmt.Println("in scrape.Page(), after", "len(found.Nodes)", len(found.Nodes))
-		found.Each(func(i int, sel *goquery.Selection) {
-			slog.Debug("in scrape.Page()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
-			rec, err := GQSelection(c, s, sel, baseURL, rawDyn)
-			if err != nil {
-				slog.Error(err.Error())
-				return
-			}
-			slog.Debug("in scrape.Page(), looking at sel record", "rec", rec)
-			if rec != nil {
-				rs = append(rs, rec)
-			}
-		})
+		rs = append(rs, recs...)
 
 		currentPage++
 		hasNextPage, pageURL, gqdoc, err = s.fetchPage(cache, gqdoc, currentPage, pageURL, globalConfig.UserAgent, nil)
@@ -488,24 +445,6 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 
 	slog.Debug("in scrape.Page()", "len(rs)", len(rs), "rs.TotalFields()", rs.TotalFields())
 	return rs, nil
-}
-
-func printGQFindDebug(gqdoc *goquery.Document, sel string) {
-	selParts := strings.Split(sel, " > ")
-	fmt.Printf("    starting with selector: %q\n", selParts[0])
-	foundNone := false
-	for i := 1; i < len(selParts); i++ {
-		sel := strings.Join(selParts[0:i], " > ")
-		found := len(gqdoc.Find(sel).Nodes)
-		if !foundNone && found == 0 {
-			foundNone = true
-			prevNs := gqdoc.Find(strings.Join(selParts[0:i-1], " > ")).Nodes
-			for _, n := range prevNs {
-				fmt.Printf("    found child node: %q\n", printHTMLNodeAsStartTag(n))
-			}
-		}
-		fmt.Printf("    found %d nodes with selector: %q\n", found, selParts[i])
-	}
 }
 
 // GQDocument fetches and returns all records from a website according to the
@@ -542,8 +481,15 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 	found := gqdoc.Selection
 	if s.Selector != "" {
 		found = found.Find(s.Selector).Filter(s.Selector)
+		if DebugGQFind && len(found.Nodes) == 0 {
+			fmt.Printf("Trying to scrape from %q\n", s.URL)
+			fmt.Printf("Found no nodes for original selector: %q\n", s.Selector)
+			printGQFindDebug(gqdoc, s.Selector)
+			return nil, nil
+		}
 	}
 	found.Each(func(i int, sel *goquery.Selection) {
+		// fmt.Println("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		slog.Debug("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		r, err := GQSelection(c, s, sel, baseURL, rawDyn)
 		if err != nil {
@@ -554,13 +500,8 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 			return
 		}
 		r["Aurl"] = baseURL
-		// r["Aall"] = fmt.Sprintf("%#v", gqdoc.Selection.Contents())
-		// r["Ahead"] = fmt.Sprintf("%#v", gqdoc.Selection.Find("head").Contents())
 		r["Atitle"] = gqdoc.Find("title").Text()
-		// th, _ := gqdoc.Selection.Find("head > title").Contents().Html()
-		// r["Atitlehtml"] = fmt.Sprintf("%#v", th)
-		// printGQFindDebug(gqdoc, "head > title")
-		// panic("")
+		// fmt.Println("in scrape.GQDocument()", "r[\"Aurl\"]", r["Aurl"])
 		rs = append(rs, r)
 	})
 
@@ -568,6 +509,24 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 
 	slog.Debug("in scrape.GQDocument()", "len(rs)", len(rs), "rs.TotalFields()", rs.TotalFields())
 	return rs, nil
+}
+
+func printGQFindDebug(gqdoc *goquery.Document, sel string) {
+	selParts := strings.Split(sel, " > ")
+	fmt.Printf("    starting with selector: %q\n", selParts[0])
+	foundNone := false
+	for i := 1; i < len(selParts); i++ {
+		sel := strings.Join(selParts[0:i], " > ")
+		found := len(gqdoc.Find(sel).Nodes)
+		if !foundNone && found == 0 {
+			foundNone = true
+			prevNs := gqdoc.Find(strings.Join(selParts[0:i-1], " > ")).Nodes
+			for _, n := range prevNs {
+				fmt.Printf("    found child node: %q\n", printHTMLNodeAsStartTag(n))
+			}
+		}
+		fmt.Printf("    found %d nodes with selector: %q\n", found, selParts[i])
+	}
 }
 
 // GQSelection fetches and returns an records from a website according to the
@@ -1447,7 +1406,7 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, 
 			return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
 		}
 		if subGQDoc == nil {
-			slog.Warn("no subGQDoc found for %q", subURL)
+			slog.Warn("no subGQDoc found for %q", "subURL", subURL)
 			// return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
 			continue
 		}

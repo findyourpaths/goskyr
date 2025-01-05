@@ -77,6 +77,8 @@ func ConfigurationsForPage(cache fetch.Cache, opts ConfigOptions) (map[string]*s
 	slog.Info("ConfigurationsForPage()", "opts", opts)
 	defer slog.Info("ConfigurationsForPage() returning")
 
+	scrape.DebugGQFind = false
+
 	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get page %s (found: %t): %v", opts.URL, found, err)
