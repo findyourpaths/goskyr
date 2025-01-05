@@ -211,7 +211,7 @@ func processFields(exsCache map[string]string, lps []*locationProps, rootSelecto
 				}
 
 				slog.Debug("in processFields(), parsing field value with datetime", "ex", ex)
-				rngs, err := parse.ExtractDateTimeTZRanges("", ex)
+				rngs, err := parse.ExtractDateTimeTZRanges(0, "", "", ex)
 				if err != nil {
 					exsCache[ex] = ""
 					slog.Warn("parse error", "err", err)

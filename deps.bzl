@@ -476,12 +476,6 @@ def go_dependencies():
         version = "v0.0.0-20181209220409-c518dec07be9",
     )
     go_repository(
-        name = "com_github_goodsign_monday",
-        importpath = "github.com/goodsign/monday",
-        sum = "h1:k8kRMkCRVfCTWOU4dRfRgneQsWlB1+mJd3MxG0lGLzQ=",
-        version = "v1.0.2",
-    )
-    go_repository(
         name = "com_github_google_btree",
         importpath = "github.com/google/btree",
         sum = "h1:0udJVsspx3VBr5FwtLhQQtuAsVc79tTq0ocGIPAU6qo=",
@@ -1182,6 +1176,12 @@ def go_dependencies():
         importpath = "github.com/tealeg/xlsx/v3",
         sum = "h1:xdQp7YpaKt2fMhklG48jbsG/Ngcayeyfv4lPrKLbt6A=",
         version = "v3.0.0",
+    )
+    go_repository(
+        name = "com_github_tkuchiki_go_timezone",
+        importpath = "github.com/tkuchiki/go-timezone",
+        sum = "h1:D3TVdIPrFsu9lxGxqNX2wsZwn1MZtTqTW0mdevMozHc=",
+        version = "v0.2.3",
     )
     go_repository(
         name = "com_github_wcharczuk_go_chart",

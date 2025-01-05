@@ -11,7 +11,6 @@ go_library(
         "//output",
         "//utils",
         "@com_github_antchfx_jsonquery//:jsonquery",
-        "@com_github_goodsign_monday//:monday",
         "@com_github_ilyakaznacheev_cleanenv//:cleanenv",
         "@com_github_jpillora_go_tld//:go-tld",
         "@com_github_puerkitobio_goquery//:goquery",
@@ -26,7 +25,6 @@ go_test(
     data = ["//testdata"],
     embed = [":scrape"],
     deps = [
-        "//date",
         "//output",
         "@com_github_puerkitobio_goquery//:goquery",
     ],

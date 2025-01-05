@@ -310,36 +310,36 @@ func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, page
 
 	// Collect all of the proposed next urls from all the scraper's paginators.
 	pageS := pageC.Scrapers[0]
-	uStrsMap := map[string]scrape.Paginator{}
+	usMap := map[string]scrape.Paginator{}
 	for _, pag := range pageS.Paginators {
 		// hash := crc32.ChecksumIEEE([]byte(pag.Location.Selector))
 		// fmt.Printf("using pag with hash: %#v\n", hash)
-		u, err := scrape.GetURL(&pag.Location, sel, opts.URL)
+		_, uu, err := scrape.GetTextStringAndURL(&pag.Location, sel, opts.URL)
 		if err != nil {
 			fmt.Printf("ERROR: failed to get next page url: %v\n", err)
 			continue
 		}
 		// fmt.Printf("found next page url: %q\n", u)
 
-		uStr := u.String()
-		if strings.HasPrefix(uStr, "javascript:") {
+		u := uu.String()
+		if strings.HasPrefix(u, "javascript:") {
 			continue
 		}
-		uStr = fetch.TrimURLScheme(uStr)
+		u = fetch.TrimURLScheme(u)
 		shortURL := fetch.TrimURLScheme(opts.URL)
 		// fmt.Printf("looking at next url %q\n", uStr)
-		if uStr == shortURL ||
-			"www."+uStr == shortURL ||
-			uStr == "www."+shortURL {
+		if u == shortURL ||
+			"www."+u == shortURL ||
+			u == "www."+shortURL {
 			continue
 		}
-		uStrsMap[uStr] = pag
+		usMap[u] = pag
 	}
 
 	// Download all of the proposed next pages at the urls.
-	uStrs := []string{}
-	for uStr := range uStrsMap {
-		uStrs = append(uStrs, fetch.TrimURLScheme(uStr))
+	us := []string{}
+	for u := range usMap {
+		us = append(us, fetch.TrimURLScheme(u))
 	}
 
 	// FIXME
@@ -352,8 +352,8 @@ func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, page
 	// Scrape records for the proposed next pages.
 	// f := &fetch.FileFetcher{}
 	newPags := []scrape.Paginator{}
-	for uStr, pag := range uStrsMap {
-		nextGQDoc := gqdocsByURL[uStr]
+	for u, pag := range usMap {
+		nextGQDoc := gqdocsByURL[u]
 		// , err := goquery.NewDocumentFromReader(strings.NewReader(nextStr))
 		// if err != nil {
 		// 	return err

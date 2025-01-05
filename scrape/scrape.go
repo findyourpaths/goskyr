@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +21,6 @@ import (
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/findyourpaths/phil/parse"
-	"github.com/goodsign/monday"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/jpillora/go-tld"
 	"golang.org/x/net/html"
@@ -575,7 +573,7 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseURL string) 
 			// if rawDyn {
 			// err = extractRawField(&f, rs, sel)
 			// } else {
-			err = extractField(&f, rs, sel, baseURL)
+			err = extractField(&f, rs, sel, baseURL, 0)
 			// }
 			if err != nil {
 				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping rs %v.", f.Name, err, rs)
@@ -817,8 +815,8 @@ func (c *Scraper) fetchPage(cache fetch.Cache, doc *goquery.Document, nextPageI 
 	}
 
 	baseURL := getBaseURL(currentPageURL, doc)
-	nextPageU, err := GetURL(&c.Paginators[0].Location, doc.Selection, baseURL)
-	nextPageURL := nextPageU.String()
+	_, nextPageUU, err := GetTextStringAndURL(&c.Paginators[0].Location, doc.Selection, baseURL)
+	nextPageURL := nextPageUU.String()
 	fmt.Println("in scrape.fetchPage()", "baseURL", baseURL)
 	fmt.Println("in scrape.fetchPage()", "nextPageURL", nextPageURL)
 
@@ -838,15 +836,15 @@ func (c *Scraper) fetchPage(cache fetch.Cache, doc *goquery.Document, nextPageI 
 	return false, "", nil, nil
 }
 
-func extractField(field *Field, event output.Record, sel *goquery.Selection, baseURL string) error {
-	slog.Debug("scrape.extractField()", "field", field, "event", event, "sel", sel, "baseURL", baseURL)
-	switch field.Type {
+func extractField(f *Field, rec output.Record, sel *goquery.Selection, baseURL string, baseYear int) error {
+	slog.Debug("scrape.extractField()", "field", f, "event", rec, "sel", sel, "baseURL", baseURL)
+	switch f.Type {
 	case "text", "": // the default, ie when type is not configured, is 'text'
 		parts := []string{}
-		if len(field.ElementLocations) == 0 {
+		if len(f.ElementLocations) == 0 {
 			slog.Debug("in scrape.extractField(), empty field.ElementLocations")
 		} else {
-			for _, p := range field.ElementLocations {
+			for _, p := range f.ElementLocations {
 				str, err := getTextString(&p, sel)
 				if err != nil {
 					return err
@@ -856,72 +854,66 @@ func extractField(field *Field, event output.Record, sel *goquery.Selection, bas
 				}
 			}
 		}
-		t := strings.Join(parts, field.Separator)
+		t := strings.Join(parts, f.Separator)
 		if t == "" {
 			// if the extracted value is an empty string assign the default value
-			t = field.Default
-			if !field.CanBeEmpty && t == "" {
+			t = f.Default
+			if !f.CanBeEmpty && t == "" {
 				// if it's still empty and must not be empty return an error
-				return fmt.Errorf("field %s cannot be empty", field.Name)
+				return fmt.Errorf("field %s cannot be empty", f.Name)
 			}
 		}
 		// transform the string if required
-		for _, tr := range field.Transform {
+		for _, tr := range f.Transform {
 			var err error
 			t, err = transformString(&tr, t)
 			if err != nil {
 				return err
 			}
 		}
-		event[field.Name] = t
+		rec[f.Name] = t
 
 	case "url":
-		if len(field.ElementLocations) != 1 {
-			return fmt.Errorf("a field of type 'url' must exactly have one location")
+		if len(f.ElementLocations) != 1 {
+			return fmt.Errorf("a field of type 'url' must exactly have one location, found %d", len(f.ElementLocations))
 		}
-		str, err := getTextString(&field.ElementLocations[0], sel)
-		event[field.Name] = str
-
-		u, err := GetURL(&field.ElementLocations[0], sel, baseURL)
+		str, uu, err := GetTextStringAndURL(&f.ElementLocations[0], sel, baseURL)
+		rec[f.Name] = str
 		if err != nil {
 			return err
 		}
-		uStr := u.String()
-		if uStr == "" {
+		u := uu.String()
+		if u == "" {
 			// if the extracted value is an empty string assign the default value
-			uStr = field.Default
-			if !field.CanBeEmpty && uStr == "" {
+			u = f.Default
+			if !f.CanBeEmpty && u == "" {
 				// if it's still empty and must not be empty return an error
-				return fmt.Errorf("field %s cannot be empty", field.Name)
+				return fmt.Errorf("field %s cannot be empty", f.Name)
 			}
 		}
-		event[field.Name+"__Purl"] = uStr
-
-	case "date":
-		d, err := getDate(field, sel, dateDefaults{})
-		if err != nil {
-			return err
-		}
-		event[field.Name] = d
+		rec[f.Name+"__Purl"] = u
 
 	case "date_time_tz_ranges":
-		if len(field.ElementLocations) != 1 {
-			return fmt.Errorf("a field of type 'date_time_tz_ranges' must exactly have one location")
+		if len(f.ElementLocations) != 1 {
+			return fmt.Errorf("a field of type 'date_time_tz_ranges' must exactly have one location, found %d", len(f.ElementLocations))
 		}
-		str, err := getTextString(&field.ElementLocations[0], sel)
-		event[field.Name] = str
+		str, err := getTextString(&f.ElementLocations[0], sel)
+		rec[f.Name] = str
 		if err != nil {
 			return err
 		}
 
-		rngs, err := parse.ExtractDateTimeTZRanges("", str)
+		if baseYear == 0 {
+			baseYear = time.Now().Year()
+		}
+		rngs, err := parse.ExtractDateTimeTZRanges(baseYear, "", f.DateLocation, str)
 		if err != nil {
 			slog.Warn("parse error", "err", err)
 		}
 		if rngs != nil && len(rngs.Items) > 0 {
 			// start := rngs.Items[0].Start
 			// event[field.Name] = start.Date.String() + " " + start.Time.String()
-			event[field.Name+"__Pdate_time_tz_ranges"] = rngs.String()
+			rec[f.Name+"__Pdate_time_tz_ranges"] = rngs.String()
 		}
 
 		// d, err := getDate(field, sel, dateDefaults{})
@@ -930,290 +922,29 @@ func extractField(field *Field, event output.Record, sel *goquery.Selection, bas
 		// }
 		// event[field.Name] = d
 	default:
-		return fmt.Errorf("field type '%s' does not exist", field.Type)
+		return fmt.Errorf("field type '%s' does not exist", f.Type)
 	}
 	return nil
 }
 
-func extractRawField(field *Field, event output.Record, sel *goquery.Selection) error {
-	// slog.Debug("Scraper.extractRawField()", "field", field, "event", event, "s", sel)
-	switch field.Type {
-	case "text", "":
-		parts := []string{}
-		if len(field.ElementLocations) == 0 {
-			slog.Debug("in scrape.extractField(), empty field.ElementLocations")
-			str, err := getTextString(&ElementLocation{}, sel)
-			if err != nil {
-				return err
-			}
-			if str != "" {
-				parts = append(parts, str)
-			}
-		} else {
-			for _, p := range field.ElementLocations {
-				str, err := getTextString(&p, sel)
-				if err != nil {
-					return err
-				}
-				if str != "" {
-					parts = append(parts, str)
-				}
-			}
-		}
-		t := strings.Join(parts, field.Separator)
-		if !field.CanBeEmpty && t == "" {
-			return fmt.Errorf("field %s cannot be empty", field.Name)
-		}
-		event[field.Name] = t
-	case "url":
-		if len(field.ElementLocations) != 1 {
-			return fmt.Errorf("a field of type 'url' must exactly have one location")
-		}
-		if field.ElementLocations[0].Attr == "" {
-			// normally we'd set the default in getUrlString
-			// but we're not using this function for the raw extraction
-			// because we don't want the url to be auto expanded
-			field.ElementLocations[0].Attr = "href"
-		}
-		str, err := getTextString(&field.ElementLocations[0], sel)
-		if err != nil {
-			return err
-		}
-		if !field.CanBeEmpty && str == "" {
-			return fmt.Errorf("field %s cannot be empty", field.Name)
-		}
-		event[field.Name] = str
-
-	case "date":
-		cs, err := getRawDateComponents(field, sel)
-		if err != nil {
-			return err
-		}
-		for k, v := range cs {
-			event[k] = v
-		}
-
-	case "date_time_tz_ranges":
-		str, err := getTextString(&field.ElementLocations[0], sel)
-		if err != nil {
-			return err
-		}
-		if !field.CanBeEmpty && str == "" {
-			return fmt.Errorf("field %s cannot be empty", field.Name)
-		}
-
-		rngs, err := parse.ExtractDateTimeTZRanges("", str)
-		if err != nil {
-			slog.Warn("parse error", "err", err)
-		}
-		if rngs != nil && len(rngs.Items) > 0 {
-			event[field.Name] = rngs.String()
-		}
-
-		// cs, err := getRawDateComponents(field, sel)
-		// if err != nil {
-		// 	return err
-		// }
-		// for k, v := range cs {
-		// 	event[k] = v
-		// }
-	}
-	return nil
-}
-
-type datePart struct {
-	stringPart  string
-	layoutParts []string
-}
-
-type dateDefaults struct {
-	year int
-	time string // should be format 15:04
-}
-
-func getDate(f *Field, sel *goquery.Selection, dd dateDefaults) (time.Time, error) {
-	// time zone
-	var t time.Time
-	loc, err := time.LoadLocation(f.DateLocation)
-	if err != nil {
-		return t, err
-	}
-
-	// locale (language)
-	mLocale := "de_DE"
-	if f.DateLanguage != "" {
-		mLocale = f.DateLanguage
-	}
-
-	// collect all the date parts
-	dateParts := []datePart{}
-	combinedParts := date.CoveredDateParts{}
-	for _, c := range f.Components {
-		if !date.HasAllDateParts(combinedParts) {
-			if err := date.CheckForDoubleDateParts(c.Covers, combinedParts); err != nil {
-				return t, err
-			}
-			sp, err := getTextString(&c.ElementLocation, sel)
-			if err != nil {
-				return t, err
-			}
-			for _, tr := range c.Transform {
-				sp, err = transformString(&tr, sp)
-				// we have to return the error here instead of after the loop
-				// otherwise errors might be overwritten and hence ignored.
-				if err != nil {
-					return t, err
-				}
-			}
-			if sp != "" {
-				dateParts = append(dateParts, datePart{
-					stringPart:  sp,
-					layoutParts: c.Layout,
-				})
-				combinedParts = date.MergeDateParts(combinedParts, c.Covers)
-			}
-		}
-	}
-
-	// currently not all date parts have default values
-	if !combinedParts.Day || !combinedParts.Month {
-		return t, errors.New("date parsing error: to generate a date at least a day and a month is needed")
-	}
-
-	// adding default values where necessary
-	if !combinedParts.Year {
-		if dd.year == 0 {
-			dd.year = time.Now().Year()
-		}
-		dateParts = append(dateParts, datePart{
-			stringPart:  strconv.Itoa(dd.year),
-			layoutParts: []string{"2006"},
-		})
-	}
-	if !combinedParts.Time {
-		if dd.time == "" {
-			dd.time = "20:00"
-		}
-		dateParts = append(dateParts, datePart{
-			stringPart:  dd.time,
-			layoutParts: []string{"15:04"},
-		})
-	}
-
-	var dateTimeString string
-	dateTimeLayouts := []string{""}
-	for _, dp := range dateParts {
-		tmpDateTimeLayouts := dateTimeLayouts
-		dateTimeLayouts = []string{}
-		for _, tlp := range tmpDateTimeLayouts {
-			for _, lp := range dp.layoutParts {
-				dateTimeLayouts = append(dateTimeLayouts, tlp+lp+" ")
-			}
-		}
-		dateTimeString += dp.stringPart + " "
-	}
-
-	for _, dateTimeLayout := range dateTimeLayouts {
-		t, err = monday.ParseInLocation(dateTimeLayout, dateTimeString, loc, monday.Locale(mLocale))
-		if err == nil {
-			return t, nil
-		} else if !combinedParts.Year && f.GuessYear {
-			// edge case, parsing time "29.02. 20:00 2023 ": day out of range
-			// We set the year to the current year but it should actually be 2024
-			// We only update the year string in case guess_year is set to true
-			// to not confuse the user too much
-			if strings.HasSuffix(err.Error(), "day out of range") && strings.Contains(err.Error(), "29") {
-				for i := 1; i < 4; i++ {
-					dateTimeString = strings.Replace(dateTimeString, strconv.Itoa(dd.year), strconv.Itoa(dd.year+i), 1)
-					t, err = monday.ParseInLocation(dateTimeLayout, dateTimeString, loc, monday.Locale(mLocale))
-					if err == nil {
-						return t, nil
-					}
-				}
-			}
-		}
-	}
-	return t, err
-}
-
-func getRawDateComponents(f *Field, sel *goquery.Selection) (map[string]string, error) {
-	rawComponents := map[string]string{}
-	for _, c := range f.Components {
-		ts, err := getTextString(&c.ElementLocation, sel)
-		if err != nil {
-			return rawComponents, err
-		}
-		fName := "date-component"
-		if c.Covers.Day {
-			fName += "-day"
-		}
-		if c.Covers.Month {
-			fName += "-month"
-		}
-		if c.Covers.Year {
-			fName += "-year"
-		}
-		if c.Covers.Time {
-			fName += "-time"
-		}
-		rawComponents[fName] = ts
-	}
-	return rawComponents, nil
-}
-
-func GetURL(e *ElementLocation, sel *goquery.Selection, baseURL string) (*url.URL, error) {
+func GetTextStringAndURL(e *ElementLocation, sel *goquery.Selection, baseURL string) (string, *url.URL, error) {
 	// var urlVal, urlRes string
 	u, err := url.Parse(baseURL)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	if e.Attr == "" {
 		// set attr to the default if not set
 		e.Attr = "href"
 	}
-	relStr, err := getTextString(e, sel)
+	str, err := getTextString(e, sel)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
-
-	return u.Parse(relStr)
+	uu, err := u.Parse(str)
+	return str, uu, err
 }
-
-// 	urlVal = strings.TrimSpace(urlVal)
-// 	if urlVal == "" {
-// 		return "", nil
-// 	} else if strings.HasPrefix(urlVal, "http") {
-// 		urlRes = urlVal
-// 	} else if strings.HasPrefix(urlVal, "?") || strings.HasPrefix(urlVal, ".?") {
-// 		urlVal = strings.TrimLeft(urlVal, ".")
-// 		urlRes = fmt.Sprintf("%s://%s%s%s", u.Scheme, u.Host, u.Path, urlVal)
-// 	} else if strings.HasPrefix(urlVal, "/") {
-// 		baseURL := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
-// 		urlRes = fmt.Sprintf("%s%s", baseURL, urlVal)
-// 	} else if strings.HasPrefix(urlVal, "..") {
-// 		partsUrlVal := strings.Split(urlVal, "/")
-// 		partsPath := strings.Split(u.Path, "/")
-// 		i := 0
-// 		for ; i < len(partsUrlVal); i++ {
-// 			if partsUrlVal[i] != ".." {
-// 				break
-// 			}
-// 		}
-// 		urlRes = fmt.Sprintf("%s://%s%s/%s", u.Scheme, u.Host, strings.Join(partsPath[:len(partsPath)-i-1], "/"), strings.Join(partsUrlVal[i:], "/"))
-// 	} else {
-// 		idx := strings.LastIndex(u.Path, "/")
-// 		if idx > 0 {
-// 			path := u.Path[:idx]
-// 			urlRes = fmt.Sprintf("%s://%s%s/%s", u.Scheme, u.Host, path, urlVal)
-// 		} else {
-// 			urlRes = fmt.Sprintf("%s://%s/%s", u.Scheme, u.Host, urlVal)
-// 		}
-// 	}
-
-// 	urlRes = strings.TrimSpace(urlRes)
-// 	return urlRes, nil
-// }
 
 var SkipTag = map[string]bool{
 	"noscript": true,

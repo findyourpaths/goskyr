@@ -11,7 +11,6 @@ require (
 	github.com/chromedp/chromedp v0.11.2
 	github.com/findyourpaths/phil v0.0.0-00010101000000-000000000000
 	github.com/gdamore/tcell/v2 v2.7.4
-	github.com/goodsign/monday v1.0.2
 	github.com/gosimple/slug v1.14.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jpillora/go-tld v1.2.1
@@ -56,6 +55,7 @@ require (
 	github.com/rocketlaunchr/dataframe-go v0.0.0-20211025052708-a1030444159b // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/smartystreets/goconvey v1.7.2 // indirect
+	github.com/tkuchiki/go-timezone v0.2.3 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect

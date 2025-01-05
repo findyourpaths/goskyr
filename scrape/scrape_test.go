@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/output"
 )
 
@@ -267,7 +266,7 @@ func TestExtractFieldText(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "")
+	err = extractField(f, event, doc.Selection, "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -296,7 +295,7 @@ func TestExtractFieldTextEntireSubtree(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "")
+	err = extractField(f, event, doc.Selection, "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -327,7 +326,7 @@ func TestExtractFieldTextAllNodes(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "")
+	err = extractField(f, event, doc.Selection, "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -358,7 +357,7 @@ func TestExtractFieldTextRegex(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "")
+	err = extractField(f, event, doc.Selection, "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -387,7 +386,7 @@ func TestExtractFieldUrl(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "https://www.dachstock.ch/events")
+	err = extractField(f, event, doc.Selection, "https://www.dachstock.ch/events", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -416,7 +415,7 @@ func TestExtractFieldUrlFull(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=")
+	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -445,7 +444,7 @@ func TestExtractFieldUrlQuery(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=")
+	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -474,7 +473,7 @@ func TestExtractFieldUrlFile(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "https://www.roxy.ulm.de/programm/programm.php")
+	err = extractField(f, event, doc.Selection, "https://www.roxy.ulm.de/programm/programm.php", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -503,7 +502,7 @@ func TestExtractFieldUrlParentDir(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "http://point11.ch/site/home")
+	err = extractField(f, event, doc.Selection, "http://point11.ch/site/home", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -523,132 +522,91 @@ func TestExtractFieldDate(t *testing.T) {
 		t.Fatalf("unexpected error while reading html string: %v", err)
 	}
 	f := &Field{
-		Name: "date",
-		Type: "date",
-		Components: []DateComponent{
-			{
-				Covers: date.CoveredDateParts{
-					Day:   true,
-					Month: true,
-					Year:  true,
-					Time:  true,
-				},
-				ElementLocation: ElementLocation{
-					Selector: "a.event-date",
-				},
-				Layout: []string{
-					"Mon, 02.01.2006 - 15:04",
-				},
-			},
-		},
-		DateLocation: "Europe/Berlin",
+		Name:             "date",
+		Type:             "date_time_tz_ranges",
+		ElementLocations: []ElementLocation{{Selector: "a.event-date"}},
+		DateLocation:     "Europe/Berlin",
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "")
+	err = extractField(f, event, doc.Selection, "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 	}
-	if v, ok := event["date"]; !ok {
+	if actAny, ok := event["date__Pdate_time_tz_ranges"]; !ok {
 		t.Fatal("event doesn't contain the expected date field")
 	} else {
+		actStr, ok := actAny.(string)
+		if !ok {
+			t.Fatal("event date field is not a string")
+		}
 		loc, _ := time.LoadLocation(f.DateLocation)
 		expected := time.Date(2023, 3, 10, 20, 0, 0, 0, loc)
-		vTime, ok := v.(time.Time)
-		if !ok {
+		act, err := time.Parse(time.RFC3339, actStr)
+		if err != nil {
 			t.Fatalf("%v is not of type time.Time", err)
 		}
-		if !vTime.Equal(expected) {
-			t.Fatalf("expected '%s' for date but got '%s'", expected, vTime)
+		if !act.Equal(expected) {
+			t.Fatalf("expected '%s' for date but got '%s'", expected, act)
 		}
 	}
 }
 
-func TestExtractFieldDateTransform(t *testing.T) {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlString))
-	if err != nil {
-		t.Fatalf("unexpected error while reading html string: %v", err)
-	}
-	f := &Field{
-		Name: "date",
-		Type: "date",
-		Components: []DateComponent{
-			{
-				Covers: date.CoveredDateParts{
-					Day:   true,
-					Month: true,
-					Year:  true,
-					Time:  true,
-				},
-				ElementLocation: ElementLocation{
-					Selector: "a.event-date",
-				},
-				Transform: []TransformConfig{
-					{
-						TransformType: "regex-replace",
-						RegexPattern:  "\\.",
-						Replacement:   "/",
-					},
-				},
-				Layout: []string{
-					"Mon, 02/01/2006 - 15:04",
-				},
-			},
-		},
-		DateLocation: "Europe/Berlin",
-	}
-	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "")
-	if err != nil {
-		t.Fatalf("unexpected error while extracting the date field: %v", err)
-	}
-	if v, ok := event["date"]; !ok {
-		t.Fatal("event doesn't contain the expected date field")
-	} else {
-		loc, _ := time.LoadLocation(f.DateLocation)
-		expected := time.Date(2023, 3, 10, 20, 0, 0, 0, loc)
-		vTime, ok := v.(time.Time)
-		if !ok {
-			t.Fatalf("%v is not of type time.Time", err)
-		}
-		if !vTime.Equal(expected) {
-			t.Fatalf("expected '%s' for date but got '%s'", expected, vTime)
-		}
-	}
-}
-
-func TestExtractFieldDate29Feb(t *testing.T) {
+func TestExtractFieldDateWithoutYear(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlString5))
 	if err != nil {
 		t.Fatalf("unexpected error while reading html string: %v", err)
 	}
 	f := &Field{
-		Name: "date",
-		Type: "date",
-		Components: []DateComponent{
-			{
-				Covers: date.CoveredDateParts{
-					Day:   true,
-					Month: true,
-				},
-				ElementLocation: ElementLocation{
-					Selector: "h2 > a > span",
-				},
-				Layout: []string{
-					"02.01.",
-				},
-			},
-		},
-		DateLocation: "Europe/Berlin",
-		GuessYear:    true,
+		Name:             "date",
+		Type:             "date_time_tz_ranges",
+		ElementLocations: []ElementLocation{{Selector: "h2 > a > span"}},
+		DateLocation:     "Europe/Berlin",
+		GuessYear:        true,
 	}
-	dt, err := getDate(f, doc.Selection, dateDefaults{year: 2023})
+	event := output.Record{}
+	err = extractField(f, event, doc.Selection, "", 2024)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 	}
-	if dt.Year() != 2024 {
-		t.Fatalf("expected '2024' as year of date but got '%d'", dt.Year())
+	if actAny, ok := event["date__Pdate_time_tz_ranges"]; !ok {
+		t.Fatal("event doesn't contain the expected date field")
+	} else {
+		actStr, ok := actAny.(string)
+		if !ok {
+			t.Fatal("event date field is not a string")
+		}
+		loc, _ := time.LoadLocation(f.DateLocation)
+		expected := time.Date(2024, 2, 29, 0, 0, 0, 0, loc)
+		act, err := time.Parse(time.RFC3339, actStr)
+		if err != nil {
+			t.Fatalf("%v is not of type time.Time", err)
+		}
+		if !act.Equal(expected) {
+			t.Fatalf("expected '%s' for date but got '%s'", expected, act)
+		}
 	}
 }
+
+// func TestExtractFieldDate29Feb(t *testing.T) {
+// 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlString5))
+// 	if err != nil {
+// 		t.Fatalf("unexpected error while reading html string: %v", err)
+// 	}
+// 	f := &Field{
+// 		Name:            "date",
+// 		Type:            "date_time_tz_ranges",
+// 		ElementLocation: ElementLocation{Selector: "h2 > a > span"},
+// 		DateLocation:    "Europe/Berlin",
+// 		GuessYear:       true,
+// 	}
+// 	dt, err := getDate(f, doc.Selection, dateDefaults{year: 2023})
+// 	if err != nil {
+// 		t.Fatalf("unexpected error while extracting the date field: %v", err)
+// 	}
+// 	if dt.Year() != 2024 {
+// 		t.Fatalf("expected '2024' as year of date but got '%d'", dt.Year())
+// 	}
+// }
 
 func TestGuessYearSimple(t *testing.T) {
 	// records dates span period around change of year
