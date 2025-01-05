@@ -458,21 +458,7 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 			if DebugGQFind && len(found.Nodes) == 0 {
 				fmt.Printf("Trying to scrape from %q\n", pageURL)
 				fmt.Printf("Found no nodes for original selector: %q\n", s.Selector)
-				selParts := strings.Split(s.Selector, " > ")
-				fmt.Printf("    starting with selector: %q\n", selParts[0])
-				foundNone := false
-				for i := 1; i < len(selParts); i++ {
-					sel := strings.Join(selParts[0:i], " > ")
-					found := len(gqdoc.Find(sel).Nodes)
-					if !foundNone && found == 0 {
-						foundNone = true
-						prevNs := gqdoc.Find(strings.Join(selParts[0:i-1], " > ")).Nodes
-						for _, n := range prevNs {
-							fmt.Printf("    found child node: %q\n", printHTMLNodeAsStartTag(n))
-						}
-					}
-					fmt.Printf("    found %d nodes with selector: %q\n", found, selParts[i])
-				}
+				printGQFindDebug(gqdoc, s.Selector)
 				return nil, nil
 			}
 		}
@@ -504,6 +490,24 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 	return rs, nil
 }
 
+func printGQFindDebug(gqdoc *goquery.Document, sel string) {
+	selParts := strings.Split(sel, " > ")
+	fmt.Printf("    starting with selector: %q\n", selParts[0])
+	foundNone := false
+	for i := 1; i < len(selParts); i++ {
+		sel := strings.Join(selParts[0:i], " > ")
+		found := len(gqdoc.Find(sel).Nodes)
+		if !foundNone && found == 0 {
+			foundNone = true
+			prevNs := gqdoc.Find(strings.Join(selParts[0:i-1], " > ")).Nodes
+			for _, n := range prevNs {
+				fmt.Printf("    found child node: %q\n", printHTMLNodeAsStartTag(n))
+			}
+		}
+		fmt.Printf("    found %d nodes with selector: %q\n", found, selParts[i])
+	}
+}
+
 // GQDocument fetches and returns all records from a website according to the
 // Scraper's paramaters. When rawDyn is set to true the records returned are
 // not processed according to their type but instead the raw values based
@@ -525,7 +529,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 	}
 
 	rs := output.Records{}
-	baseUrl := getBaseURL(s.URL, gqdoc)
+	baseURL := getBaseURL(s.URL, gqdoc)
 
 	// recElts := strings.Split(s.Item, " > ")
 	// gqdoc.Find(strings.Join(itemElts[0:len(itemElts)-1], " > ")).Each(func(i int, sel *goquery.Selection) {
@@ -541,14 +545,23 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 	}
 	found.Each(func(i int, sel *goquery.Selection) {
 		slog.Debug("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
-		record, err := GQSelection(c, s, sel, baseUrl, rawDyn)
+		r, err := GQSelection(c, s, sel, baseURL, rawDyn)
 		if err != nil {
-			slog.Warn("while scraping document got error", "baseUrl", baseUrl, "err", err.Error())
+			slog.Warn("while scraping document got error", "baseUrl", baseURL, "err", err.Error())
 			return
 		}
-		if record != nil {
-			rs = append(rs, record)
+		if len(r) == 0 {
+			return
 		}
+		r["Aurl"] = baseURL
+		// r["Aall"] = fmt.Sprintf("%#v", gqdoc.Selection.Contents())
+		// r["Ahead"] = fmt.Sprintf("%#v", gqdoc.Selection.Find("head").Contents())
+		r["Atitle"] = gqdoc.Find("title").Text()
+		// th, _ := gqdoc.Selection.Find("head > title").Contents().Html()
+		// r["Atitlehtml"] = fmt.Sprintf("%#v", th)
+		// printGQFindDebug(gqdoc, "head > title")
+		// panic("")
+		rs = append(rs, r)
 	})
 
 	s.guessYear(rs, time.Now())
@@ -563,7 +576,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not detail pages). This is used by the ML feature generation.
-func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, rawDyn bool) (output.Record, error) {
+func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseURL string, rawDyn bool) (output.Record, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
@@ -602,7 +615,7 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, 
 			if rawDyn {
 				err = extractRawField(&f, rs, sel)
 			} else {
-				err = extractField(&f, rs, sel, baseUrl)
+				err = extractField(&f, rs, sel, baseURL)
 			}
 			if err != nil {
 				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping rs %v.", f.Name, err, rs)
@@ -673,6 +686,7 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseUrl string, 
 	// if s.numNonEmptyFields(rs) == 0 {
 	// 	return nil, nil
 	// }
+
 	slog.Debug("in scrape.GQSelection()", "rs", rs)
 	return rs, nil
 }
@@ -1378,8 +1392,10 @@ var SkipSubURLExt = map[string]bool{
 	".jfif": true,
 	".jpeg": true,
 	".jpg":  true,
+	".mp4":  true,
 	".pdf":  true,
 	".png":  true,
+	".webp": true,
 	".zip":  true,
 }
 
@@ -1429,6 +1445,11 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, 
 		subGQDoc, found, err := fetch.GetGQDocument(cache, subURL.String())
 		if err != nil {
 			return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
+		}
+		if subGQDoc == nil {
+			slog.Warn("no subGQDoc found for %q", subURL)
+			// return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
+			continue
 		}
 		if err := SubGQDocument(c, s, rec, c.ID.Field, subGQDoc); err != nil {
 			return fmt.Errorf("error extending records: %v", err)

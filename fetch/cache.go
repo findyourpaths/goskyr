@@ -43,7 +43,7 @@ type Cache interface {
 	Delete(key string)
 }
 
-var fetcher = NewDynamicFetcher("", 1) //s.PageLoadWait)
+// var fetcher = NewDynamicFetcher("", 1) //s.PageLoadWait)
 
 var ErrorIfPageNotInCache = false
 

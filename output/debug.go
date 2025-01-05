@@ -11,6 +11,8 @@ var WriteSeparateLogFiles = true
 
 // var WriteSeparateLogFiles = false
 
+var MinLogLevel = slog.LevelWarn
+
 type logState struct {
 	prevLogger *slog.Logger
 	logF       *os.File
@@ -30,6 +32,9 @@ func SetDefaultLogger(logPath string, level slog.Level) (*logState, error) {
 	// defer logF.Close()
 	// newLevel = level
 	// level = slog.LevelWarn
+	if level < MinLogLevel {
+		level = MinLogLevel
+	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(logF, &slog.HandlerOptions{Level: level})))
 	return &logState{prevLogger: prevLogger, logF: logF}, nil
 }

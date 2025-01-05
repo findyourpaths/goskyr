@@ -12,6 +12,7 @@ go_library(
         "//fetch",
         "//generate",
         "//ml",
+        "//output",
         "//scrape",
         "//utils",
         "@com_github_alecthomas_kong//:kong",

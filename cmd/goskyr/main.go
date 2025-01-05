@@ -12,6 +12,7 @@ import (
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/generate"
 	"github.com/findyourpaths/goskyr/ml"
+	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 )
@@ -36,18 +37,17 @@ func main() {
 			"version": "0.0.1",
 		})
 
-	var logLevel slog.Level
 	switch strings.ToLower(cli.Globals.LogLevel) {
 	case "debug":
-		logLevel = slog.LevelDebug
 		scrape.DoDebug = true
+		output.MinLogLevel = slog.LevelDebug
 	case "info":
-		logLevel = slog.LevelInfo
+		output.MinLogLevel = slog.LevelInfo
 	case "warn":
-		logLevel = slog.LevelWarn
+		output.MinLogLevel = slog.LevelWarn
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: output.MinLogLevel}))
 	slog.SetDefault(logger)
 
 	err := ctx.Run(&cli.Globals)
@@ -139,8 +139,12 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error initializing page options: %v", err)
 	}
 
+	var fetcher fetch.Fetcher
+	if !cmd.Offline {
+		fetcher = fetch.NewDynamicFetcher("", 1) //s.PageLoadWait)
+	}
 	var cache fetch.Cache
-	cache = fetch.NewFetchCache(nil)
+	cache = fetch.NewFetchCache(fetcher)
 	cache = fetch.NewFileCache(cache, cmd.CacheInputParentDir, false)
 	cache = fetch.NewFileCache(cache, cmd.CacheOutputParentDir, true)
 	cache = fetch.NewMemoryCache(cache)

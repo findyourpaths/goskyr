@@ -68,6 +68,9 @@ func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*goquery.Document, e
 	// slog.Debug("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
 	// slog.Debug("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
 	slog.Info("in fetch.GQDocument(), fetching", "urlStr", urlStr)
+	if f == nil {
+		panic("in fetch.GQDocument(), fetcher is nil, may be running offline")
+	}
 	res, err := f.Fetch(urlStr, opts)
 	slog.Info("in fetch.GQDocument(), fetched", "urlStr", urlStr, "err", err)
 	if err != nil {
