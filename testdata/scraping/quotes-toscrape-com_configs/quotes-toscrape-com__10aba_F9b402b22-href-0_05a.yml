@@ -41,7 +41,7 @@ scrapers:
       selector: div.container > div.author-details
       fields:
         - name: F12164689--0
-          type: text
+          type: date_time_tz_ranges
           location:
             - selector: p > span.author-born-date
           can_be_empty: true

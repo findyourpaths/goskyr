@@ -391,7 +391,7 @@ func TestExtractFieldUrl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url"]; !ok {
+	if v, ok := event["url__Purl"]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "https://www.dachstock.ch/events/10-03-2023-krachstock-final-story"
@@ -420,7 +420,7 @@ func TestExtractFieldUrlFull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url"]; !ok {
+	if v, ok := event["url__Purl"]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "https://www.eventfabrik-muenchen.de/event/heinz-rudolf-kunze-verstaerkung-2/"
@@ -449,7 +449,7 @@ func TestExtractFieldUrlQuery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url"]; !ok {
+	if v, ok := event["url__Purl"]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "https://www.eventfabrik-muenchen.de/events?bli=bla"
@@ -478,7 +478,7 @@ func TestExtractFieldUrlFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url"]; !ok {
+	if v, ok := event["url__Purl"]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "https://www.roxy.ulm.de/programm/programm.php?m=4&j=2023&vid=4378"
@@ -507,7 +507,7 @@ func TestExtractFieldUrlParentDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url"]; !ok {
+	if v, ok := event["url__Purl"]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "http://point11.ch/site/event/id/165"

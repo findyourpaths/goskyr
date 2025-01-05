@@ -161,7 +161,8 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	pagProps = []*locationProps{}
 	// }
 
-	rs, err = expandAllPossibleConfigs(cache, gqdoc, opts, lps, findSharedRootSelector(lps), pagProps, rs)
+	exsCache := map[string]string{}
+	rs, err = expandAllPossibleConfigs(cache, exsCache, gqdoc, opts, lps, findSharedRootSelector(lps), pagProps, rs)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +172,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	return rs, nil
 }
 
-func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -212,7 +213,7 @@ func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts C
 
 	// s.Record = shortenRootSelector(rootSelector).string()
 	s.Selector = rootSelector.string()
-	s.Fields = processFields(lps, rootSelector)
+	s.Fields = processFields(exsCache, lps, rootSelector)
 	if opts.DoDetailPages && len(s.GetDetailPageURLFields()) == 0 {
 		slog.Info("candidate configuration failed to find a detail page URL field, excluding", "opts.configID", opts.configID)
 		return rs, nil
@@ -223,15 +224,11 @@ func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts C
 		Scrapers: []scrape.Scraper{s},
 	}
 
-	recs, err := scrape.GQDocument(c, &s, gqdoc, true)
+	recs, err := scrape.GQDocument(c, &s, gqdoc)
 	if err != nil {
 		return nil, err
 	}
 	c.Records = recs
-
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		slog.Debug("in expandAllPossibleConfigs()", "len(recs)", len(recs), "recs.TotalFields()", recs.TotalFields())
-	}
 
 	clusters := findClusters(lps, rootSelector)
 	clusterIDs := []string{}
@@ -239,6 +236,10 @@ func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts C
 		clusterIDs = append(clusterIDs, clusterID)
 	}
 	sort.Strings(clusterIDs)
+
+	if slog.Default().Enabled(nil, slog.LevelDebug) {
+		slog.Debug("in expandAllPossibleConfigs()", "len(recs)", len(recs), "recs.TotalFields()", recs.TotalFields(), "len(clusters)", len(clusters))
+	}
 
 	include := true
 	recsStr := recs.String()
@@ -264,6 +265,7 @@ func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts C
 
 	lastID := 'a'
 	for _, clusterID := range clusterIDs {
+		slog.Debug("in expandAllPossibleConfigs()", "clusterID", clusterID)
 		nextOpts := opts
 		if opts.configID.Field != "" {
 			nextOpts.configID.SubID += string(lastID)
@@ -272,7 +274,7 @@ func expandAllPossibleConfigs(cache fetch.Cache, gqdoc *goquery.Document, opts C
 		}
 		nextLPs := clusters[clusterID]
 		nextRootSel := clusters[clusterID][0].path[0 : len(rootSelector)+1]
-		rs, err = expandAllPossibleConfigs(cache, gqdoc, nextOpts, nextLPs, nextRootSel, pagProps, rs)
+		rs, err = expandAllPossibleConfigs(cache, exsCache, gqdoc, nextOpts, nextLPs, nextRootSel, pagProps, rs)
 		if err != nil {
 			return nil, err
 		}
@@ -368,7 +370,7 @@ func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, page
 
 		// fmt.Printf("read next page: %q\n", u)
 
-		recs, err := scrape.GQDocument(pageC, &pageS, nextGQDoc, true)
+		recs, err := scrape.GQDocument(pageC, &pageS, nextGQDoc)
 		if err != nil {
 			return err
 		}

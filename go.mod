@@ -9,6 +9,7 @@ require (
 	github.com/antchfx/jsonquery v1.3.6
 	github.com/chromedp/cdproto v0.0.0-20241110205750-a72e6703cd9b
 	github.com/chromedp/chromedp v0.11.2
+	github.com/findyourpaths/phil v0.0.0-00010101000000-000000000000
 	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/goodsign/monday v1.0.2
 	github.com/gosimple/slug v1.14.0
@@ -19,7 +20,7 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	github.com/sjwhitworth/golearn v0.0.0-20221228163002-74ae077eafb2
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -28,6 +29,7 @@ require (
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/antchfx/xpath v1.3.2 // indirect
+	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
@@ -38,20 +40,22 @@ require (
 	github.com/gonum/lapack v0.0.0-20181123203213-e4cdc5a0bff9 // indirect
 	github.com/gonum/matrix v0.0.0-20181209220409-c518dec07be9 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/guptarohit/asciigraph v0.7.3 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rocketlaunchr/dataframe-go v0.0.0-20211025052708-a1030444159b // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/smartystreets/goconvey v1.7.2 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
@@ -60,3 +64,5 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )
+
+replace github.com/findyourpaths/phil => ../phil

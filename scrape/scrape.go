@@ -21,6 +21,7 @@ import (
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/utils"
+	"github.com/findyourpaths/phil/parse"
 	"github.com/goodsign/monday"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/jpillora/go-tld"
@@ -428,7 +429,7 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 			return nil, fmt.Errorf("failed to fetch next page (gqdoc == nil: %t)", gqdoc == nil)
 		}
 
-		recs, err := GQDocument(c, s, gqdoc, rawDyn)
+		recs, err := GQDocument(c, s, gqdoc)
 		if err != nil {
 			return nil, err
 		}
@@ -453,7 +454,7 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not detail pages). This is used by the ML feature generation.
-func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (output.Records, error) {
+func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document) (output.Records, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQDocument_log.txt", slog.LevelDebug)
@@ -491,7 +492,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *goquery.Document, rawDyn bool) (ou
 	found.Each(func(i int, sel *goquery.Selection) {
 		// fmt.Println("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		slog.Debug("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
-		r, err := GQSelection(c, s, sel, baseURL, rawDyn)
+		r, err := GQSelection(c, s, sel, baseURL)
 		if err != nil {
 			slog.Warn("while scraping document got error", "baseUrl", baseURL, "err", err.Error())
 			return
@@ -535,7 +536,7 @@ func printGQFindDebug(gqdoc *goquery.Document, sel string) {
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not detail pages). This is used by the ML feature generation.
-func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseURL string, rawDyn bool) (output.Record, error) {
+func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseURL string) (output.Record, error) {
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
@@ -559,23 +560,23 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseURL string, 
 	rs := output.Record{}
 	for _, f := range s.Fields {
 		slog.Debug("in scrape.GQSelection(), looking at field", "f.Name", f.Name)
-		if f.Value != "" {
-			if !rawDyn {
-				// add static fields
-				rs[f.Name] = f.Value
-			}
-			continue
-		}
+		// if f.Value != "" {
+		// 	if !rawDyn {
+		// 		// add static fields
+		// 		rs[f.Name] = f.Value
+		// 	}
+		// 	continue
+		// }
 		slog.Debug("in scrape.GQSelection(), before extract", "f", f)
 
 		// handle all dynamic fields on the main page
 		if f.OnDetailPage == "" {
 			var err error
-			if rawDyn {
-				err = extractRawField(&f, rs, sel)
-			} else {
-				err = extractField(&f, rs, sel, baseURL)
-			}
+			// if rawDyn {
+			// err = extractRawField(&f, rs, sel)
+			// } else {
+			err = extractField(&f, rs, sel, baseURL)
+			// }
 			if err != nil {
 				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping rs %v.", f.Name, err, rs)
 			}
@@ -595,44 +596,44 @@ func GQSelection(c *Config, s *Scraper, sel *goquery.Selection, baseURL string, 
 	// slog.Debug("in Scraper.GQSelection(), after field check", "currentItem", rs)
 
 	// Handle all fields on detail pages.
-	if !rawDyn {
-		dpDocs := make(map[string]*goquery.Document)
-		for _, f := range s.Fields {
-			if f.OnDetailPage == "" || f.Value != "" {
-				continue
-			}
+	// if !rawDyn {
+	// 	dpDocs := make(map[string]*goquery.Document)
+	// 	for _, f := range s.Fields {
+	// 		if f.OnDetailPage == "" || f.Value != "" {
+	// 			continue
+	// 		}
 
-			// check whether we fetched the page already
-			dpURL := fmt.Sprint(rs[f.OnDetailPage])
-			_, found := dpDocs[dpURL]
-			if !found {
-				panic("in scrape.GQSelection(), we can't fetch pages here")
-				// dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
-				// dpDocs[dpURL] = dpDoc
+	// 		// check whether we fetched the page already
+	// 		dpURL := fmt.Sprint(rs[f.OnDetailPage])
+	// 		_, found := dpDocs[dpURL]
+	// 		if !found {
+	// 			panic("in scrape.GQSelection(), we can't fetch pages here")
+	// 			// dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
+	// 			// dpDocs[dpURL] = dpDoc
 
-				// // dpRes, err := s.fetcher.Fetch(dpURL, nil)
-				// dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
-				// if err != nil {
-				// 	return nil, fmt.Errorf("error while fetching detail page: %v. Skipping record %v.", err, rs)
-				// }
-				// // dpDoc, err := goquery.NewDocumentFromReader(strings.NewReader(dpRes))
-				// // if err != nil {
-				// // 	return nil, fmt.Errorf("error while reading detail page document: %v. Skipping record %v", err, rs)
-				// // }
-				// dpDocs[dpURL] = dpDoc
-			}
+	// 			// // dpRes, err := s.fetcher.Fetch(dpURL, nil)
+	// 			// dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
+	// 			// if err != nil {
+	// 			// 	return nil, fmt.Errorf("error while fetching detail page: %v. Skipping record %v.", err, rs)
+	// 			// }
+	// 			// // dpDoc, err := goquery.NewDocumentFromReader(strings.NewReader(dpRes))
+	// 			// // if err != nil {
+	// 			// // 	return nil, fmt.Errorf("error while reading detail page document: %v. Skipping record %v", err, rs)
+	// 			// // }
+	// 			// dpDocs[dpURL] = dpDoc
+	// 		}
 
-			baseURLDetailPage := getBaseURL(dpURL, dpDocs[dpURL])
-			err := extractField(&f, rs, dpDocs[dpURL].Selection, baseURLDetailPage)
-			if err != nil {
-				return nil, fmt.Errorf("error while parsing detail page field %s: %v. Skipping record %v.", f.Name, err, rs)
-			}
-			// filter fast!
-			if !s.keepRecord(rs) {
-				return nil, nil
-			}
-		}
-	}
+	// 		baseURLDetailPage := getBaseURL(dpURL, dpDocs[dpURL])
+	// 		err := extractField(&f, rs, dpDocs[dpURL].Selection, baseURLDetailPage)
+	// 		if err != nil {
+	// 			return nil, fmt.Errorf("error while parsing detail page field %s: %v. Skipping record %v.", f.Name, err, rs)
+	// 		}
+	// 		// filter fast!
+	// 		if !s.keepRecord(rs) {
+	// 			return nil, nil
+	// 		}
+	// 	}
+	// }
 	// slog.Debug("in Scraper.GQSelection(), after rawDyn", "currentItem", rs)
 
 	// check if item should be filtered
@@ -768,10 +769,7 @@ func (c *Scraper) GetDetailPageURLFields() []Field {
 		if f.Type != "url" {
 			continue
 		}
-		if strings.HasSuffix(f.Value, ".gif") ||
-			strings.HasSuffix(f.Value, ".jfif") ||
-			strings.HasSuffix(f.Value, ".jpg") ||
-			strings.HasSuffix(f.Value, ".png") {
+		if SkipSubURLExt[filepath.Ext(f.Value)] {
 			continue
 		}
 		rs = append(rs, f)
@@ -849,12 +847,12 @@ func extractField(field *Field, event output.Record, sel *goquery.Selection, bas
 			slog.Debug("in scrape.extractField(), empty field.ElementLocations")
 		} else {
 			for _, p := range field.ElementLocations {
-				ts, err := getTextString(&p, sel)
+				str, err := getTextString(&p, sel)
 				if err != nil {
 					return err
 				}
-				if ts != "" {
-					parts = append(parts, ts)
+				if str != "" {
+					parts = append(parts, str)
 				}
 			}
 		}
@@ -876,10 +874,14 @@ func extractField(field *Field, event output.Record, sel *goquery.Selection, bas
 			}
 		}
 		event[field.Name] = t
+
 	case "url":
 		if len(field.ElementLocations) != 1 {
 			return fmt.Errorf("a field of type 'url' must exactly have one location")
 		}
+		str, err := getTextString(&field.ElementLocations[0], sel)
+		event[field.Name] = str
+
 		u, err := GetURL(&field.ElementLocations[0], sel, baseURL)
 		if err != nil {
 			return err
@@ -893,13 +895,40 @@ func extractField(field *Field, event output.Record, sel *goquery.Selection, bas
 				return fmt.Errorf("field %s cannot be empty", field.Name)
 			}
 		}
-		event[field.Name] = uStr
+		event[field.Name+"__Purl"] = uStr
+
 	case "date":
 		d, err := getDate(field, sel, dateDefaults{})
 		if err != nil {
 			return err
 		}
 		event[field.Name] = d
+
+	case "date_time_tz_ranges":
+		if len(field.ElementLocations) != 1 {
+			return fmt.Errorf("a field of type 'date_time_tz_ranges' must exactly have one location")
+		}
+		str, err := getTextString(&field.ElementLocations[0], sel)
+		event[field.Name] = str
+		if err != nil {
+			return err
+		}
+
+		rngs, err := parse.ExtractDateTimeTZRanges("", str)
+		if err != nil {
+			slog.Warn("parse error", "err", err)
+		}
+		if rngs != nil && len(rngs.Items) > 0 {
+			// start := rngs.Items[0].Start
+			// event[field.Name] = start.Date.String() + " " + start.Time.String()
+			event[field.Name+"__Pdate_time_tz_ranges"] = rngs.String()
+		}
+
+		// d, err := getDate(field, sel, dateDefaults{})
+		// if err != nil {
+		// 	return err
+		// }
+		// event[field.Name] = d
 	default:
 		return fmt.Errorf("field type '%s' does not exist", field.Type)
 	}
@@ -913,21 +942,21 @@ func extractRawField(field *Field, event output.Record, sel *goquery.Selection) 
 		parts := []string{}
 		if len(field.ElementLocations) == 0 {
 			slog.Debug("in scrape.extractField(), empty field.ElementLocations")
-			ts, err := getTextString(&ElementLocation{}, sel)
+			str, err := getTextString(&ElementLocation{}, sel)
 			if err != nil {
 				return err
 			}
-			if ts != "" {
-				parts = append(parts, ts)
+			if str != "" {
+				parts = append(parts, str)
 			}
 		} else {
 			for _, p := range field.ElementLocations {
-				ts, err := getTextString(&p, sel)
+				str, err := getTextString(&p, sel)
 				if err != nil {
 					return err
 				}
-				if ts != "" {
-					parts = append(parts, ts)
+				if str != "" {
+					parts = append(parts, str)
 				}
 			}
 		}
@@ -946,14 +975,15 @@ func extractRawField(field *Field, event output.Record, sel *goquery.Selection) 
 			// because we don't want the url to be auto expanded
 			field.ElementLocations[0].Attr = "href"
 		}
-		ts, err := getTextString(&field.ElementLocations[0], sel)
+		str, err := getTextString(&field.ElementLocations[0], sel)
 		if err != nil {
 			return err
 		}
-		if !field.CanBeEmpty && ts == "" {
+		if !field.CanBeEmpty && str == "" {
 			return fmt.Errorf("field %s cannot be empty", field.Name)
 		}
-		event[field.Name] = ts
+		event[field.Name] = str
+
 	case "date":
 		cs, err := getRawDateComponents(field, sel)
 		if err != nil {
@@ -962,6 +992,31 @@ func extractRawField(field *Field, event output.Record, sel *goquery.Selection) 
 		for k, v := range cs {
 			event[k] = v
 		}
+
+	case "date_time_tz_ranges":
+		str, err := getTextString(&field.ElementLocations[0], sel)
+		if err != nil {
+			return err
+		}
+		if !field.CanBeEmpty && str == "" {
+			return fmt.Errorf("field %s cannot be empty", field.Name)
+		}
+
+		rngs, err := parse.ExtractDateTimeTZRanges("", str)
+		if err != nil {
+			slog.Warn("parse error", "err", err)
+		}
+		if rngs != nil && len(rngs.Items) > 0 {
+			event[field.Name] = rngs.String()
+		}
+
+		// cs, err := getRawDateComponents(field, sel)
+		// if err != nil {
+		// 	return err
+		// }
+		// for k, v := range cs {
+		// 	event[k] = v
+		// }
 	}
 	return nil
 }
@@ -1431,7 +1486,7 @@ func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc
 		defer slog.Debug("scrape.SubGQDocument() returning")
 	}
 
-	subRecs, err := GQDocument(c, s, gqdoc, true)
+	subRecs, err := GQDocument(c, s, gqdoc)
 	if err != nil {
 		return fmt.Errorf("error scraping detail page for field %q: %v", fname, err)
 	}

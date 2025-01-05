@@ -25,7 +25,7 @@ scrapers:
       selector: div > section > div.container > table.table
       fields:
         - name: F21ad7531--0
-          type: text
+          type: date_time_tz_ranges
           location:
             - selector: tbody > tr.team > td.year
           can_be_empty: true

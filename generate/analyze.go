@@ -3,13 +3,13 @@ package generate
 import (
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
+	"github.com/findyourpaths/phil/parse"
 	"golang.org/x/net/html"
 )
 
@@ -165,66 +165,101 @@ func shortenRootSelector(p path) path {
 	return p
 }
 
+var datetimeFieldThreshold = 0.5
+
+var datetimeWeekdays = "sun|sunday|mon|monday|tue|tues|tuesday|wed|weds|wednesday|thu|thus|thursday|fri|friday|saturday|sat"
+var datetimeMonths = "jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december"
+var datetimeFieldRE = regexp.MustCompile(`(?i)\b(?:(?:19|20)\d{2}|` + datetimeMonths + `|` + datetimeWeekdays + `)\b`)
+
 // for now we assume that there will only be one date field
-func processFields(lps []*locationProps, rootSelector path) []scrape.Field {
+func processFields(exsCache map[string]string, lps []*locationProps, rootSelector path) []scrape.Field {
 	slog.Debug("processFields()", "len(lps)", len(lps))
-	zone, _ := time.Now().Zone()
-	zone = strings.Replace(zone, "CEST", "CET", 1) // quick hack for issue #209
-	dateField := scrape.Field{
-		Name:         "date",
-		Type:         "date",
-		DateLocation: zone,
-	}
-	fields := []scrape.Field{}
+
+	// zone, _ := time.Now().Zone()
+	// zone = strings.Replace(zone, "CEST", "CET", 1) // quick hack for issue #209
+	// dateField := scrape.Field{
+	// 	Name:         "date",
+	// 	Type:         "date",
+	// 	DateLocation: zone,
+	// }
 
 	slog.Debug("in processFields()", "len(rootSelector)", len(rootSelector), "rootSelector", rootSelector.string())
+	rs := []scrape.Field{}
 	for _, lp := range lps {
 		// slog.Debug("in processFields()", "e.path", e.path.string())
 		// slog.Debug("in processFields()", "e.path[len(rootSelector):]", e.path[len(rootSelector):].string())
-		loc := scrape.ElementLocation{
+		fLoc := scrape.ElementLocation{
 			Selector:   lp.path[len(rootSelector):].string(),
 			ChildIndex: lp.textIndex,
 			Attr:       lp.attr,
 		}
-		fieldType := "text"
+		fName := lp.name
+		fType := "text"
+		if fLoc.Attr == "href" || fLoc.Attr == "src" {
+			fType = "url"
+		} else {
+			num := 0
+			for _, ex := range lp.examples {
+				if _, found := exsCache[ex]; found {
+					num += 1
+					continue
+				}
 
-		if strings.HasPrefix(lp.name, "date-component") {
-			cd := date.CoveredDateParts{
-				Day:   strings.Contains(lp.name, "day"),
-				Month: strings.Contains(lp.name, "month"),
-				Year:  strings.Contains(lp.name, "year"),
-				Time:  strings.Contains(lp.name, "time"),
-			}
-			format, lang := date.GetDateFormatMulti(lp.examples, cd)
-			dateField.Components = append(dateField.Components, scrape.DateComponent{
-				ElementLocation: loc,
-				Covers:          cd,
-				Layout:          []string{format},
-			})
-			if dateField.DateLanguage == "" {
-				// first lang wins
-				dateField.DateLanguage = lang
-			}
-			continue
-		}
+				if !datetimeFieldRE.MatchString(ex) {
+					slog.Debug("in processFields(), ignoring field value with no datetimes", "ex", ex)
+					continue
+				}
 
-		if loc.Attr == "href" || loc.Attr == "src" {
-			fieldType = "url"
+				slog.Debug("in processFields(), parsing field value with datetime", "ex", ex)
+				rngs, err := parse.ExtractDateTimeTZRanges("", ex)
+				if err != nil {
+					exsCache[ex] = ""
+					slog.Warn("parse error", "err", err)
+				}
+				if rngs != nil && len(rngs.Items) > 0 {
+					exsCache[ex] = rngs.String()
+					num += 1
+				}
+			}
+			if float64(num)/float64(len(lp.examples)) > datetimeFieldThreshold {
+				// fName = fmt.Sprintf("date"
+				fType = "date_time_tz_ranges"
+			}
 		}
-		d := scrape.Field{
-			Name:             lp.name,
-			Type:             fieldType,
-			ElementLocations: []scrape.ElementLocation{loc},
+		// if strings.HasPrefix(lp.name, "date-component") {
+		// 	cd := date.CoveredDateParts{
+		// 		Day:   strings.Contains(lp.name, "day"),
+		// 		Month: strings.Contains(lp.name, "month"),
+		// 		Year:  strings.Contains(lp.name, "year"),
+		// 		Time:  strings.Contains(lp.name, "time"),
+		// 	}
+		// 	format, lang := date.GetDateFormatMulti(lp.examples, cd)
+		// 	dateField.Components = append(dateField.Components, scrape.DateComponent{
+		// 		ElementLocation: loc,
+		// 		Covers:          cd,
+		// 		Layout:          []string{format},
+		// 	})
+		// 	if dateField.DateLanguage == "" {
+		// 		// first lang wins
+		// 		dateField.DateLanguage = lang
+		// 	}
+		// 	continue
+		// }
+
+		f := scrape.Field{
+			Name:             fName,
+			Type:             fType,
+			ElementLocations: []scrape.ElementLocation{fLoc},
 			CanBeEmpty:       true,
 		}
-		fields = append(fields, d)
+		rs = append(rs, f)
 	}
 
-	if len(dateField.Components) > 0 {
-		fields = append(fields, dateField)
-	}
-	slog.Debug("processFields() returning", "len(fields)", len(fields))
-	return fields
+	// if len(dateField.Components) > 0 {
+	// 	fields = append(fields, dateField)
+	// }
+	slog.Debug("processFields() returning", "len(rs)", len(rs))
+	return rs
 }
 
 // squashLocationManager merges different locationProps into one
