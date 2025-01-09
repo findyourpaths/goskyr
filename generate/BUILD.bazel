@@ -17,6 +17,7 @@ go_library(
         "//scrape",
         "//utils",
         "@com_github_agnivade_levenshtein//:levenshtein",
+        "@com_github_findyourpaths_phil//parse",
         "@com_github_gdamore_tcell_v2//:tcell",
         "@com_github_jpillora_go_tld//:go-tld",
         "@com_github_puerkitobio_goquery//:goquery",

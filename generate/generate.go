@@ -23,20 +23,21 @@ type ConfigOptions struct {
 	Batch bool
 	// CacheInputDir             string
 	// CacheOutputDir            string
-	ConfigOutputParentDir     string
-	ConfigOutputDir           string
-	DoDetailPages             bool
-	MinOccs                   []int
-	ModelName                 string
-	Offline                   bool
-	OnlySameDomainDetailPages bool
-	OnlyVaryingFields         bool
-	RequireString             string
-	RenderJS                  bool
-	URL                       string
-	WordsDir                  string
-	configID                  scrape.ConfigID
-	configPrefix              string
+	ConfigOutputParentDir      string
+	ConfigOutputDir            string
+	DoDetailPages              bool
+	MinOccs                    []int
+	ModelName                  string
+	Offline                    bool
+	OnlyKnownDomainDetailPages bool
+	OnlyVaryingFields          bool
+	RenderJS                   bool
+	RequireDates               bool
+	RequireString              string
+	URL                        string
+	WordsDir                   string
+	configID                   scrape.ConfigID
+	configPrefix               string
 }
 
 func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
@@ -95,7 +96,7 @@ func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *g
 	minOccs := opts.MinOccs
 	sort.Sort(sort.Reverse(sort.IntSlice(minOccs)))
 	for _, minOcc := range minOccs {
-		slog.Debug("calling ConfigurationsForGQDocument()", "minOcc", minOcc, "rs == nil", rs == nil)
+		slog.Info("calling ConfigurationsForGQDocument()", "minOcc", minOcc, "rs == nil", rs == nil)
 		// fmt.Println("calling ConfigurationsForGQDocument()", "minOcc", minOcc, "rs == nil", rs == nil)
 		rs, err = ConfigurationsForGQDocumentWithMinOccurrence(cache, opts, gqdoc, minOcc, rs)
 		if err != nil {
@@ -106,7 +107,7 @@ func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *g
 		// }
 	}
 
-	slog.Debug("in ConfigurationsForPage()", "len(rs)", len(rs))
+	slog.Info("in ConfigurationsForPage()", "len(rs)", len(rs))
 	return rs, nil
 }
 
@@ -152,8 +153,8 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	}
 
 	// slog.Debug("in ConfigurationsForGQDocument, before expanding", "len(a.LocMan)", len(a.LocMan))
-	slog.Debug("in ConfigurationsForGQDocumentWithMinOccurrence(), before expanding", "len(lps)", len(lps))
-	slog.Debug("in ConfigurationsForGQDocumentWithMinOccurrence(), before expanding", "len(pagProps)", len(pagProps))
+	slog.Info("in ConfigurationsForGQDocumentWithMinOccurrence(), before expanding", "len(lps)", len(lps))
+	slog.Info("in ConfigurationsForGQDocumentWithMinOccurrence(), before expanding", "len(pagProps)", len(pagProps))
 	// rs := results
 
 	// FIXME
@@ -167,7 +168,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 		return nil, err
 	}
 
-	slog.Debug("in ConfigurationsForGQDocumentWithMinOccurrence()", "len(results)", len(rs))
+	slog.Info("in ConfigurationsForGQDocumentWithMinOccurrence()", "len(results)", len(rs))
 	// fmt.Println("in ConfigurationsForGQDocumentWithMinOccurrence()", "len(results)", len(rs))
 	return rs, nil
 }
@@ -226,6 +227,7 @@ func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqd
 
 	recs, err := scrape.GQDocument(c, &s, gqdoc)
 	if err != nil {
+		slog.Info("candidate configuration got error scraping GQDocument, excluding", "opts.configID", opts.configID)
 		return nil, err
 	}
 	c.Records = recs
@@ -237,8 +239,8 @@ func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqd
 	}
 	sort.Strings(clusterIDs)
 
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		slog.Debug("in expandAllPossibleConfigs()", "len(recs)", len(recs), "recs.TotalFields()", recs.TotalFields(), "len(clusters)", len(clusters))
+	if slog.Default().Enabled(nil, slog.LevelInfo) {
+		slog.Info("in expandAllPossibleConfigs()", "len(recs)", len(recs), "recs.TotalFields()", recs.TotalFields(), "len(clusters)", len(clusters))
 	}
 
 	include := true
@@ -248,6 +250,23 @@ func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqd
 		slog.Info("candidate configuration failed to extract the required string, excluding", "opts.configID", opts.configID) //, "opts.RequireString", opts.RequireString, "recsStr", recsStr)
 		include = false
 		// return rs, nil
+	}
+	if opts.RequireDates {
+		count := 0
+		for _, rec := range recs {
+			for k, v := range rec {
+				slog.Info("found", "key", k, "value", v)
+				if strings.HasSuffix(k, "__Pdate_time_tz_ranges") {
+					count++
+					break
+				}
+			}
+		}
+		slog.Info("found", "count", count, "len(recs)", len(recs))
+		if float32(count)/float32(len(recs)) < 0.5 {
+			slog.Info("candidate configuration failed to find dates, excluding", "opts.configID", opts.configID)
+			include = false
+		}
 	}
 
 	if include {
@@ -427,6 +446,11 @@ func pageJoinsURLs(pageJoinsMap map[string][]*pageJoin) []string {
 	return rs
 }
 
+var KnownDomains = map[string]bool{
+	"ticketweb": true,
+	"dice":      true,
+}
+
 func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForAllDetailPages_log.txt"), slog.LevelDebug)
@@ -498,7 +522,9 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 				}
 
 				// fmt.Println("checking skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value, "opts.OnlySameDomainDetailPages", opts.OnlySameDomainDetailPages, "uBase.Domain != absURL.Domain", uBase.Domain != absURL.Domain)
-				if opts.OnlySameDomainDetailPages && uBase.Domain != absURL.Domain {
+				slog.Debug("checking", "absURL", absURL)
+				slog.Debug("checking", "absURL.Domain", absURL.Domain)
+				if opts.OnlyKnownDomainDetailPages && !(uBase.Domain == absURL.Domain || KnownDomains[absURL.Domain]) {
 					slog.Debug("skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value)
 					continue
 				}
@@ -566,7 +592,7 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 		// }
 	}
 
-	slog.Debug("in ConfigurationsForAllDetailPages()", "len(rs)", len(rs))
+	slog.Info("in ConfigurationsForAllDetailPages()", "len(rs)", len(rs))
 	return rs, nil
 }
 
@@ -613,7 +639,7 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 	// slog.Debug("in ConfigurationsForDetailPages()", "mergedCConfigBase", mergedCConfigBase)
 
 	domain := ""
-	if opts.OnlySameDomainDetailPages {
+	if opts.OnlyKnownDomainDetailPages {
 		uBase, err := tld.Parse(opts.URL)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing input url %q: %v", opts.URL, err)
@@ -693,7 +719,7 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 		}
 	}
 
-	slog.Debug("in ConfigurationsForAllDetailPages()", "len(rs)", len(rs))
+	slog.Info("in ConfigurationsForAllDetailPages()", "len(rs)", len(rs))
 	return rs, nil
 }
 

@@ -89,19 +89,20 @@ func (cmd *ExtractFeaturesCmd) Run(globals *Globals) error {
 type GenerateCmd struct {
 	URL string `arg:"" help:"Automatically generate a config file for the given input url."`
 
-	Batch                     bool   `short:"b" long:"batch" default:true help:"Run batch (not interactively) to generate the config file."`
-	DoDetailPages             bool   `default:true help:"Whether to generate configurations for detail page as well."`
-	OnlySameDomainDetailPages bool   `default:true help:"Only go to detail pages on the same domain (e.g. follow z.com to y.z.com but not x.com)."`
-	OnlyVaryingFields         bool   `default:true help:"Only show fields that have varying values across the list of records."`
-	MinOcc                    int    `short:"m" long:"min" help:"The minimum number of records on a page. This is needed to filter out noise. Works in combination with the -g flag."`
-	CacheInputParentDir       string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
-	CacheOutputParentDir      string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will receive cached copies of the html page and linked pages."`
-	ConfigOutputParentDir     string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will recieve configuration files."`
-	Offline                   bool   `default:false help:"Run offline and don't fetch pages."`
-	PretrainedModelPath       string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
-	RenderJs                  bool   `short:"r" long:"renderjs" default:true help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
-	RequireString             string `help:"Require a candidate configuration to extract the given text in order for it to be generated."`
-	WordsDir                  string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
+	Batch                      bool   `short:"b" long:"batch" default:true help:"Run batch (not interactively) to generate the config file."`
+	DoDetailPages              bool   `default:true help:"Whether to generate configurations for detail page as well."`
+	OnlyKnownDomainDetailPages bool   `default:true help:"Only go to detail pages on the same domain (e.g. follow z.com to y.z.com but not x.com) or a known ticketing domain (e.g. eventbrite.com)."`
+	OnlyVaryingFields          bool   `default:true help:"Only show fields that have varying values across the list of records."`
+	MinOcc                     int    `short:"m" long:"min" help:"The minimum number of records on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	CacheInputParentDir        string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
+	CacheOutputParentDir       string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will receive cached copies of the html page and linked pages."`
+	ConfigOutputParentDir      string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will recieve configuration files."`
+	Offline                    bool   `default:false help:"Run offline and don't fetch pages."`
+	PretrainedModelPath        string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
+	RenderJs                   bool   `short:"r" long:"renderjs" default:true help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
+	RequireDates               bool   `help:"Require a candidate configuration to extract a date for most items in order for it to be generated."`
+	RequireString              string `help:"Require a candidate configuration to extract the given text in order for it to be generated."`
+	WordsDir                   string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
 }
 
 func (cmd *GenerateCmd) Run(globals *Globals) error {
@@ -113,7 +114,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
-	minOccs := []int{5, 10, 20}
+	minOccs := []int{3, 5, 10, 20}
 	// minOccs = []int{5}
 	if cmd.MinOcc != 0 {
 		minOccs = []int{cmd.MinOcc}
@@ -123,17 +124,18 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		Batch: cmd.Batch,
 		// CacheInputDir:             cmd.CacheInputDir,
 		// CacheOutputDir:            cmd.CacheOutputDir,
-		ConfigOutputParentDir:     cmd.ConfigOutputParentDir,
-		DoDetailPages:             cmd.DoDetailPages,
-		URL:                       cmd.URL,
-		MinOccs:                   minOccs,
-		ModelName:                 cmd.PretrainedModelPath,
-		Offline:                   cmd.Offline,
-		OnlySameDomainDetailPages: cmd.OnlySameDomainDetailPages,
-		OnlyVaryingFields:         cmd.OnlyVaryingFields,
-		RenderJS:                  cmd.RenderJs,
-		RequireString:             cmd.RequireString,
-		WordsDir:                  cmd.WordsDir,
+		ConfigOutputParentDir:      cmd.ConfigOutputParentDir,
+		DoDetailPages:              cmd.DoDetailPages,
+		URL:                        cmd.URL,
+		MinOccs:                    minOccs,
+		ModelName:                  cmd.PretrainedModelPath,
+		Offline:                    cmd.Offline,
+		OnlyKnownDomainDetailPages: cmd.OnlyKnownDomainDetailPages,
+		OnlyVaryingFields:          cmd.OnlyVaryingFields,
+		RenderJS:                   cmd.RenderJs,
+		RequireDates:               cmd.RequireDates,
+		RequireString:              cmd.RequireString,
+		WordsDir:                   cmd.WordsDir,
 	})
 	if err != nil {
 		return fmt.Errorf("error initializing page options: %v", err)
@@ -141,7 +143,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 
 	var fetcher fetch.Fetcher
 	if !cmd.Offline {
-		fetcher = fetch.NewDynamicFetcher("", 1) //s.PageLoadWait)
+		fetcher = fetch.NewDynamicFetcher("", 0) //s.PageLoadWait)
 	}
 	var cache fetch.Cache
 	cache = fetch.NewFetchCache(fetcher)
@@ -230,17 +232,17 @@ func (cmd *RegenerateCmd) regenerateTest(globals *Globals, cat string, hostSlug 
 		// doDetailPages := len(paths) > 1
 
 		subCmd := GenerateCmd{
-			Batch:                     true,
-			DoDetailPages:             doDetailPages,
-			OnlySameDomainDetailPages: true,
-			OnlyVaryingFields:         true,
-			CacheInputParentDir:       testCatInputDir,
-			CacheOutputParentDir:      cmd.CacheOutputDir,
-			ConfigOutputParentDir:     cmd.ConfigOutputDir,
-			Offline:                   true,
-			RenderJs:                  true,
-			RequireString:             t.required,
-			URL:                       t.url,
+			Batch:                      true,
+			DoDetailPages:              doDetailPages,
+			OnlyKnownDomainDetailPages: true,
+			OnlyVaryingFields:          true,
+			CacheInputParentDir:        testCatInputDir,
+			CacheOutputParentDir:       cmd.CacheOutputDir,
+			ConfigOutputParentDir:      cmd.ConfigOutputDir,
+			Offline:                    true,
+			RenderJs:                   true,
+			RequireString:              t.required,
+			URL:                        t.url,
 		}
 		if err := subCmd.Run(globals); err != nil {
 			return fmt.Errorf("error running generate with dir: %q, name: %q, url: %q: %v\n", cat, hostSlug, t.url, err)

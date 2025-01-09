@@ -46,7 +46,7 @@ scrapers:
             - selector: p > span.author-born-date
           can_be_empty: true
         - name: F50c6f8d1--0
-          type: date_time_tz_ranges
+          type: text
           location:
             - selector: div.author-description
           can_be_empty: true

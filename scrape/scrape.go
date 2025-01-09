@@ -953,7 +953,7 @@ var SkipTag = map[string]bool{
 }
 
 func getTextString(e *ElementLocation, sel *goquery.Selection) (string, error) {
-	// slog.Debug("getTextString()", "e", e, "s", sel)
+	slog.Debug("getTextString()", "e", e, "s", sel)
 	var fieldStrings []string
 	var fieldSelection *goquery.Selection
 	if e.Selector == "" {
@@ -961,7 +961,12 @@ func getTextString(e *ElementLocation, sel *goquery.Selection) (string, error) {
 	} else {
 		fieldSelection = sel.Find(e.Selector)
 	}
-	// slog.Debug("in getTextString()", "e.Selector", e.Selector)
+	slog.Debug("in getTextString()", "e.Selector", e.Selector, "e.Attr", e.Attr, "e.EntireSubtree", e.EntireSubtree, "len(fieldSelection.Nodes)", len(fieldSelection.Nodes))
+
+	slog.Debug("in getTextString()", "printHTMLNodes(fieldSelection.Nodes)", printHTMLNodes(fieldSelection.Nodes))
+	for i, n := range fieldSelection.Nodes {
+		slog.Debug("in getTextString()", "i", i, "fieldSelectionNode", n, "printHTMLNodeAsStartTag(n)", printHTMLNodeAsStartTag(n))
+	}
 	if len(fieldSelection.Nodes) > 0 {
 		if e.Attr == "" {
 			if e.EntireSubtree {
@@ -1005,6 +1010,15 @@ func getTextString(e *ElementLocation, sel *goquery.Selection) (string, error) {
 					}
 				} else {
 					fieldNode := fieldSelection.Get(0).FirstChild
+					for _, n := range fieldSelection.Nodes {
+						if n.Attr == nil {
+							// FIXME: Test this case
+							slog.Debug("in getTextString(), setting field node to node with no attributes, as we expect from selector")
+							fieldNode = n.FirstChild
+							break
+						}
+					}
+
 					if fieldNode != nil {
 						fieldNodes = append(fieldNodes, fieldNode)
 					}
@@ -1030,6 +1044,7 @@ func getTextString(e *ElementLocation, sel *goquery.Selection) (string, error) {
 			fieldStrings = append(fieldStrings, fieldSelection.AttrOr(e.Attr, ""))
 		}
 	}
+	slog.Debug("getTextString() 1", "fieldStrings", fieldStrings)
 	// do json lookup if we have a json_selector
 	for i, f := range fieldStrings {
 		fieldString, err := extractJsonField(e.JsonSelector, f)
@@ -1055,7 +1070,9 @@ func getTextString(e *ElementLocation, sel *goquery.Selection) (string, error) {
 	for i, f := range fieldStrings {
 		fieldStrings[i] = utils.ShortenString(f, e.MaxLength)
 	}
-	return strings.Join(fieldStrings, e.Separator), nil
+	r := strings.Join(fieldStrings, e.Separator)
+	slog.Debug("getTextString(), returning", "r", r)
+	return r, nil
 }
 
 func extractStringRegex(rc *RegexConfig, s string) (string, error) {

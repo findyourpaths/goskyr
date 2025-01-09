@@ -35,7 +35,7 @@ local_repository(
 
 local_repository(
     name = "com_github_findyourpaths_phil",
-    path = "../../phil",
+    path = "../phil",
 )
 
 # gazelle:repository_macro deps.bzl%go_dependencies

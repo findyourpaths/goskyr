@@ -3,7 +3,6 @@ package generate
 import (
 	"fmt"
 	"hash/crc32"
-	"log/slog"
 	"sort"
 
 	"github.com/findyourpaths/goskyr/ml"
@@ -27,7 +26,7 @@ type locationProps struct {
 }
 
 func makeLocationProps(nodePath path, example string, isText bool) locationProps {
-	slog.Debug("makeLocationProps()", "nodePath.actualstring()", nodePath.string(), "example", example)
+	// slog.Debug("makeLocationProps()", "nodePath.actualstring()", nodePath.string(), "example", example)
 	p := make([]node, len(nodePath))
 	copy(p, nodePath)
 	return locationProps{
