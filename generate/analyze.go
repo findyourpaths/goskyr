@@ -9,7 +9,7 @@ import (
 
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
-	"github.com/findyourpaths/phil/parse"
+	"github.com/findyourpaths/phil/datetime"
 	"golang.org/x/net/html"
 )
 
@@ -211,7 +211,7 @@ func processFields(exsCache map[string]string, lps []*locationProps, rootSelecto
 				}
 
 				slog.Debug("in processFields(), parsing field value with datetime", "ex", ex)
-				rngs, err := parse.ExtractDateTimeTZRanges(0, "", "", ex)
+				rngs, err := datetime.Parse(0, "", nil, ex)
 				if err != nil {
 					exsCache[ex] = ""
 					slog.Warn("parse error", "err", err)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/output"
 )
 
@@ -266,7 +267,7 @@ func TestExtractFieldText(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -295,7 +296,7 @@ func TestExtractFieldTextEntireSubtree(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -326,7 +327,7 @@ func TestExtractFieldTextAllNodes(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -357,7 +358,7 @@ func TestExtractFieldTextRegex(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -386,11 +387,11 @@ func TestExtractFieldUrl(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "https://www.dachstock.ch/events", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "https://www.dachstock.ch/events", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url__Purl"]; !ok {
+	if v, ok := event["url"+URLFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "https://www.dachstock.ch/events/10-03-2023-krachstock-final-story"
@@ -415,11 +416,11 @@ func TestExtractFieldUrlFull(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url__Purl"]; !ok {
+	if v, ok := event["url"+URLFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "https://www.eventfabrik-muenchen.de/event/heinz-rudolf-kunze-verstaerkung-2/"
@@ -444,11 +445,11 @@ func TestExtractFieldUrlQuery(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url__Purl"]; !ok {
+	if v, ok := event["url"+URLFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "https://www.eventfabrik-muenchen.de/events?bli=bla"
@@ -473,11 +474,11 @@ func TestExtractFieldUrlFile(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "https://www.roxy.ulm.de/programm/programm.php", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "https://www.roxy.ulm.de/programm/programm.php", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url__Purl"]; !ok {
+	if v, ok := event["url"+URLFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "https://www.roxy.ulm.de/programm/programm.php?m=4&j=2023&vid=4378"
@@ -502,11 +503,11 @@ func TestExtractFieldUrlParentDir(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "http://point11.ch/site/home", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "http://point11.ch/site/home", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
-	if v, ok := event["url__Purl"]; !ok {
+	if v, ok := event["url"+URLFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected url field")
 	} else {
 		expected := "http://point11.ch/site/event/id/165"
@@ -528,11 +529,11 @@ func TestExtractFieldDate(t *testing.T) {
 		DateLocation:     "Europe/Berlin",
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "", 0)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 	}
-	if actAny, ok := event["date__Pdate_time_tz_ranges"]; !ok {
+	if actAny, ok := event["date"+DateTimeFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected date field")
 	} else {
 		actStr, ok := actAny.(string)
@@ -543,7 +544,7 @@ func TestExtractFieldDate(t *testing.T) {
 		expected := time.Date(2023, 3, 10, 20, 0, 0, 0, loc)
 		act, err := time.Parse(time.RFC3339, actStr)
 		if err != nil {
-			t.Fatalf("%v is not of type time.Time", err)
+			t.Fatalf("%v is not of type time.Time, actStr: %q", err, actStr)
 		}
 		if !act.Equal(expected) {
 			t.Fatalf("expected '%s' for date but got '%s'", expected, act)
@@ -564,11 +565,11 @@ func TestExtractFieldDateWithoutYear(t *testing.T) {
 		GuessYear:        true,
 	}
 	event := output.Record{}
-	err = extractField(f, event, doc.Selection, "", 2024)
+	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 2024)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 	}
-	if actAny, ok := event["date__Pdate_time_tz_ranges"]; !ok {
+	if actAny, ok := event["date"+DateTimeFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected date field")
 	} else {
 		actStr, ok := actAny.(string)
@@ -599,7 +600,7 @@ func TestExtractFieldDateWithoutYear(t *testing.T) {
 // 		DateLocation:    "Europe/Berlin",
 // 		GuessYear:       true,
 // 	}
-// 	dt, err := getDate(f, doc.Selection, dateDefaults{year: 2023})
+// 	dt, err := getDate(f, fetch.NewSelection(doc.Selection), dateDefaults{year: 2023})
 // 	if err != nil {
 // 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 // 	}

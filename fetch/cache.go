@@ -47,7 +47,59 @@ type Cache interface {
 
 var ErrorIfPageNotInCache = false
 
-func GetGQDocument(cache Cache, u string) (*goquery.Document, bool, error) {
+type Document struct {
+	*goquery.Document
+	findCache map[string]*Selection
+}
+
+func NewDocument(gqdoc *goquery.Document) *Document {
+	return &Document{
+		Document:  gqdoc,
+		findCache: map[string]*Selection{},
+	}
+}
+
+func NewDocumentFromString(str string) (*Document, error) {
+	gqdoc, err := goquery.NewDocumentFromReader(strings.NewReader(str))
+	if err != nil {
+		return nil, err
+	}
+	return NewDocument(gqdoc), nil
+}
+
+func (gqdoc *Document) Find(selector string) *Selection {
+	if r, found := gqdoc.findCache[selector]; found {
+		return r
+	}
+	r := NewSelection(gqdoc.Document.Find(selector))
+	gqdoc.findCache[selector] = r
+	return r
+}
+
+type Selection struct {
+	*goquery.Selection
+	findCache map[string]*Selection
+	textCache map[any]string
+}
+
+func NewSelection(sel *goquery.Selection) *Selection {
+	return &Selection{
+		Selection: sel,
+		findCache: map[string]*Selection{},
+		textCache: map[any]string{},
+	}
+}
+
+func (sel *Selection) Find(selector string) *Selection {
+	if r, found := sel.findCache[selector]; found {
+		return r
+	}
+	r := NewSelection(sel.Selection.Find(selector))
+	sel.findCache[selector] = r
+	return r
+}
+
+func GetGQDocument(cache Cache, u string) (*Document, bool, error) {
 	if ShowCaching {
 		fmt.Println("fetch.GetGQDocument()", "u", u)
 	}
@@ -91,13 +143,13 @@ func GetGQDocument(cache Cache, u string) (*goquery.Document, bool, error) {
 // Helper struct to hold page results
 type pageResult struct {
 	index int
-	gqdoc *goquery.Document
+	gqdoc *Document
 	err   error
 }
 
-func GetGQDocuments(cache Cache, us []string) ([]*goquery.Document, []error) {
+func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
 	// func Pages(cache fetch.Cache, us []string, reqFn func(req *client.Request)) ([]*goquery.Document, []error) {
-	rs := make([]*goquery.Document, len(us))
+	rs := make([]*Document, len(us))
 	errs := make([]error, len(us))
 
 	// Use a channel to receive results and errors.
@@ -166,7 +218,7 @@ func GetGQDocuments(cache Cache, us []string) ([]*goquery.Document, []error) {
 	return rs, errs
 }
 
-func SetGQDocument(cache Cache, u string, gqdoc *goquery.Document) {
+func SetGQDocument(cache Cache, u string, gqdoc *Document) {
 	str, err := goquery.OuterHtml(gqdoc.Children())
 	if err != nil {
 		fmt.Printf("got error setting cache: %v\n", err)
@@ -182,7 +234,7 @@ func SetGQDocument(cache Cache, u string, gqdoc *goquery.Document) {
 	cache.Set(u, respBytes)
 }
 
-func ResponseBytesToGQDocument(respBytes []byte) (*goquery.Document, error) {
+func ResponseBytesToGQDocument(respBytes []byte) (*Document, error) {
 	resp, err := http.ReadResponse(bufio.NewReader(bytes.NewBuffer(respBytes)), nil)
 	if err != nil {
 		return nil, fmt.Errorf("reading response: %w", err)
@@ -215,7 +267,7 @@ func ResponseBytesToGQDocument(respBytes []byte) (*goquery.Document, error) {
 		return nil, fmt.Errorf("reading body: %w", err)
 	}
 
-	return goquery.NewDocumentFromReader(bytes.NewReader(body))
+	return NewDocumentFromString(string(body))
 }
 
 // func fetchGQDocument(opts ConfigOptions, u string) (*goquery.Document, error) {

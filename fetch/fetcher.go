@@ -64,7 +64,7 @@ func MakeURLStringSlug(u string) string {
 	return slug.Make(TrimURLScheme(u))
 }
 
-func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*goquery.Document, error) {
+func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*Document, error) {
 	// slog.Debug("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
 	// slog.Debug("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
 	slog.Info("in fetch.GQDocument(), fetching", "urlStr", urlStr)
@@ -77,7 +77,7 @@ func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*goquery.Document, e
 		return nil, err
 	}
 	// fmt.Println(res)
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(res))
+	doc, err := NewDocumentFromString(res)
 	if err != nil {
 		return nil, err
 	}

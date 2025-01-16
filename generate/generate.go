@@ -80,14 +80,14 @@ func ConfigurationsForPage(cache fetch.Cache, opts ConfigOptions) (map[string]*s
 
 	scrape.DebugGQFind = false
 
-	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
+	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*fetch.Document{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get page %s (found: %t): %v", opts.URL, found, err)
 	}
 	return ConfigurationsForGQDocument(cache, opts, gqdoc)
 }
 
-func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *goquery.Document) (map[string]*scrape.Config, error) {
+func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document) (map[string]*scrape.Config, error) {
 	// cims := map[string]*scrape.Config{}
 	// fmt.Println("in ConfigurationsForGQDocument()", "cims == nil", cims == nil)
 	var err error
@@ -111,7 +111,7 @@ func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *g
 	return rs, nil
 }
 
-// func ConfigurationsForGQDocuments(opts ConfigOptions, gqdocs []*goquery.Document, minOcc int, gqdocsByURL map[string]*goquery.Document) (map[string]*scrape.Config, map[string]*goquery.Document, error) {
+// func ConfigurationsForGQDocuments(opts ConfigOptions, gqdocs []*fetch.Document, minOcc int, gqdocsByURL map[string]*fetch.Document) (map[string]*scrape.Config, map[string]*fetch.Document, error) {
 // 	_, gqdoc, err := joinGQDocuments(gqdocs)
 // 	if err != nil {
 // 		return nil, nil, err
@@ -119,7 +119,7 @@ func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *g
 // 	return ConfigurationsForGQDocumentWithMinOccurrence(opts, gqdoc, minOcc, gqdocsByURL)
 // }
 
-func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts ConfigOptions, gqdoc *goquery.Document, minOcc int, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document, minOcc int, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	minOccStr := fmt.Sprintf("%02da", minOcc)
 	if opts.configID.Field != "" {
 		opts.configID.SubID = minOccStr
@@ -138,7 +138,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	defer slog.Info("ConfigurationsForGQDocumentWithMinOccurrence() returning")
 	// fmt.Println("in ConfigurationsForGQDocumentWithMinOccurrence()", "results == nil", rs == nil)
 
-	htmlStr, err := goquery.OuterHtml(gqdoc.Children())
+	htmlStr, err := goquery.OuterHtml(gqdoc.Document.Children())
 	if err != nil {
 		return nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
 	}
@@ -173,7 +173,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	return rs, nil
 }
 
-func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqdoc *goquery.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqdoc *fetch.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -254,9 +254,9 @@ func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqd
 	if opts.RequireDates {
 		count := 0
 		for _, rec := range recs {
-			for k, v := range rec {
-				slog.Info("found", "key", k, "value", v)
-				if strings.HasSuffix(k, "__Pdate_time_tz_ranges") {
+			for k := range rec {
+				// slog.Info("found", "key", k, "value", v)
+				if strings.HasSuffix(k, scrape.DateTimeFieldSuffix) {
 					count++
 					break
 				}
@@ -316,14 +316,14 @@ func ExtendPageConfigsWithNexts(cache fetch.Cache, opts ConfigOptions, pageConfi
 	sort.Strings(pageCIDs)
 
 	for _, id := range pageCIDs {
-		if err := ExtendPageConfigRecordsWithNext(cache, opts, pageConfigs[id], gqdoc.Selection); err != nil {
+		if err := ExtendPageConfigRecordsWithNext(cache, opts, pageConfigs[id], fetch.NewSelection(gqdoc.Document.Selection)); err != nil {
 			return fmt.Errorf("error extending page config records with next page records: %v", err)
 		}
 	}
 	return nil
 }
 
-func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, pageC *scrape.Config, sel *goquery.Selection) error {
+func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, pageC *scrape.Config, sel *fetch.Selection) error {
 	// fmt.Printf("looking at %q\n", pageC.ID.String())
 	// fmt.Printf("looking at opts url %q\n", fetch.TrimURLScheme(opts.URL))
 
@@ -362,7 +362,7 @@ func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, page
 	}
 
 	// FIXME
-	gqdocsByURL := map[string]*goquery.Document{}
+	gqdocsByURL := map[string]*fetch.Document{}
 	// gqdocsByURL, err := fetchGQDocumentsByURL(uStrs, opts.CacheInputDir, opts.ConfigOutputFullDir)
 	// if err != nil {
 	// 	return fmt.Errorf("failed to fetch next pages: %v", err)
@@ -446,6 +446,10 @@ func pageJoinsURLs(pageJoinsMap map[string][]*pageJoin) []string {
 	return rs
 }
 
+var BlockedDomains = map[string]bool{
+	"wikipedia": true,
+}
+
 var KnownDomains = map[string]bool{
 	"ticketweb": true,
 	"dice":      true,
@@ -526,6 +530,10 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 				slog.Debug("checking", "absURL.Domain", absURL.Domain)
 				if opts.OnlyKnownDomainDetailPages && !(uBase.Domain == absURL.Domain || KnownDomains[absURL.Domain]) {
 					slog.Debug("skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value)
+					continue
+				}
+				if BlockedDomains[absURL.Domain] {
+					slog.Debug("skipping sub URL with blocked domain", "uBase", uBase, "fj.value", fj.value)
 					continue
 				}
 
@@ -626,7 +634,7 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 	// Traverse the fieldJoins for all of the page configs that have a field with this name.
 	// rs := map[string]*scrape.Config{}
 	// if fetchFn == nil {
-	// 	fetchFn = func(u string) (*goquery.Document, error) {
+	// 	fetchFn = func(u string) (*fetch.Document, error) {
 	// 		u = fetch.TrimURLScheme(u)
 	// 		r := gqdocsByURL[u]
 	// 		if r == nil {
@@ -723,7 +731,7 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 	return rs, nil
 }
 
-func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*pageJoin) (*goquery.Document, error) {
+func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*pageJoin) (*fetch.Document, error) {
 	// Get all URLs appearing in the values of the fields with this name in the parent pages.
 	us := pageJoinsURLs(map[string][]*pageJoin{"": pjs})
 	if opts.ConfigOutputDir != "" {
@@ -753,7 +761,7 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 		}
 		return nil, fmt.Errorf("failed to join pages")
 	}
-	// gqdocs := []*goquery.Document{}
+	// gqdocs := []*fetch.Document{}
 	// for _, u := range us {
 	// 	gqdoc, found, err := fetch.GetGQDocument(cache, "http://"+u)
 	// 	if err != nil {
@@ -793,20 +801,20 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 // 	return r, nil
 // }
 
-// func joinGQDocuments(opts ConfigOptions, us []string, gqdocsByURL map[string]*goquery.Document) (string, *goquery.Document, error) {
+// func joinGQDocuments(opts ConfigOptions, us []string, gqdocsByURL map[string]*fetch.Document) (string, *fetch.Document, error) {
 
-func joinGQDocuments(gqdocs []*goquery.Document) (string, *goquery.Document, error) {
+func joinGQDocuments(gqdocs []*fetch.Document) (string, *fetch.Document, error) {
 	rs := strings.Builder{}
 	rs.WriteString("<htmls>\n")
 
-	var gqdoc *goquery.Document
+	var gqdoc *fetch.Document
 	var err error
 	for _, gqdoc := range gqdocs {
 		if gqdoc == nil {
 			slog.Warn("in generate.joinGQDocuments(), skipping empty gqdoc")
 			continue
 		}
-		str, err := goquery.OuterHtml(gqdoc.Children())
+		str, err := goquery.OuterHtml(gqdoc.Document.Children())
 		if err != nil {
 			return "", nil, err
 		}
@@ -818,7 +826,7 @@ func joinGQDocuments(gqdocs []*goquery.Document) (string, *goquery.Document, err
 	rs.WriteString("\n</htmls>\n")
 
 	r := rs.String()
-	gqdoc, err = goquery.NewDocumentFromReader(strings.NewReader(r))
+	gqdoc, err = fetch.NewDocumentFromString(r)
 	if err != nil {
 		return "", nil, err
 	}

@@ -9,7 +9,7 @@ require (
 	github.com/antchfx/jsonquery v1.3.6
 	github.com/chromedp/cdproto v0.0.0-20250101192427-60a0ca35cb84
 	github.com/chromedp/chromedp v0.11.2
-	github.com/findyourpaths/phil v0.0.0-20250106185930-83e0a6bb4e95
+	github.com/findyourpaths/phil v0.0.0-20250112034809-5739170ae331
 	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/gosimple/slug v1.15.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
