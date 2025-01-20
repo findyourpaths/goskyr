@@ -914,11 +914,13 @@ func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL str
 		if baseYear == 0 {
 			baseYear = time.Now().Year()
 		}
-		rngs, err := datetime.Parse(baseYear, "", datetime.NewTimeZone(f.DateLocation, ""), str)
+		// fmt.Printf("str: %q\n", str)
+		rngs, err := datetime.Parse(baseYear, "", datetime.NewTimeZone(f.DateLocation, "", ""), str)
 		if err != nil {
 			slog.Debug("parse error", "err", err)
 		}
 		if rngs != nil && len(rngs.Items) > 0 {
+			// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 			// start := rngs.Items[0].Start
 			// event[field.Name] = start.Date.String() + " " + start.Time.String()
 			rec[f.Name+DateTimeFieldSuffix] = rngs.String()

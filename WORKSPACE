@@ -26,17 +26,12 @@ load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_depe
 # The first declaration of an external repository "wins".
 ############################################################
 
-load("//:deps.bzl", "go_dependencies")
-
-local_repository(
-    name = "com_github_findyourpaths_goskyr",
-    path = "./",
-)
-
 local_repository(
     name = "com_github_findyourpaths_phil",
     path = "../phil",
 )
+
+load("//:deps.bzl", "go_dependencies")
 
 # gazelle:repository_macro deps.bzl%go_dependencies
 go_dependencies()

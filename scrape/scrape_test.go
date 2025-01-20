@@ -533,16 +533,20 @@ func TestExtractFieldDate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 	}
+	// t.Logf("event: %#v\n", event)
 	if actAny, ok := event["date"+DateTimeFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected date field")
 	} else {
+		// t.Logf("actAny: %#v\n", actAny)
 		actStr, ok := actAny.(string)
 		if !ok {
 			t.Fatal("event date field is not a string")
 		}
 		loc, _ := time.LoadLocation(f.DateLocation)
 		expected := time.Date(2023, 3, 10, 20, 0, 0, 0, loc)
+		// t.Logf("expected: %#v\n", expected)
 		act, err := time.Parse(time.RFC3339, actStr)
+		// t.Logf("act: %#v\n", act)
 		if err != nil {
 			t.Fatalf("%v is not of type time.Time, actStr: %q", err, actStr)
 		}
@@ -569,16 +573,20 @@ func TestExtractFieldDateWithoutYear(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 	}
+	// t.Logf("event: %#v\n", event)
 	if actAny, ok := event["date"+DateTimeFieldSuffix]; !ok {
 		t.Fatal("event doesn't contain the expected date field")
 	} else {
+		// t.Logf("actAny: %#v\n", actAny)
 		actStr, ok := actAny.(string)
 		if !ok {
 			t.Fatal("event date field is not a string")
 		}
 		loc, _ := time.LoadLocation(f.DateLocation)
 		expected := time.Date(2024, 2, 29, 0, 0, 0, 0, loc)
+		// t.Logf("expected: %#v\n", expected)
 		act, err := time.Parse(time.RFC3339, actStr)
+		// t.Logf("act: %#v\n", act)
 		if err != nil {
 			t.Fatalf("%v is not of type time.Time", err)
 		}

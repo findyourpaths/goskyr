@@ -211,12 +211,15 @@ func processFields(exsCache map[string]string, lps []*locationProps, rootSelecto
 				}
 
 				slog.Debug("in processFields(), parsing field value with datetime", "ex", ex)
+				// fmt.Printf("ex: %#v\n", ex)
 				rngs, err := datetime.Parse(0, "", nil, ex)
 				if err != nil {
 					exsCache[ex] = ""
 					slog.Warn("parse error", "err", err)
 				}
+				// fmt.Printf("rngs: %#v\n", rngs)
 				if rngs != nil && len(rngs.Items) > 0 {
+					// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 					exsCache[ex] = rngs.String()
 					num += 1
 				}
