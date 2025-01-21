@@ -4,7 +4,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/alice-address",
     "F2a60128b-href-0__Atitle": "Alice Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/alice-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Anaheim CA 92805",
     "F2a60128b-href-0__F21de3337--0": "123 Alder St",
     "Fa5ccda70--0": "Alice"
@@ -14,7 +14,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/bob-address",
     "F2a60128b-href-0__Atitle": "Bob Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/bob-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Berkeley CA 94704",
     "F2a60128b-href-0__F21de3337--0": "123 Bay St",
     "Fa5ccda70--0": "Bob"
@@ -24,7 +24,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/carol-address",
     "F2a60128b-href-0__Atitle": "Carol Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/carol-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Clovis CA USA 93612",
     "F2a60128b-href-0__F21de3337--0": "123 Cottonwood St",
     "Fa5ccda70--0": "Carol"
@@ -34,7 +34,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/dan-address",
     "F2a60128b-href-0__Atitle": "Dan Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/dan-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Davis CA 95616",
     "F2a60128b-href-0__F21de3337--0": "123 Dogwood St",
     "Fa5ccda70--0": "Dan"
@@ -44,7 +44,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/eve-address",
     "F2a60128b-href-0__Atitle": "Eve Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/eve-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Escondido CA 92027",
     "F2a60128b-href-0__F21de3337--0": "123 Elderberry St",
     "Fa5ccda70--0": "Eve"
@@ -54,7 +54,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/frank-address",
     "F2a60128b-href-0__Atitle": "Frank Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/frank-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Fresno CA USA 93721",
     "F2a60128b-href-0__F21de3337--0": "123 Fig St",
     "Fa5ccda70--0": "Frank"
@@ -64,7 +64,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/grace-address",
     "F2a60128b-href-0__Atitle": "Grace Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/grace-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Glendale CA USA 91202",
     "F2a60128b-href-0__F21de3337--0": "123 Gooseberry St",
     "Fa5ccda70--0": "Grace"
@@ -74,7 +74,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/heidi-address",
     "F2a60128b-href-0__Atitle": "Heidi Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/heidi-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Hayward CA USA 94541",
     "F2a60128b-href-0__F21de3337--0": "123 Hawthorn St",
     "Fa5ccda70--0": "Heidi"
@@ -84,7 +84,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/ivan-address",
     "F2a60128b-href-0__Atitle": "Ivan Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/ivan-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Irvine CA USA 92618",
     "F2a60128b-href-0__F21de3337--0": "123 Ironwood St",
     "Fa5ccda70--0": "Ivan"
@@ -94,7 +94,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/judy-address",
     "F2a60128b-href-0__Atitle": "Judy Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/judy-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Jurupa Valley CA USA 92509",
     "F2a60128b-href-0__F21de3337--0": "123 Juniper St",
     "Fa5ccda70--0": "Judy"
@@ -104,7 +104,7 @@
     "Aurl": "https://basic-detail-pages.com",
     "F2a60128b-href-0": "/kate-address",
     "F2a60128b-href-0__Atitle": "Kate Address",
-    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com",
+    "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/kate-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Kingsburg CA USA 93631",
     "F2a60128b-href-0__F21de3337--0": "123 Kingnut St",
     "Fa5ccda70--0": "Kate"

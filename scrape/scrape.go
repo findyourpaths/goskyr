@@ -500,13 +500,15 @@ func GQDocument(c *Config, s *Scraper, gqdoc *fetch.Document) (output.Records, e
 		}
 		r[URLFieldName] = baseURL
 		r[TitleFieldName] = gqdoc.Find("title").Text()
-		// fmt.Println("in scrape.GQDocument()", "r[\"Aurl\"]", r["Aurl"])
+		// fmt.Println("in scrape.GQDocument()", "r[URLFieldName]", r[URLFieldName])
+		// fmt.Println("in scrape.GQDocument()", "rs", rs)
 		rs = append(rs, r)
 	})
 
 	s.guessYear(rs, time.Now())
 
 	slog.Debug("in scrape.GQDocument()", "len(rs)", len(rs), "rs.TotalFields()", rs.TotalFields())
+	// fmt.Println("in scrape.GQDocument()", "len(rs)", len(rs), "rs.TotalFields()", rs.TotalFields())
 	return rs, nil
 }
 
@@ -535,6 +537,7 @@ func printGQFindDebug(gqdoc *fetch.Document, sel string) {
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not detail pages). This is used by the ML feature generation.
 func GQSelection(c *Config, s *Scraper, sel *fetch.Selection, baseURL string) (output.Record, error) {
+	// fmt.Println("scrape.GQSelection()", "c.ID", c.ID)
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQSelection_log.txt", slog.LevelDebug)
@@ -646,6 +649,7 @@ func GQSelection(c *Config, s *Scraper, sel *fetch.Selection, baseURL string) (o
 	// }
 
 	slog.Debug("in scrape.GQSelection()", "rs", rs)
+	// fmt.Println("in scrape.GQSelection()", "rs", rs)
 	return rs, nil
 }
 
@@ -836,9 +840,10 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 	return false, "", nil, nil
 }
 
-var URLFieldSuffix = "__" + URLFieldName
 var URLFieldName = "Aurl"
+var URLFieldSuffix = "__" + URLFieldName
 var TitleFieldName = "Atitle"
+var TitleFieldSuffix = "__" + TitleFieldName
 var DateTimeFieldSuffix = "__" + DateTimeFieldName
 var DateTimeFieldName = "Pdate_time_tz_ranges"
 
@@ -885,8 +890,9 @@ func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL str
 		if len(f.ElementLocations) != 1 {
 			return fmt.Errorf("a field of type 'url' must exactly have one location, found %d", len(f.ElementLocations))
 		}
-		str, uu, err := GetTextStringAndURL(&f.ElementLocations[0], sel, baseURL)
-		rec[f.Name] = str
+		relU, uu, err := GetTextStringAndURL(&f.ElementLocations[0], sel, baseURL)
+		// fmt.Println("in extractFieldURL()", "f.Name", f.Name, "relU", relU, "uu", uu)
+		rec[f.Name] = relU
 		if err != nil {
 			return err
 		}
@@ -899,6 +905,7 @@ func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL str
 				return fmt.Errorf("field %s cannot be empty", f.Name)
 			}
 		}
+		// fmt.Println("in extractFieldURL()", "f.Name+URLFieldSuffix", f.Name+URLFieldSuffix, "uu", uu, "u", u)
 		rec[f.Name+URLFieldSuffix] = u
 
 	case "date_time_tz_ranges":
@@ -941,7 +948,7 @@ func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL str
 
 func GetTextStringAndURL(e *ElementLocation, sel *fetch.Selection, baseURL string) (string, *url.URL, error) {
 	// var urlVal, urlRes string
-	u, err := url.Parse(baseURL)
+	baseUU, err := url.Parse(baseURL)
 	if err != nil {
 		return "", nil, err
 	}
@@ -950,12 +957,13 @@ func GetTextStringAndURL(e *ElementLocation, sel *fetch.Selection, baseURL strin
 		// set attr to the default if not set
 		e.Attr = "href"
 	}
-	str, err := getTextString(e, sel)
+	relU, err := getTextString(e, sel)
 	if err != nil {
 		return "", nil, err
 	}
-	uu, err := u.Parse(str)
-	return str, uu, err
+	uu, err := baseUU.Parse(relU)
+	// fmt.Println("in GetTextStringAndURL()", "baseUU", baseUU, "relU", relU, "uu", uu)
+	return relU, uu, err
 }
 
 var SkipTag = map[string]bool{
@@ -1259,7 +1267,11 @@ func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc
 		return nil
 	}
 	for k, v := range subRecs[0] {
+		if k == URLFieldName {
+			continue
+		}
 		rec[fname+"__"+k] = v
+		// fmt.Println("in SubGQDocument()", "fname+\"__\"+k", fname+"__"+k, "k", k, "v", v)
 	}
 	return nil
 }

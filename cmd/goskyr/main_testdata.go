@@ -24,9 +24,9 @@ type maintest struct {
 //	go run main.go --debug regenerate
 var testsByHostSlugByCategory = map[string]map[string][]maintest{
 	"regression": {
-		"basic-detail-pages-w-static-com": []maintest{{url: "https://basic-detail-pages-w-static.com"}},
 		"basic-detail-pages-com":          []maintest{{url: "https://basic-detail-pages.com"}},
 		"basic-detail-pages-w-links-com":  []maintest{{url: "https://basic-detail-pages-w-links.com"}},
+		"basic-detail-pages-w-static-com": []maintest{{url: "https://basic-detail-pages-w-static.com"}},
 		"basic-field-com":                 []maintest{{url: "https://basic-field.com"}},
 		"basic-field-w-div-com":           []maintest{{url: "https://basic-field-w-div.com"}},
 		"basic-fields-w-div-com":          []maintest{{url: "https://basic-fields-w-div.com"}},
