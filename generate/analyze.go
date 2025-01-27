@@ -218,7 +218,7 @@ func processFields(exsCache map[string]string, lps []*locationProps, rootSelecto
 					slog.Warn("parse error", "err", err)
 				}
 				// fmt.Printf("rngs: %#v\n", rngs)
-				if rngs != nil && len(rngs.Items) > 0 {
+				if datetime.HasStartMonthAndDay(rngs) {
 					// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 					exsCache[ex] = rngs.String()
 					num += 1

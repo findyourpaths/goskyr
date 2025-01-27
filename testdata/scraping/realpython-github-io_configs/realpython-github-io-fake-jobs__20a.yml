@@ -8,6 +8,12 @@ scrapers:
       url: https://realpython.github.io/fake-jobs
       selector: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content
       fields:
+        - name: Ffee3e7f9-href-0
+          type: url
+          location:
+            - selector: footer.card-footer > a.card-footer-item
+              attr: href
+          can_be_empty: true
         - name: F1647d85c--0
           type: text
           location:
@@ -27,12 +33,6 @@ scrapers:
           type: text
           location:
             - selector: footer.card-footer > a.card-footer-item
-          can_be_empty: true
-        - name: Ffee3e7f9-href-0
-          type: url
-          location:
-            - selector: footer.card-footer > a.card-footer-item
-              attr: href
           can_be_empty: true
       render_js: true
 records: []

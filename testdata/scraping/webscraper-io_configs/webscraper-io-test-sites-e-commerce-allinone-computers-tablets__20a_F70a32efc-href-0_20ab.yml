@@ -8,6 +8,12 @@ scrapers:
       url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
       selector: body > div.wrapper > div.container.test-site > div.row > div.col-lg-9 > div.row > div.col-lg-4.col-md-4.col-xl-4 > div.card.thumbnail > div.card-body.product-wrapper
       fields:
+        - name: F70a32efc-href-0
+          type: url
+          location:
+            - selector: div.caption > h4 > a.title
+              attr: href
+          can_be_empty: true
         - name: F6c24067a--0
           type: text
           location:
@@ -17,12 +23,6 @@ scrapers:
           type: text
           location:
             - selector: div.caption > h4 > a.title
-          can_be_empty: true
-        - name: F70a32efc-href-0
-          type: url
-          location:
-            - selector: div.caption > h4 > a.title
-              attr: href
           can_be_empty: true
         - name: F8a8d0d95--0
           type: text
@@ -39,16 +39,16 @@ scrapers:
       url: https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets
       selector: div.wrapper
       fields:
-        - name: F1039d341--0
-          type: text
-          location:
-            - selector: div.container.test-site > div.row > div.col-lg-3.sidebar > div.navbar-light.sidebar > div.navbar-collapse.sidebar-nav > ul.flex-column.nav > li.nav-item > a.nav-link
-          can_be_empty: true
         - name: F1039d341-href-0
           type: url
           location:
             - selector: div.container.test-site > div.row > div.col-lg-3.sidebar > div.navbar-light.sidebar > div.navbar-collapse.sidebar-nav > ul.flex-column.nav > li.nav-item > a.nav-link
               attr: href
+          can_be_empty: true
+        - name: F1039d341--0
+          type: text
+          location:
+            - selector: div.container.test-site > div.row > div.col-lg-3.sidebar > div.navbar-light.sidebar > div.navbar-collapse.sidebar-nav > ul.flex-column.nav > li.nav-item > a.nav-link
           can_be_empty: true
         - name: F2dff4b89--0
           type: text

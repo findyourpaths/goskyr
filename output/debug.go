@@ -11,7 +11,8 @@ var WriteSeparateLogFiles = true
 
 // var WriteSeparateLogFiles = false
 
-var MinLogLevel = slog.LevelWarn
+// var MinLogLevel = slog.LevelWarn
+var MinLogLevel = slog.LevelDebug
 
 type logState struct {
 	prevLogger *slog.Logger

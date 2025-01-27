@@ -14,16 +14,6 @@ scrapers:
             - selector: article.product_pod > div.image_container > a > img.thumbnail
               attr: src
           can_be_empty: true
-        - name: F91447a94--0
-          type: text
-          location:
-            - selector: article.product_pod > div.product_price > p.price_color
-          can_be_empty: true
-        - name: Fce5e86a--0
-          type: text
-          location:
-            - selector: article.product_pod > h3 > a
-          can_be_empty: true
         - name: Fce5e86a-href-0
           type: url
           location:
@@ -36,26 +26,44 @@ scrapers:
             - selector: article.product_pod > div.image_container > a
               attr: href
           can_be_empty: true
+        - name: F91447a94--0
+          type: text
+          location:
+            - selector: article.product_pod > div.product_price > p.price_color
+          can_be_empty: true
+        - name: Fce5e86a--0
+          type: text
+          location:
+            - selector: article.product_pod > h3 > a
+          can_be_empty: true
       render_js: true
     - name: books-toscrape-com__Fd88b1752-href-0_20aa
       url: https://books.toscrape.com
       selector: div.container-fluid.page
       fields:
-        - name: F253bb4ab--2
-          type: text
+        - name: F2ed45786-href-0
+          type: url
           location:
-            - selector: div.page_inner > div.content > div > article.product_page > div.row > div.col-sm-6.product_main > p.availability.instock
-              child_index: 2
+            - selector: div.page_inner > div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.image_container > a
+              attr: href
           can_be_empty: true
-        - name: F26346f61--0
-          type: text
+        - name: F6fe602c7-href-0
+          type: url
           location:
-            - selector: div.page_inner > div.content > div > article.product_page > table.table.table-striped > tbody > tr > td
+            - selector: div.page_inner > div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
+              attr: href
           can_be_empty: true
-        - name: F26f16809--0
-          type: text
+        - name: Fd02cf189-src-0
+          type: url
           location:
-            - selector: div.page_inner > ul.breadcrumb > li > a
+            - selector: div.page_inner > div.content > div > article.product_page > div.row > div.col-sm-6 > div.carousel > div.thumbnail > div.carousel-inner > div.active.item > img
+              attr: src
+          can_be_empty: true
+        - name: Fcb324d8d-src-0
+          type: url
+          location:
+            - selector: div.page_inner > div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.image_container > a > img.thumbnail
+              attr: src
           can_be_empty: true
         - name: F26f16809-href-0
           type: url
@@ -63,16 +71,10 @@ scrapers:
             - selector: div.page_inner > ul.breadcrumb > li > a
               attr: href
           can_be_empty: true
-        - name: F2ed45786-href-0
-          type: url
-          location:
-            - selector: div.page_inner > div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.image_container > a
-              attr: href
-          can_be_empty: true
-        - name: F2f82234a--0
+        - name: F6fe602c7--0
           type: text
           location:
-            - selector: div.page_inner > div.content > div > article.product_page > table.table.table-striped > tbody > tr > th
+            - selector: div.page_inner > div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
           can_be_empty: true
         - name: F41c63edd--0
           type: text
@@ -84,16 +86,16 @@ scrapers:
           location:
             - selector: div.page_inner > div.content > div > article.product_page > div.row > div.col-sm-6.product_main > h1
           can_be_empty: true
-        - name: F6fe602c7--0
+        - name: F2f82234a--0
           type: text
           location:
-            - selector: div.page_inner > div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
+            - selector: div.page_inner > div.content > div > article.product_page > table.table.table-striped > tbody > tr > th
           can_be_empty: true
-        - name: F6fe602c7-href-0
-          type: url
+        - name: F253bb4ab--2
+          type: text
           location:
-            - selector: div.page_inner > div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > h3 > a
-              attr: href
+            - selector: div.page_inner > div.content > div > article.product_page > div.row > div.col-sm-6.product_main > p.availability.instock
+              child_index: 2
           can_be_empty: true
         - name: F9284b829--0
           type: text
@@ -105,17 +107,15 @@ scrapers:
           location:
             - selector: div.page_inner > div.content > div > article.product_page > p
           can_be_empty: true
-        - name: Fcb324d8d-src-0
-          type: url
+        - name: F26f16809--0
+          type: text
           location:
-            - selector: div.page_inner > div.content > div > article.product_page > ul.row > li.col-lg-3.col-md-3.col-sm-4.col-xs-6 > article.product_pod > div.image_container > a > img.thumbnail
-              attr: src
+            - selector: div.page_inner > ul.breadcrumb > li > a
           can_be_empty: true
-        - name: Fd02cf189-src-0
-          type: url
+        - name: F26346f61--0
+          type: text
           location:
-            - selector: div.page_inner > div.content > div > article.product_page > div.row > div.col-sm-6 > div.carousel > div.thumbnail > div.carousel-inner > div.active.item > img
-              attr: src
+            - selector: div.page_inner > div.content > div > article.product_page > table.table.table-striped > tbody > tr > td
           can_be_empty: true
         - name: Fdcf92592--0
           type: text

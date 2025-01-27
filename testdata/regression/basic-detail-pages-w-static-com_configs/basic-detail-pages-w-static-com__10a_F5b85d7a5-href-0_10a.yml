@@ -8,16 +8,16 @@ scrapers:
       url: https://basic-detail-pages-w-static.com
       selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
       fields:
-        - name: F5b85d7a5-href-0
-          type: url
-          location:
-            - selector: div > span.a-3y > a
-              attr: href
-          can_be_empty: true
         - name: F66e5fe15-href-0
           type: url
           location:
             - selector: div > span.a-3x > a
+              attr: href
+          can_be_empty: true
+        - name: F5b85d7a5-href-0
+          type: url
+          location:
+            - selector: div > span.a-3y > a
               attr: href
           can_be_empty: true
         - name: Fa5ccda70--0

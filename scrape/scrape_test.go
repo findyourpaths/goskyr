@@ -92,6 +92,13 @@ const (
 			<span>29.02.</span><span>Heinz Rudolf Kunze &amp; Verstärkung
 				&#8211; ABGESAGT</span> </a>
 	</h2>`
+	htmlString7 = `
+	<h2>
+		<a href="http://musicvenue.de/site/event/id/2024/02/29"
+			title="Heinz Rudolf Kunze &amp; Verstärkung &#8211; ABGESAGT">
+			<span>Feb 29</span><span>Heinz Rudolf Kunze &amp; Verstärkung
+				&#8211; ABGESAGT</span> </a>
+	</h2>`
 )
 
 func TestFilterRecordMatchTrue(t *testing.T) {
@@ -556,7 +563,7 @@ func TestExtractFieldDate(t *testing.T) {
 	}
 }
 
-func TestExtractFieldDateWithoutYear(t *testing.T) {
+func TestExtractFieldDateWithoutYear1(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlString5))
 	if err != nil {
 		t.Fatalf("unexpected error while reading html string: %v", err)
@@ -616,6 +623,53 @@ func TestExtractFieldDateWithoutYear(t *testing.T) {
 // 		t.Fatalf("expected '2024' as year of date but got '%d'", dt.Year())
 // 	}
 // }
+
+func TestExtractFieldDateWithoutYear2(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlString7))
+	if err != nil {
+		t.Fatalf("unexpected error while reading html string: %v", err)
+	}
+	dateLoc := "Europe/Berlin"
+	fs := []*Field{{
+		Name:             "href-0",
+		Type:             "url",
+		ElementLocations: []ElementLocation{{Selector: "h2 > a"}},
+	}, {
+		Name:             "date",
+		Type:             "date_time_tz_ranges",
+		ElementLocations: []ElementLocation{{Selector: "h2 > a > span"}},
+		DateLocation:     dateLoc,
+		GuessYear:        true,
+	}}
+	event := output.Record{}
+	for _, f := range fs {
+		err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 2025)
+		if err != nil {
+			t.Fatalf("unexpected error while extracting the date field: %v", err)
+		}
+	}
+	// t.Logf("event: %#v\n", event)
+	if actAny, ok := event["date"+DateTimeFieldSuffix]; !ok {
+		t.Fatal("event doesn't contain the expected date field")
+	} else {
+		// t.Logf("actAny: %#v\n", actAny)
+		actStr, ok := actAny.(string)
+		if !ok {
+			t.Fatal("event date field is not a string")
+		}
+		loc, _ := time.LoadLocation(dateLoc)
+		expected := time.Date(2024, 2, 29, 0, 0, 0, 0, loc)
+		// t.Logf("expected: %#v\n", expected)
+		act, err := time.Parse(time.RFC3339, actStr)
+		// t.Logf("act: %#v\n", act)
+		if err != nil {
+			t.Fatalf("%v is not of type time.Time", err)
+		}
+		if !act.Equal(expected) {
+			t.Fatalf("expected '%s' for date but got '%s'", expected, act)
+		}
+	}
+}
 
 func TestGuessYearSimple(t *testing.T) {
 	// records dates span period around change of year

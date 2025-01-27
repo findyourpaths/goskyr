@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -27,9 +28,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// var DoDebug = true
+var DoDebug = true
 
-var DoDebug = false
+// var DoDebug = false
 
 var DebugGQFind = true
 
@@ -559,7 +560,9 @@ func GQSelection(c *Config, s *Scraper, sel *fetch.Selection, baseURL string) (o
 	// }
 
 	rs := output.Record{}
-	for _, f := range s.Fields {
+	fs := s.Fields
+	sort.Slice(fs, func(i, j int) bool { return fs[i].Type == "url" })
+	for _, f := range fs {
 		slog.Debug("in scrape.GQSelection(), looking at field", "f.Name", f.Name)
 		// if f.Value != "" {
 		// 	if !rawDyn {
@@ -847,7 +850,12 @@ var TitleFieldSuffix = "__" + TitleFieldName
 var DateTimeFieldSuffix = "__" + DateTimeFieldName
 var DateTimeFieldName = "Pdate_time_tz_ranges"
 
-var dateRE = regexp.MustCompile(`(?i)\b(2024|2025|January|February|March|April|` + /* May */ `|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b`)
+var DateRE = regexp.MustCompile(`(?i)\b(2024|2025|January|February|March|April|` + /* May */ `|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b`)
+var yearRE = regexp.MustCompile(`(?i)\b(20[0-9][0-9])\b`)
+
+func DebugDateTime(args ...any) { slog.Debug(args[0].(string), args[1:]...) }
+
+// func DebugDateTime(args ...any) { fmt.Println(args...) }
 
 func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL string, baseYear int) error {
 	slog.Debug("scrape.extractField()", "field", f, "event", rec, "sel", sel, "baseURL", baseURL)
@@ -918,21 +926,61 @@ func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL str
 			return err
 		}
 
+		// First check if the url encodes a parseable datetime with year, and use the year if so.
+		for k, v := range rec {
+			str := v.(string)
+			DebugDateTime("looking at non-date-time field", "baseYear", baseYear, "k", k, "v", v, "strings.HasSuffix(k, URLFieldSuffix)", strings.HasSuffix(k, URLFieldSuffix))
+			if strings.HasSuffix(k, URLFieldSuffix) {
+				// if match := DateRE.FindString(str); match == "" {
+				// 	continue
+				// }
+				// debugDateTime("matched dateRE")
+				rngs, err := datetime.Parse(0, "", datetime.NewTimeZone(f.DateLocation, "", ""), str)
+				if err != nil {
+					continue
+				}
+				if rngs != nil {
+					for _, rng := range rngs.Items {
+						if rng.Start.Date.Year != 0 {
+							baseYear = rng.Start.Date.Year
+							slog.Warn("found", "baseYear", baseYear)
+							break
+						}
+						if rng.End != nil && rng.End.Date.Year != 0 {
+							baseYear = rng.End.Date.Year
+							slog.Warn("found", "baseYear", baseYear)
+							break
+						}
+					}
+				}
+			}
+			DebugDateTime("after looking", "baseYear", baseYear)
+		}
+		// Then use the current year if none is provided.
 		if baseYear == 0 {
-			baseYear = time.Now().Year()
+			// baseYear = time.Now().Year()
+			baseYear = 2024
+			DebugDateTime("after setting to now", "baseYear", baseYear)
 		}
-		// fmt.Printf("str: %q\n", str)
+		DebugDateTime("parsing datetime with", "baseYear", baseYear, "str", str)
 		rngs, err := datetime.Parse(baseYear, "", datetime.NewTimeZone(f.DateLocation, "", ""), str)
+		// fmt.Printf("rngs.Items[0]: %#v\n", rngs.Items[0])
+		// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 		if err != nil {
-			slog.Debug("parse error", "err", err)
+			DebugDateTime("parse error", "err", err)
+			break
 		}
-		if rngs != nil && len(rngs.Items) > 0 {
+		if datetime.HasStartMonthAndDay(rngs) {
+			DebugDateTime("parsed", "rngs", rngs)
 			// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 			// start := rngs.Items[0].Start
 			// event[field.Name] = start.Date.String() + " " + start.Time.String()
 			rec[f.Name+DateTimeFieldSuffix] = rngs.String()
-		} else if match := dateRE.FindString(str); match != "" {
-			slog.Warn("found date term in field but failed to parse datetime ranges", "match", match, "str", str)
+			break
+		}
+		if match := DateRE.FindString(str); match != "" {
+			DebugDateTime("found date term in field but failed to parse datetime ranges", "match", match, "str", str)
+			break
 		}
 
 		// d, err := getDate(field, sel, dateDefaults{})

@@ -8,43 +8,44 @@ scrapers:
       url: https://www.scrapethissite.com/pages/forms
       selector: body > div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li
       fields:
-        - name: F9d03f032--0
-          type: text
-          location:
-            - selector: a
-          can_be_empty: true
         - name: F9d03f032-href-0
           type: url
           location:
             - selector: a
               attr: href
           can_be_empty: true
+        - name: F9d03f032--0
+          type: text
+          location:
+            - selector: a
+          can_be_empty: true
       render_js: true
     - name: scrapethissite-com-pages-forms__F9d03f032-href-0_20a
       url: https://www.scrapethissite.com/pages/forms
       selector: ""
       fields:
-        - name: F21ad7531--0
-          type: date_time_tz_ranges
-          location:
-            - selector: div > section > div.container > table.table > tbody > tr.team > td.year
-          can_be_empty: true
-        - name: F34b4dea3--0
-          type: text
+        - name: F34b4dea3-href-0
+          type: url
           location:
             - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a
+              attr: href
+          can_be_empty: true
+        - name: F67a96265-href-0
+          type: url
+          location:
+            - selector: nav > div.container > div.col-md-12 > ul.nav.nav-tabs > li > a.nav-link
+              attr: href
+          can_be_empty: true
+        - name: F21ad7531--0
+          type: text
+          location:
+            - selector: div > section > div.container > table.table > tbody > tr.team > td.year
           can_be_empty: true
         - name: F34b4dea3-aria-label-0
           type: text
           location:
             - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a
               attr: aria-label
-          can_be_empty: true
-        - name: F34b4dea3-href-0
-          type: url
-          location:
-            - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a
-              attr: href
           can_be_empty: true
         - name: F38f7d73f--0
           type: text
@@ -62,11 +63,10 @@ scrapers:
             - selector: nav > div.container > div.col-md-12 > ul.nav.nav-tabs > li > a.nav-link
               child_index: 2
           can_be_empty: true
-        - name: F67a96265-href-0
-          type: url
+        - name: F34b4dea3--0
+          type: text
           location:
-            - selector: nav > div.container > div.col-md-12 > ul.nav.nav-tabs > li > a.nav-link
-              attr: href
+            - selector: div > section > div.container > div.pagination-area.row > div.col-md-10.text-center > ul.pagination > li > a
           can_be_empty: true
         - name: F6bd81d7e--0
           type: text

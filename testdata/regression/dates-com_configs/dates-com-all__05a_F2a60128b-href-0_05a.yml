@@ -8,16 +8,16 @@ scrapers:
       url: https://dates.com/all
       selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
       fields:
-        - name: F2a60128b--0
-          type: text
-          location:
-            - selector: div > a
-          can_be_empty: true
         - name: F2a60128b-href-0
           type: url
           location:
             - selector: div > a
               attr: href
+          can_be_empty: true
+        - name: F2a60128b--0
+          type: text
+          location:
+            - selector: div > a
           can_be_empty: true
         - name: Fa5ccda70--0
           type: date_time_tz_ranges

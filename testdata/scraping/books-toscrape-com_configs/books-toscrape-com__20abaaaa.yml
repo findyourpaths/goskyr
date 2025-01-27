@@ -14,16 +14,6 @@ scrapers:
             - selector: article.product_pod > div.image_container > a > img.thumbnail
               attr: src
           can_be_empty: true
-        - name: F91447a94--0
-          type: text
-          location:
-            - selector: article.product_pod > div.product_price > p.price_color
-          can_be_empty: true
-        - name: Fce5e86a--0
-          type: text
-          location:
-            - selector: article.product_pod > h3 > a
-          can_be_empty: true
         - name: Fce5e86a-href-0
           type: url
           location:
@@ -35,6 +25,16 @@ scrapers:
           location:
             - selector: article.product_pod > div.image_container > a
               attr: href
+          can_be_empty: true
+        - name: F91447a94--0
+          type: text
+          location:
+            - selector: article.product_pod > div.product_price > p.price_color
+          can_be_empty: true
+        - name: Fce5e86a--0
+          type: text
+          location:
+            - selector: article.product_pod > h3 > a
           can_be_empty: true
       render_js: true
 records: []

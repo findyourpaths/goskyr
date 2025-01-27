@@ -8,21 +8,33 @@ scrapers:
       url: https://realpython.github.io/fake-jobs
       selector: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content > footer.card-footer > a.card-footer-item
       fields:
-        - name: Ffee3e7f9--0
-          type: text
-          location:
-            - {}
-          can_be_empty: true
         - name: Ffee3e7f9-href-0
           type: url
           location:
             - attr: href
+          can_be_empty: true
+        - name: Ffee3e7f9--0
+          type: text
+          location:
+            - {}
           can_be_empty: true
       render_js: true
     - name: realpython-github-io-fake-jobs__Ffee3e7f9-href-0_20a
       url: https://realpython.github.io/fake-jobs
       selector: ""
       fields:
+        - name: Ff4a7b118-href-0
+          type: url
+          location:
+            - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.border.sidebar-module.sidebar-module-inset > a.badge.badge-light.text-muted
+              attr: href
+          can_be_empty: true
+        - name: F5ee88802-href-0
+          type: url
+          location:
+            - selector: div.container.main-content > div.row > div.col-12.col-lg-4.col-md-6.mb-5 > div.border-0.card > div.card-body.m-0.mt-2.p-0 > p.card-text.small.text-muted.text-truncate > a.badge.badge-light.text-muted
+              attr: href
+          can_be_empty: true
         - name: F2cb76ac--0
           type: text
           location:
@@ -32,12 +44,6 @@ scrapers:
           type: text
           location:
             - selector: div.container.main-content > div.row > div.col-12.col-lg-4.col-md-6.mb-5 > div.border-0.card > div.card-body.m-0.mt-2.p-0 > p.card-text.small.text-muted.text-truncate > a.badge.badge-light.text-muted
-          can_be_empty: true
-        - name: F5ee88802-href-0
-          type: url
-          location:
-            - selector: div.container.main-content > div.row > div.col-12.col-lg-4.col-md-6.mb-5 > div.border-0.card > div.card-body.m-0.mt-2.p-0 > p.card-text.small.text-muted.text-truncate > a.badge.badge-light.text-muted
-              attr: href
           can_be_empty: true
         - name: F70e76b46--0
           type: text
@@ -64,12 +70,6 @@ scrapers:
           type: text
           location:
             - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.border.sidebar-module.sidebar-module-inset > a.badge.badge-light.text-muted
-          can_be_empty: true
-        - name: Ff4a7b118-href-0
-          type: url
-          location:
-            - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.border.sidebar-module.sidebar-module-inset > a.badge.badge-light.text-muted
-              attr: href
           can_be_empty: true
         - name: Ffddfd25e--0
           type: text

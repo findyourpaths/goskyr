@@ -8,15 +8,15 @@ scrapers:
       url: https://dates.com/most
       selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2 > div > a
       fields:
-        - name: F2a60128b--0
-          type: date_time_tz_ranges
-          location:
-            - {}
-          can_be_empty: true
         - name: F2a60128b-href-0
           type: url
           location:
             - attr: href
+          can_be_empty: true
+        - name: F2a60128b--0
+          type: date_time_tz_ranges
+          location:
+            - {}
           can_be_empty: true
       render_js: true
     - name: dates-com-most__F2a60128b-href-0_05a
