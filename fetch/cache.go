@@ -24,9 +24,9 @@ import (
 
 var DoDebug = false
 
-// var ShowCaching = true
+var ShowCaching = true
 
-var ShowCaching = false
+// var ShowCaching = false
 
 var Synchronized = true
 

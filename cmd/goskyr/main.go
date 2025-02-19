@@ -147,8 +147,8 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	}
 	var cache fetch.Cache
 	cache = fetch.NewFetchCache(fetcher)
-	cache = fetch.NewFileCache(cache, cmd.CacheInputParentDir, false)
-	cache = fetch.NewFileCache(cache, cmd.CacheOutputParentDir, true)
+	cache = fetch.NewURLFileCache(cache, cmd.CacheInputParentDir, false)
+	cache = fetch.NewURLFileCache(cache, cmd.CacheOutputParentDir, true)
 	cache = fetch.NewMemoryCache(cache)
 
 	cs, err := generate.ConfigurationsForPage(cache, opts)
@@ -308,8 +308,8 @@ type ScrapeCmd struct {
 func (cmd *ScrapeCmd) Run(globals *Globals) error {
 	var cache fetch.Cache
 	cache = fetch.NewFetchCache(nil)
-	cache = fetch.NewFileCache(cache, cmd.CacheInputParentDir, false)
-	cache = fetch.NewFileCache(cache, cmd.CacheOutputParentDir, true)
+	cache = fetch.NewURLFileCache(cache, cmd.CacheInputParentDir, false)
+	cache = fetch.NewURLFileCache(cache, cmd.CacheOutputParentDir, true)
 	cache = fetch.NewMemoryCache(cache)
 
 	conf, err := scrape.ReadConfig(cmd.ConfigFile)

@@ -91,8 +91,8 @@ func testGenerateCategoryHostPage(t *testing.T, cat string, hostSlug string, tes
 
 	output.SetDefaultLogger(filepath.Join(testCatOutputDir, hostSlug+"_configs", "test-generate_log.txt"), slog.LevelDebug)
 	var cache fetch.Cache
-	cache = fetch.NewFileCache(nil, testCatInputDir, false)
-	cache = fetch.NewFileCache(cache, testCatOutputDir, true)
+	cache = fetch.NewURLFileCache(nil, testCatInputDir, false)
+	cache = fetch.NewURLFileCache(cache, testCatOutputDir, true)
 	cache = fetch.NewMemoryCache(cache)
 	cs, err := generate.ConfigurationsForPage(cache, opts)
 	if err != nil {
@@ -298,8 +298,8 @@ func getRecords(cat string, hostSlug string, c *scrape.Config) (output.Records, 
 	testCatOutputDir := filepath.Join(testOutputDir, cat)
 
 	var cache fetch.Cache
-	cache = fetch.NewFileCache(nil, testCatInputDir, false)
-	cache = fetch.NewFileCache(cache, testCatOutputDir, true)
+	cache = fetch.NewURLFileCache(nil, testCatInputDir, false)
+	cache = fetch.NewURLFileCache(cache, testCatOutputDir, true)
 	cache = fetch.NewMemoryCache(cache)
 
 	if c.ID.ID != "" && c.ID.Field == "" && c.ID.SubID == "" {

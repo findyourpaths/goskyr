@@ -11,23 +11,36 @@ import (
 	"github.com/findyourpaths/goskyr/utils"
 )
 
-var cacheResponseSuffix = ".html"
+// var cacheResponseSuffix = ".html"
 
 var DefaultMaxBody int64 = 1024 * 1024 * 1024 // 1GB
 
 // Cache is an implementation of Geziyor cache.Cache that stores html pages on disk.
 type FileCache struct {
-	fallback  Cache
-	parentDir string
-	writeable bool
+	filenameFn func(string, string) string
+	suffix     string
+	fallback   Cache
+	parentDir  string
+	writeable  bool
 }
 
 // New returns a new Cache that will store files in dir.
-func NewFileCache(fallback Cache, parentDir string, writeable bool) *FileCache {
+func NewURLFileCache(fallback Cache, parentDir string, writeable bool) *FileCache {
 	return &FileCache{
-		fallback:  fallback,
-		parentDir: parentDir,
-		writeable: writeable,
+		filenameFn: CacheURLFilename,
+		fallback:   fallback,
+		parentDir:  parentDir,
+		writeable:  writeable,
+	}
+}
+
+// New returns a new Cache that will store files in dir.
+func NewFileCache(fallback Cache, parentDir string, writeable bool, filenameFn func(string, string) string) *FileCache {
+	return &FileCache{
+		filenameFn: filenameFn,
+		fallback:   fallback,
+		parentDir:  parentDir,
+		writeable:  writeable,
 	}
 }
 
@@ -41,7 +54,7 @@ func (c *FileCache) Get(key string) ([]byte, bool) {
 	if DoDebug {
 		fmt.Println("fetch.FileCache.Get()", "key", key)
 	}
-	p := ResponseFilename(c.parentDir, key)
+	p := c.filenameFn(c.parentDir, key)
 	if DoDebug {
 		fmt.Println("in fetch.FileCache.Get()", "p", p)
 	}
@@ -89,7 +102,7 @@ func (c *FileCache) Set(key string, resp []byte) {
 	if !c.writeable {
 		return
 	}
-	p := ResponseFilename(c.parentDir, key)
+	p := c.filenameFn(c.parentDir, key)
 	if err := utils.WriteBytesFile(p, resp); err != nil {
 		slog.Warn("fetch.FileCache.Set(), failed to write to cache at", "path", p, "error", err.Error())
 	}
@@ -100,7 +113,7 @@ func (c *FileCache) Delete(key string) {
 	if DoDebug {
 		fmt.Println("fetch.FileCache.Delete()", "key", key)
 	}
-	p := ResponseFilename(c.parentDir, key)
+	p := c.filenameFn(c.parentDir, key)
 	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
 		// p = keyToFilename(InputDir, key)
 		// if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
@@ -112,11 +125,19 @@ func (c *FileCache) Delete(key string) {
 	}
 }
 
-func ResponseFilename(dir string, urlStr string) string {
-	return Filename(dir, urlStr) + cacheResponseSuffix
+// func ResponseFilename(dir string, urlStr string) string {
+// 	return c.filename(dir, urlStr) + c.suffix
+// }
+
+// func (c *FileCache) ResponseFilename(dir string, urlStr string) string {
+// 	return c.filename(dir, urlStr) + c.suffix
+// }
+
+func CacheURLFilename(dir string, urlStr string) string {
+	return CacheURLFilebase(dir, urlStr) + ".html"
 }
 
-func Filename(dir string, urlStr string) string {
+func CacheURLFilebase(dir string, urlStr string) string {
 	if dir == "" {
 		panic("need to set Filename dir")
 	}
@@ -132,5 +153,5 @@ func Filename(dir string, urlStr string) string {
 	if DoDebug {
 		fmt.Println("in fetch.Filename()", "dir", dir, "uHostSlug", uHostSlug, "uSlug", uSlug)
 	}
-	return filepath.Join(dir, uHostSlug, uSlug)
+	return filepath.Join(dir, uHostSlug, uSlug) + ".html"
 }
