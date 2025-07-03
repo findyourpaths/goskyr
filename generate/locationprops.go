@@ -5,7 +5,6 @@ import (
 	"hash/crc32"
 	"sort"
 
-	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -83,17 +82,17 @@ func (l locationManager) setFieldNames(modelName, wordsDir string) error {
 		return nil
 	}
 
-	ll, err := ml.LoadLabler(modelName, wordsDir)
-	if err != nil {
-		return err
-	}
-	for _, e := range l {
-		pred, err := ll.PredictLabel(e.examples...)
-		if err != nil {
-			return err
-		}
-		e.name = pred // TODO: if label has occured already, add index (eg text-1, text-2...)
-	}
+	// ll, err := ml.LoadLabler(modelName, wordsDir)
+	// if err != nil {
+	// 	return err
+	// }
+	// for _, e := range l {
+	// 	pred, err := ll.PredictLabel(e.examples...)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	e.name = pred // TODO: if label has occured already, add index (eg text-1, text-2...)
+	// }
 	return nil
 }
 

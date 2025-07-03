@@ -935,7 +935,9 @@ func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL str
 				// 	continue
 				// }
 				// debugDateTime("matched dateRE")
-				rngs, err := datetime.Parse(0, "", datetime.NewTimeZone(f.DateLocation, "", ""), str)
+				dt := datetime.NewDateTimeForNow()
+				dt.TimeZone = datetime.NewTimeZone(f.DateLocation, "", "")
+				rngs, err := datetime.Parse(dt, "", str)
 				if err != nil {
 					continue
 				}
@@ -963,7 +965,10 @@ func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL str
 			DebugDateTime("after setting to now", "baseYear", baseYear)
 		}
 		DebugDateTime("parsing datetime with", "baseYear", baseYear, "str", str)
-		rngs, err := datetime.Parse(baseYear, "", datetime.NewTimeZone(f.DateLocation, "", ""), str)
+		dt := datetime.NewDateTimeForNow()
+		dt.Date.Year = baseYear
+		dt.TimeZone = datetime.NewTimeZone(f.DateLocation, "", "")
+		rngs, err := datetime.Parse(dt, "", str)
 		// fmt.Printf("rngs.Items[0]: %#v\n", rngs.Items[0])
 		// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 		if err != nil {

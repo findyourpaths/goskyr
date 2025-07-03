@@ -42,7 +42,7 @@ type FetchOpts struct {
 
 // A Fetcher allows to fetch the content of a web page
 type Fetcher interface {
-	Fetch(url string, opts *FetchOpts) (string, error)
+	Fetch(url string, opts *FetchOpts) (string, string, error)
 }
 
 // The StaticFetcher fetches static page content
@@ -71,13 +71,17 @@ func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*Document, error) {
 	if f == nil {
 		panic(fmt.Sprintf("in fetch.GQDocument(), fetcher is nil, may be running offline, failed to fetch %q", urlStr))
 	}
-	res, err := f.Fetch(urlStr, opts)
+	u, res, err := f.Fetch(urlStr, opts)
 	slog.Info("in fetch.GQDocument(), fetched", "urlStr", urlStr, "err", err)
 	if err != nil {
 		return nil, err
 	}
 	// fmt.Println(res)
 	doc, err := NewDocumentFromString(res)
+	if err != nil {
+		return nil, err
+	}
+	doc.Url, err = url.Parse(u)
 	if err != nil {
 		return nil, err
 	}
@@ -102,12 +106,11 @@ func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*Document, error) {
 	return doc, nil
 }
 
-func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, error) {
+func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, string, error) {
 	// log.Printf("StaticFetcher.Fetch(url: %q, opts: %#v)", url, opts)
 	// s.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 	s.UserAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
 	slog.Info("fetching page", slog.String("fetcher", "static"), slog.String("url", url), slog.String("user-agent", s.UserAgent))
-	var resString string
 
 	// See: https://stackoverflow.com/questions/64272533/get-request-returns-403-status-code-parsing
 	// needed for http://www.cnvc.org/trainers
@@ -121,29 +124,29 @@ func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, error) {
 	// fmt.Printf("static fetching: %q\n", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return resString, fmt.Errorf("when fetching url, error in creating new request: %w", err)
+		return "", "", fmt.Errorf("when fetching url, error in creating new request: %w", err)
 	}
 	req.Header.Set("User-Agent", s.UserAgent)
 	req.Header.Set("Accept", "*/*")
 	// req.Header.Set("Accept-Encoding", "identity")
 	// req.Header.Set("Connection", "Keep-Alive")
 
-	res, err := client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return resString, fmt.Errorf("when fetching url, error in doing request: %w", err)
+		return "", "", fmt.Errorf("when fetching url, error in doing request: %w", err)
 	}
-	defer res.Body.Close()
+	defer resp.Body.Close()
 
-	if res.StatusCode != 200 {
-		return resString, fmt.Errorf("when fetching url, status code error: %d %s", res.StatusCode, res.Status)
+	if resp.StatusCode != 200 {
+		return resp.Request.URL.String(), "", fmt.Errorf("when fetching url, status code error: %d %s", resp.StatusCode, resp.Status)
 	}
-	bytes, err := io.ReadAll(res.Body)
+	respBs, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return resString, err
+		return resp.Request.URL.String(), "", err
 	}
-	resString = string(bytes)
-	// log.Printf("StaticFetcher.Fetch() returning resString")
-	return resString, nil
+
+	// log.Printf("StaticFetcher.Fetch() returning respString")
+	return resp.Request.URL.String(), string(respBs), nil
 }
 
 // The DynamicFetcher renders js
@@ -185,7 +188,7 @@ func (d *DynamicFetcher) Cancel() {
 
 var pngOutputDir = "/tmp/goskyr/fetch/Fetch/"
 
-func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
+func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, string, error) {
 	if opts == nil {
 		opts = &FetchOpts{}
 	}
@@ -205,19 +208,20 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 	if strings.HasPrefix(urlStr, "file://") && !strings.HasPrefix(urlStr, "file:///") {
 		wd, err := os.Getwd()
 		if err != nil {
-			return "", fmt.Errorf("error getting working directory while absolutizing file url: %v", err)
+			return "", "", fmt.Errorf("error getting working directory while absolutizing file url: %v", err)
 		}
 		urlStr = "file://" + wd + "/" + strings.TrimPrefix(urlStr, "file://")
 	}
-	fmt.Printf("dynamic fetching: %q\n", urlStr)
+	// fmt.Printf("dynamic fetching: %q\n", urlStr)
 
-	var body string
+	var u string
 	sleepTime := time.Duration(d.WaitMilliseconds) * time.Millisecond
 	actions := []chromedp.Action{
 		chromedp.Navigate(urlStr),
+		chromedp.Location(&u),
 		chromedp.Sleep(sleepTime),
 	}
-	slg.Debug(fmt.Sprintf("appended chrome actions: Navigate, Sleep(%v)", sleepTime))
+	// slg.Debug(fmt.Sprintf("appended chrome actions: Navigate, Sleep(%v)", sleepTime))
 	for j, ia := range opts.Interaction {
 		slg.Debug(fmt.Sprintf("processing interaction nr %d, type %s", j, ia.Type))
 		delay := 500 * time.Millisecond // default is .5 seconds
@@ -248,6 +252,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 		}
 	}
 
+	var body string
 	actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
 		node, err := dom.GetDocument().Do(ctx)
 		if err != nil {
@@ -278,12 +283,12 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, error) {
 
 	// run task list
 	if err := chromedp.Run(ctx, actions...); err != nil {
-		return "", fmt.Errorf("error running chromedp: %v", err)
+		return "", "", fmt.Errorf("error running chromedp: %v", err)
 	}
 
 	// elapsed := time.Since(start)
 	// log.Printf("fetching %s took %s", url, elapsed)
-	return body, nil
+	return u, body, nil
 }
 
 // The FileFetcher fetches static page content

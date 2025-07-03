@@ -24,9 +24,9 @@ import (
 
 var DoDebug = false
 
-var ShowCaching = true
+// var ShowCaching = true
 
-// var ShowCaching = false
+var ShowCaching = false
 
 var Synchronized = true
 
@@ -57,6 +57,20 @@ func NewDocument(gqdoc *goquery.Document) *Document {
 		Document:  gqdoc,
 		findCache: map[string]*Selection{},
 	}
+}
+
+func NewDocumentFromResponse(str string) (*Document, error) {
+	strs := strings.SplitN(str, "\n", 2)
+	gqdoc, err := NewDocumentFromString(strs[1])
+	if err != nil {
+		return nil, err
+	}
+
+	gqdoc.Url, err = url.Parse(strs[0])
+	if err != nil {
+		return nil, err
+	}
+	return gqdoc, nil
 }
 
 func NewDocumentFromString(str string) (*Document, error) {
