@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log/slog"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -21,6 +22,7 @@ import (
 	"github.com/findyourpaths/goskyr/config"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/gosimple/slug"
+	"golang.org/x/net/publicsuffix"
 )
 
 // Interaction represents a simple user interaction with a webpage
@@ -42,12 +44,26 @@ type FetchOpts struct {
 
 // A Fetcher allows to fetch the content of a web page
 type Fetcher interface {
-	Fetch(url string, opts *FetchOpts) (string, string, error)
+	Fetch(url string, opts *FetchOpts) (*URLResponse, error)
+}
+
+type URLResponse struct {
+	RequestedURL string
+	ResolvedURL  string
+	StatusCode   int
+	ContentType  string
+	Data         []byte
 }
 
 // The StaticFetcher fetches static page content
 type StaticFetcher struct {
 	UserAgent string
+	Jar       *cookiejar.Jar
+	client    *http.Client
+}
+
+func (s *StaticFetcher) SetTransport(tr http.RoundTripper) {
+	s.client.Transport = tr
 }
 
 var htmlOutputDir = "/tmp/goskyr/scraper/fetchToDoc/"
@@ -64,24 +80,15 @@ func MakeURLStringSlug(u string) string {
 	return slug.Make(TrimURLScheme(u))
 }
 
-func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*Document, error) {
+func GQDocumentFromURLResponse(urlResp *URLResponse) (*Document, error) {
 	// slog.Debug("Scraper.fetchToDoc(urlStr: %q, opts %#v)", urlStr, opts)
 	// slog.Debug("in Scraper.fetchToDoc(), c.fetcher: %#v", c.fetcher)
-	slog.Info("in fetch.GQDocument(), fetching", "urlStr", urlStr)
-	if f == nil {
-		panic(fmt.Sprintf("in fetch.GQDocument(), fetcher is nil, may be running offline, failed to fetch %q", urlStr))
-	}
-	u, res, err := f.Fetch(urlStr, opts)
-	slog.Info("in fetch.GQDocument(), fetched", "urlStr", urlStr, "err", err)
-	if err != nil {
-		return nil, err
-	}
 	// fmt.Println(res)
-	doc, err := NewDocumentFromString(res)
+	doc, err := NewDocumentFromString(string(urlResp.Data))
 	if err != nil {
 		return nil, err
 	}
-	doc.Url, err = url.Parse(u)
+	doc.Url, err = url.Parse(urlResp.ResolvedURL)
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +103,8 @@ func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*Document, error) {
 		return nil, fmt.Errorf("failed to write html file: %v", err)
 	}
 
-	slog.Debug("writing html to file", "url", urlStr)
-	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(urlStr)+".html"), htmlStr)
+	slog.Debug("writing html to file", "urlResp.ResolvedURL", urlResp.ResolvedURL)
+	fpath, err := utils.WriteTempStringFile(filepath.Join(htmlOutputDir, slug.Make(urlResp.ResolvedURL)+".html"), htmlStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write html file: %v", err)
 	}
@@ -106,11 +113,12 @@ func GQDocument(f Fetcher, urlStr string, opts *FetchOpts) (*Document, error) {
 	return doc, nil
 }
 
-func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, string, error) {
-	// log.Printf("StaticFetcher.Fetch(url: %q, opts: %#v)", url, opts)
-	// s.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-	s.UserAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
-	slog.Info("fetching page", slog.String("fetcher", "static"), slog.String("url", url), slog.String("user-agent", s.UserAgent))
+func NewStaticFetcher() *StaticFetcher {
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	if err != nil {
+		slog.Error("failed to set cookie jar", "err", err)
+		return nil
+	}
 
 	// See: https://stackoverflow.com/questions/64272533/get-request-returns-403-status-code-parsing
 	// needed for http://www.cnvc.org/trainers
@@ -119,34 +127,94 @@ func (s *StaticFetcher) Fetch(url string, opts *FetchOpts) (string, string, erro
 			MaxVersion: tls.VersionTLS12,
 		},
 	}
-	client := &http.Client{Transport: tr}
+
+	return &StaticFetcher{
+		client: &http.Client{
+			Transport: tr,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				// This function will be called before following any redirect.
+				// Returning http.ErrUseLastResponse will cause the Client's Get/Post method
+				// to return the most recent response (the one with the redirect),
+				// without following the redirect.
+				return http.ErrUseLastResponse
+			},
+			Jar: jar,
+		},
+	}
+}
+
+func (s *StaticFetcher) Fetch(u string, opts *FetchOpts) (*URLResponse, error) {
+	// func GetFromURL(u string) (*URLResponse, error) { // , opts *FetchOpts
+	// log.Printf("StaticFetcher.Fetch(url: %q, opts: %#v)", url, opts)
+	// s.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+	// slog.Debug("StaticFetcher.Fetch()", "u", u)
+	userAgent := "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
+	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 
 	// fmt.Printf("static fetching: %q\n", url)
-	req, err := http.NewRequest("GET", url, nil)
+	r := &URLResponse{RequestedURL: u}
+	req, err := http.NewRequest("GET", u, nil)
 	if err != nil {
-		return "", "", fmt.Errorf("when fetching url, error in creating new request: %w", err)
+		return r, fmt.Errorf("error in creating new request: %w", err)
 	}
-	req.Header.Set("User-Agent", s.UserAgent)
+	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "*/*")
 	// req.Header.Set("Accept-Encoding", "identity")
 	// req.Header.Set("Connection", "Keep-Alive")
 
-	resp, err := client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
-		return "", "", fmt.Errorf("when fetching url, error in doing request: %w", err)
+		// If CheckRedirect returns an error other than http.ErrUseLastResponse,
+		// that error will be returned here.
+		// If http.ErrUseLastResponse is returned by CheckRedirect, err will be nil here,
+		// and you'll get the response that was trying to redirect.
+		slog.Debug("in util.GetFromURL(), error making GET request", "err", err)
+		// Note: Even with http.ErrUseLastResponse, if there's another network error
+		// before the redirect is even attempted, it will be caught here.
+		// However, a successful fetch of a redirecting response will NOT result in an error here
+		// if http.ErrUseLastResponse is used.
+
+		// To specifically check if the error is due to a redirect policy
+		// when not using http.ErrUseLastResponse (e.g., if you returned a custom error):
+		// if urlError, ok := err.(*url.Error); ok {
+		//    // urlError.Err might be your custom error from CheckRedirect
+		//    fmt.Println("Redirect error:", urlError.Err)
+		// }
+		return r, fmt.Errorf("in util.GetFromURL(), error making GET request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return resp.Request.URL.String(), "", fmt.Errorf("when fetching url, status code error: %d %s", resp.StatusCode, resp.Status)
-	}
-	respBs, err := io.ReadAll(resp.Body)
+	r.StatusCode = resp.StatusCode
+	r.ContentType = resp.Header.Get("content-type")
+
+	resURLU, err := resp.Location()
+	// slog.Debug("in Fetch()", "resURLU", resURLU)
 	if err != nil {
-		return resp.Request.URL.String(), "", err
+		if err != http.ErrNoLocation {
+			return r, fmt.Errorf("error in getting resolved URL: %w", err)
+		}
+		r.ResolvedURL = u
+	} else {
+		r.ResolvedURL = resURLU.String()
+	}
+
+	if resp.StatusCode >= 300 && resp.StatusCode <= 399 {
+		// slog.Debug("in Fetch()", "resp.StatusCode", resp.StatusCode, "r", r)
+		return r, nil
+	}
+
+	// if resp.StatusCode != 200 {
+	// 	return r, fmt.Errorf("unexpected status code: %d %s", resp.StatusCode, resp.Status)
+	// }
+
+	r.Data, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return r, fmt.Errorf("error reading bytes: %w", err)
 	}
 
 	// log.Printf("StaticFetcher.Fetch() returning respString")
-	return resp.Request.URL.String(), string(respBs), nil
+	slog.Debug("StaticFetcher.Fetch()", "r.ResolvedURL", r.ResolvedURL, "r.ContentType", r.ContentType)
+	return r, nil
 }
 
 // The DynamicFetcher renders js
@@ -188,14 +256,16 @@ func (d *DynamicFetcher) Cancel() {
 
 var pngOutputDir = "/tmp/goskyr/fetch/Fetch/"
 
-func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, string, error) {
+func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (*URLResponse, error) {
+	slog.Debug("DynamicFetcher.Fetch()", "urlStr", urlStr)
 	if opts == nil {
 		opts = &FetchOpts{}
 	}
 
 	// log.Printf("DynamicFetcher.Fetch(urlStr: %q, opts: %#v)", urlStr, opts)
-	slg := slog.With(slog.String("fetcher", "dynamic"), slog.String("url", urlStr))
-	slg.Info("fetching page", slog.String("user-agent", d.UserAgent))
+
+	// slg := slog.With(slog.String("fetcher", "dynamic"), slog.String("url", urlStr))
+	// slg.Info("fetching page", slog.String("user-agent", d.UserAgent))
 	// start := time.Now()
 	ctx, cancel := chromedp.NewContext(d.allocContext)
 	// ctx, cancel := chromedp.NewContext(d.allocContext,
@@ -208,22 +278,23 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, string, 
 	if strings.HasPrefix(urlStr, "file://") && !strings.HasPrefix(urlStr, "file:///") {
 		wd, err := os.Getwd()
 		if err != nil {
-			return "", "", fmt.Errorf("error getting working directory while absolutizing file url: %v", err)
+			return nil, fmt.Errorf("error getting working directory while absolutizing file url: %v", err)
 		}
 		urlStr = "file://" + wd + "/" + strings.TrimPrefix(urlStr, "file://")
 	}
 	// fmt.Printf("dynamic fetching: %q\n", urlStr)
 
-	var u string
+	var resURL string
 	sleepTime := time.Duration(d.WaitMilliseconds) * time.Millisecond
 	actions := []chromedp.Action{
 		chromedp.Navigate(urlStr),
-		chromedp.Location(&u),
+		chromedp.Location(&resURL),
 		chromedp.Sleep(sleepTime),
 	}
 	// slg.Debug(fmt.Sprintf("appended chrome actions: Navigate, Sleep(%v)", sleepTime))
 	for j, ia := range opts.Interaction {
-		slg.Debug(fmt.Sprintf("processing interaction nr %d, type %s", j, ia.Type))
+		slog.Debug("in DynamicFetcher.Fetch(), processing interaction", "j", j, "ia.Type", ia.Type)
+		// slg.Debug(fmt.Sprintf("processing interaction nr %d, type %s", j, ia.Type))
 		delay := 500 * time.Millisecond // default is .5 seconds
 		if ia.Delay > 0 {
 			delay = time.Duration(ia.Delay) * time.Millisecond
@@ -233,7 +304,7 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, string, 
 			if ia.Count > 0 {
 				count = ia.Count
 			}
-			for i := 0; i < count; i++ {
+			for range count {
 				// we only click the button if it exists. Do we really need this check here?
 				actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
 					var nodes []*cdp.Node
@@ -243,11 +314,13 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, string, 
 					if len(nodes) == 0 {
 						return nil
 					} // nothing to do
-					slg.Debug(fmt.Sprintf("clicking on node with selector: %s", ia.Selector))
+					slog.Debug("in DynamicFetcher.Fetch(), clicking on node with selector", "ia.Selector", ia.Selector)
+					// slg.Debug(fmt.Sprintf("clicking on node with selector: %s", ia.Selector))
 					return chromedp.MouseClickNode(nodes[0]).Do(ctx)
 				}))
 				actions = append(actions, chromedp.Sleep(delay))
-				slg.Debug(fmt.Sprintf("appended chrome actions: ActionFunc (mouse click), Sleep(%v)", delay))
+				slog.Debug("in DynamicFetcher.Fetch(), appended chrome actions: ActionFunc (mouse click), Sleep", "delay", delay)
+				// slg.Debug(fmt.Sprintf("appended chrome actions: ActionFunc (mouse click), Sleep(%v)", delay))
 			}
 		}
 	}
@@ -265,30 +338,53 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (string, string, 
 		return nil
 	}))
 
-	if config.Debug {
+	if config.Debug || DoDebug {
 		u, _ := url.Parse(urlStr)
 		var buf []byte
 		actions = append(actions, chromedp.CaptureScreenshot(&buf))
 		actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
-			slg.Debug(fmt.Sprintf("writing screenshot to file"))
+			slog.Debug("in DynamicFetcher.Fetch(), writing screenshot to file")
+			// slg.Debug(fmt.Sprintf("writing screenshot to file"))
 			fpath, err := utils.WriteTempStringFile(filepath.Join(pngOutputDir, u.Host+".png"), string(buf))
 			if err != nil {
 				return err
 			}
-			slg.Debug(fmt.Sprintf("wrote screenshot to file %s", fpath))
+			slog.Debug("in DynamicFetcher.Fetch(), wrote screenshot to file", "fpath", fpath)
+			// slg.Debug(fmt.Sprintf("wrote screenshot to file %s", fpath))
 			return nil
 		}))
-		slg.Debug("appended chrome actions: CaptureScreenshot, ActionFunc (save screenshot)")
+		slog.Debug("in DynamicFetcher.Fetch(), appended chrome actions: CaptureScreenshot, ActionFunc (save screenshot)")
+		// slg.Debug("appended chrome actions: CaptureScreenshot, ActionFunc (save screenshot)")
 	}
 
 	// run task list
-	if err := chromedp.Run(ctx, actions...); err != nil {
-		return "", "", fmt.Errorf("error running chromedp: %v", err)
+	resp, err := chromedp.RunResponse(ctx, actions...)
+	if err != nil {
+		return nil, fmt.Errorf("error running chromedp for url %q: %v", err, urlStr)
 	}
 
-	// elapsed := time.Since(start)
-	// log.Printf("fetching %s took %s", url, elapsed)
-	return u, body, nil
+	if DoDebug && resURL != resp.URL {
+		slog.Warn("DynamicFetcher.Fetch()", "resURL", resURL)
+		slog.Warn("DynamicFetcher.Fetch()", "resp.URL", resp.URL)
+		// slog.Warn("DynamicFetcher.Fetch()", "resp", resp)
+	}
+
+	r := &URLResponse{
+		RequestedURL: urlStr,
+		Data:         []byte(body),
+		ResolvedURL:  resURL,
+		StatusCode:   int(resp.Status),
+		ContentType:  resp.Headers["content-type"].(string),
+	}
+
+	// r.Data = body
+	// r.Data, err = io.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return r, fmt.Errorf("error reading bytes: %w", err)
+	// }
+
+	slog.Debug("DynamicFetcher.Fetch()", "r.ResolvedURL", r.ResolvedURL, "r.ContentType", r.ContentType, "len(r.Data)", len(r.Data))
+	return r, nil
 }
 
 // The FileFetcher fetches static page content

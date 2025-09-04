@@ -134,7 +134,8 @@ func (c *FileCache) Delete(key string) {
 // }
 
 func CacheURLFilename(dir string, urlStr string) string {
-	return CacheURLFilebase(dir, urlStr) + ".html"
+	// return CacheURLFilebase(dir, urlStr) + ".html"
+	return CacheURLFilebase(dir, urlStr)
 }
 
 func CacheURLFilebase(dir string, urlStr string) string {

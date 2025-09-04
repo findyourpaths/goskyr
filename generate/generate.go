@@ -80,6 +80,8 @@ func ConfigurationsForPage(cache fetch.Cache, opts ConfigOptions) (map[string]*s
 
 	scrape.DebugGQFind = false
 
+	// fmt.Println("cache", cache)
+	// fmt.Println("opts.URL", opts.URL)
 	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*fetch.Document{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get page %s (found: %t): %v", opts.URL, found, err)
@@ -138,6 +140,8 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	defer slog.Info("ConfigurationsForGQDocumentWithMinOccurrence() returning")
 	// fmt.Println("in ConfigurationsForGQDocumentWithMinOccurrence()", "results == nil", rs == nil)
 
+	// fmt.Println("in ConfigurationsForGQDocumentWithMinOccurrence()", "gqdoc == nil", gqdoc == nil)
+	// fmt.Println("in ConfigurationsForGQDocumentWithMinOccurrence()", "gqdoc.Document == nil", gqdoc.Document == nil)
 	htmlStr, err := goquery.OuterHtml(gqdoc.Document.Children())
 	if err != nil {
 		return nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)

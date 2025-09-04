@@ -20,13 +20,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// var DoDebug = true
-
 var DoDebug = false
 
-// var ShowCaching = true
+// var DoDebug = true
 
 var ShowCaching = false
+
+// var ShowCaching = true
 
 var Synchronized = true
 

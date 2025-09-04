@@ -3,6 +3,7 @@ package fetch
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -34,15 +35,26 @@ func NewFetchCache(fetcher Fetcher) *FetchCache {
 // Get returns the response corresponding to key, and true, if found on the
 // web. Otherwise it returns nil and false.
 func (c *FetchCache) Get(key string) ([]byte, bool) {
-	gqdoc, err := GQDocument(c.fetcher, key, nil)
+	slog.Info("FetchCache.Get()", "key", key)
+	if c.fetcher == nil {
+		panic(fmt.Sprintf("in FetchCache.Get(), fetcher is nil, may be running offline, failed to fetch %q", key))
+	}
+	urlResp, err := c.fetcher.Fetch(key, nil)
+	// slog.Info("in FetchCache.Get(), fetched", "key", key, "err", err)
 	if err != nil {
-		fmt.Println("in fetch.FetchCache.Get(), got error getting GQDocument", "err", err)
+		fmt.Println("in fetch.FetchCache.Get(), got error fetching data from URL", "key", key, "err", err)
+		return nil, false
+	}
+
+	gqdoc, err := GQDocumentFromURLResponse(urlResp)
+	if err != nil {
+		fmt.Println("in fetch.FetchCache.Get(), got error getting GQDocument from response", "key", key, "err", err)
 		return nil, false
 	}
 
 	str, err := goquery.OuterHtml(gqdoc.Children())
 	if err != nil {
-		fmt.Println("in fetch.FetchCache.Get(), got error setting cache", "err", err)
+		fmt.Println("in fetch.FetchCache.Get(), got error setting cache", "key", key, "err", err)
 		return nil, false
 	}
 
@@ -51,7 +63,7 @@ func (c *FetchCache) Get(key string) ([]byte, bool) {
 	}
 	r, err := httputil.DumpResponse(resp, true)
 	if err != nil {
-		fmt.Println("in fetch.FetchCache.Get(), got error dumping response", "err", err)
+		fmt.Println("in fetch.FetchCache.Get(), got error dumping response", "key", key, "err", err)
 		return nil, false
 	}
 

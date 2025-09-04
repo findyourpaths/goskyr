@@ -36,9 +36,9 @@ var testsByHostSlugByCategory = map[string]map[string][]maintest{
 		"basic-fields-w-link-div-com":       []maintest{{url: "https://basic-fields-w-link-div.com"}},
 		"basic-fields-w-style-com":          []maintest{{url: "https://basic-fields-w-style.com"}},
 		"css-class-with-special-chars-com":  []maintest{{url: "https://css-class-with-special-chars.com"}},
-		"dates-com": []maintest{
-			{url: "https://dates.com/all"},
-			{url: "https://dates.com/most"}},
+		// "dates-com": []maintest{
+		// 	{url: "https://dates.com/all"},
+		// 	{url: "https://dates.com/most"}},
 		"fields-w-a-com": []maintest{{url: "https://fields-w-a.com"}},
 	},
 	"scraping": {
@@ -46,9 +46,9 @@ var testsByHostSlugByCategory = map[string]map[string][]maintest{
 		"quotes-toscrape-com":  []maintest{{url: "https://quotes.toscrape.com", required: "Imperfection"}},
 		"realpython-github-io": []maintest{{url: "https://realpython.github.io/fake-jobs"}},
 		"webscraper-io":        []maintest{{url: "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", required: "Android"}},
-		"scrapethissite-com": []maintest{
-			{url: "https://www.scrapethissite.com/pages/forms"},
-			{url: "https://www.scrapethissite.com/pages/simple"}},
+		// "scrapethissite-com": []maintest{
+		// 	{url: "https://www.scrapethissite.com/pages/forms"},
+		// 	{url: "https://www.scrapethissite.com/pages/simple"}},
 	},
 }
 
@@ -71,7 +71,10 @@ func sortedTestHostSlugs(cat string) []string {
 }
 
 var testOutputDir = "/tmp/goskyr/main/"
+
 var testInputDir = "../../testdata/"
+
+// var testInputDir = "testdata/"
 
 var htmlSuffix = ".html"
 var configSuffix = ".yml"

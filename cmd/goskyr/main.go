@@ -11,7 +11,6 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/generate"
-	"github.com/findyourpaths/goskyr/ml"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
@@ -57,34 +56,34 @@ func main() {
 type CLI struct {
 	Globals
 
-	ExtractFeatures ExtractFeaturesCmd `cmd:"" help:"Extract ML features based on the given configuration file"`
-	Generate        GenerateCmd        `cmd:"" help:"Automatically generate a configuration file for the given URL"`
-	Regenerate      RegenerateCmd      `cmd:"" help:"Automatically regenerate test data"`
-	Scrape          ScrapeCmd          `cmd:"" help:"Scrape"`
+	// ExtractFeatures ExtractFeaturesCmd `cmd:"" help:"Extract ML features based on the given configuration file"`
+	Generate   GenerateCmd   `cmd:"" help:"Automatically generate a configuration file for the given URL"`
+	Regenerate RegenerateCmd `cmd:"" help:"Automatically regenerate test data"`
+	Scrape     ScrapeCmd     `cmd:"" help:"Scrape"`
 }
 
 type Globals struct {
 	LogLevel string `short:"l" default:"info" help:"Control log level: debug, info, or warn"`
 }
 
-type ExtractFeaturesCmd struct {
-	File string `arg:"" help:"The location of the configuration. Can be a directory containing config files or a single config file."`
+// type ExtractFeaturesCmd struct {
+// 	File string `arg:"" help:"The location of the configuration. Can be a directory containing config files or a single config file."`
 
-	ExtractFeatures string `short:"e" long:"extract" description:"Write extracted features to the given file in csv format."`
-	WordsDir        string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
-}
+// 	ExtractFeatures string `short:"e" long:"extract" description:"Write extracted features to the given file in csv format."`
+// 	WordsDir        string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
+// }
 
-func (cmd *ExtractFeaturesCmd) Run(globals *Globals) error {
-	conf, err := scrape.ReadConfig(cmd.File)
-	if err != nil {
-		return fmt.Errorf("error reading config: %v", err)
-	}
+// func (cmd *ExtractFeaturesCmd) Run(globals *Globals) error {
+// 	conf, err := scrape.ReadConfig(cmd.File)
+// 	if err != nil {
+// 		return fmt.Errorf("error reading config: %v", err)
+// 	}
 
-	if err := ml.ExtractFeatures(conf, cmd.ExtractFeatures, cmd.WordsDir); err != nil {
-		return fmt.Errorf("error extracting features: %v", err)
-	}
-	return nil
-}
+// 	if err := ml.ExtractFeatures(conf, cmd.ExtractFeatures, cmd.WordsDir); err != nil {
+// 		return fmt.Errorf("error extracting features: %v", err)
+// 	}
+// 	return nil
+// }
 
 type GenerateCmd struct {
 	URL string `arg:"" help:"Automatically generate a config file for the given input url."`
@@ -348,13 +347,13 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 	return nil
 }
 
-type TrainCmd struct {
-	TrainModel string `short:"t" long:"train" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
-}
+// type TrainCmd struct {
+// 	TrainModel string `short:"t" long:"train" description:"Train a ML model based on the given csv features file. This will generate 2 files, goskyr.model and goskyr.class"`
+// }
 
-func (cmd *TrainCmd) Run(globals *Globals) error {
-	if err := ml.TrainModel(cmd.TrainModel); err != nil {
-		return fmt.Errorf("error training model: %v", err)
-	}
-	return nil
-}
+// func (cmd *TrainCmd) Run(globals *Globals) error {
+// 	if err := ml.TrainModel(cmd.TrainModel); err != nil {
+// 		return fmt.Errorf("error training model: %v", err)
+// 	}
+// 	return nil
+// }
