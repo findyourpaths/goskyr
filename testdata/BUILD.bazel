@@ -1,7 +1,0 @@
-filegroup(
-    name = "testdata",
-    srcs = glob([
-        "*",
-    ]),
-    visibility = ["//:__subpackages__"],
-)
