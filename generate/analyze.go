@@ -1,19 +1,45 @@
 package generate
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/findyourpaths/goskyr/observability"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/findyourpaths/phil/datetime"
+	"github.com/kr/pretty"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/net/html"
 )
 
-func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationProps, []*locationProps, error) {
+func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc int) ([]*locationProps, []*locationProps, error) {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.analyzePage(%d)", minOcc))
+
+	// Metering
+	a := &Analyzer{
+		Tokenizer:   html.NewTokenizer(strings.NewReader(htmlStr)),
+		NumChildren: map[string]int{},
+		ChildNodes:  map[string][]node{},
+		FindNext:    opts.configID.Field == "" && opts.configID.SubID == "",
+	}
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Generate, 1,
+			attribute.Int("arg.minocc", minOcc),
+			attribute.Int("int.locman.len", len(a.LocMan)),
+			attribute.Int("int.pagman.len", len(a.PagMan)),
+		)
+		span.End()
+	}()
+
+	// Logging
+
 	// if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 	// 	prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_analyzePage_log.txt"), slog.LevelDebug)
 	// 	if err != nil {
@@ -24,14 +50,7 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 	// slog.Info("analyzePage()", "opts", opts)
 	// defer slog.Info("analyzePage() returning")
 
-	a := &Analyzer{
-		Tokenizer:   html.NewTokenizer(strings.NewReader(htmlStr)),
-		NumChildren: map[string]int{},
-		ChildNodes:  map[string][]node{},
-		FindNext:    opts.configID.Field == "" && opts.configID.SubID == "",
-	}
 	a.Parse()
-
 	if slog.Default().Enabled(nil, slog.LevelDebug) {
 		for i, lp := range a.LocMan {
 			slog.Debug("raw", "i", i, "lp", lp.DebugString())
@@ -108,7 +127,25 @@ func analyzePage(opts ConfigOptions, htmlStr string, minOcc int) ([]*locationPro
 	return lps, append(a.NextPaths, a.PagMan...), nil
 }
 
-func findSharedRootSelector(lps []*locationProps) path {
+func findSharedRootSelector(ctx context.Context, lps []*locationProps) path {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.findSharedRootSelector(%d)", len(lps)))
+
+	// Metering
+	var i int
+	var j int
+	var ret path
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Generate, 1,
+			attribute.Int("arg.lps.len", len(lps)),
+			attribute.Int("int.i", i),
+			attribute.Int("int.j", j),
+			attribute.String("ret", ret.string()),
+		)
+		span.End()
+	}()
+
+	// Logging
 	slog.Debug("findSharedRootSelector()", "len(lps)", len(lps))
 	if len(lps) == 1 {
 		slog.Debug("in findSharedRootSelector(), found singleton, returning", "lps[0].path.string()", lps[0].path.string())
@@ -117,14 +154,16 @@ func findSharedRootSelector(lps []*locationProps) path {
 	for j, lp := range lps {
 		slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
 	}
-	for i := 0; ; i++ {
+	for i = 0; ; i++ {
 		slog.Debug("in findSharedRootSelector()", "i", i)
 		var n node
-		for j, lp := range lps {
+		var lp *locationProps
+		for j, lp = range lps {
 			slog.Debug("in findSharedRootSelector()", "  j", j, "lp", lp.DebugString())
 			if i+1 == len(lp.path) {
 				slog.Debug("in findSharedRootSelector(), returning end", "lp.path[:i].string()", lp.path[:i].string())
-				return lp.path[:i]
+				ret = lp.path[:i]
+				return ret
 			}
 
 			// if lp.isText && i == len(lp.path) {
@@ -142,13 +181,15 @@ func findSharedRootSelector(lps []*locationProps) path {
 				// Look for divergence and if found, return what we have so far.
 				if !n.equals(lp.path[i]) {
 					slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
-					return lp.path[:i]
+					ret = lp.path[:i]
+					return ret
 				}
 			}
 		}
 	}
 	slog.Debug("in findSharedRootSelector(), returning nil")
-	return []node{}
+	ret = []node{}
+	return ret
 }
 
 func shortenRootSelector(p path) path {
@@ -172,7 +213,26 @@ var datetimeMonths = "jan|january|feb|february|mar|march|apr|april|may|jun|june|
 var datetimeFieldRE = regexp.MustCompile(`(?i)\b(?:(?:19|20)\d{2}|` + datetimeMonths + `|` + datetimeWeekdays + `)\b`)
 
 // for now we assume that there will only be one date field
-func processFields(exsCache map[string]string, lps []*locationProps, rootSelector path) []scrape.Field {
+func processFields(ctx context.Context, exsCache map[string]string, lps []*locationProps, rootSelector path) []scrape.Field {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.processFields(%d, %q)", len(lps), rootSelector.string()))
+
+	// Metering
+	var rs []scrape.Field
+	// var i int
+	// var j int
+	// var ret path
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Generate, 1,
+			attribute.Int("arg.lps.len", len(lps)),
+			// 	attribute.Int("int.i", i),
+			// 	attribute.Int("int.j", j),
+			attribute.String("ret", fmt.Sprintf("%# v\n", pretty.Formatter(rs))),
+		)
+		span.End()
+	}()
+
+	// Logging
 	slog.Debug("processFields()", "len(lps)", len(lps))
 
 	// zone, _ := time.Now().Zone()
@@ -184,7 +244,6 @@ func processFields(exsCache map[string]string, lps []*locationProps, rootSelecto
 	// }
 
 	slog.Debug("in processFields()", "len(rootSelector)", len(rootSelector), "rootSelector", rootSelector.string())
-	rs := []scrape.Field{}
 	for _, lp := range lps {
 		// slog.Debug("in processFields()", "e.path", e.path.string())
 		// slog.Debug("in processFields()", "e.path[len(rootSelector):]", e.path[len(rootSelector):].string())

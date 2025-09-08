@@ -1,6 +1,7 @@
 package scrape
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -274,7 +275,8 @@ func TestExtractFieldText(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -303,7 +305,8 @@ func TestExtractFieldTextEntireSubtree(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -334,7 +337,8 @@ func TestExtractFieldTextAllNodes(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the text field: %v", err)
 	}
@@ -365,7 +369,8 @@ func TestExtractFieldTextRegex(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -394,7 +399,8 @@ func TestExtractFieldUrl(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "https://www.dachstock.ch/events", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "https://www.dachstock.ch/events", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -423,7 +429,8 @@ func TestExtractFieldUrlFull(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -452,7 +459,8 @@ func TestExtractFieldUrlQuery(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "https://www.eventfabrik-muenchen.de/events?s=&tribe_events_cat=konzert&tribe_events_venue=&tribe_events_month=", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -481,7 +489,8 @@ func TestExtractFieldUrlFile(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "https://www.roxy.ulm.de/programm/programm.php", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "https://www.roxy.ulm.de/programm/programm.php", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -510,7 +519,8 @@ func TestExtractFieldUrlParentDir(t *testing.T) {
 		},
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "http://point11.ch/site/home", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "http://point11.ch/site/home", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the time field: %v", err)
 	}
@@ -536,7 +546,8 @@ func TestExtractFieldDate(t *testing.T) {
 		DateLocation:     "Europe/Berlin",
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 0)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 	}
@@ -576,7 +587,8 @@ func TestExtractFieldDateWithoutYear1(t *testing.T) {
 		GuessYear:        true,
 	}
 	event := output.Record{}
-	err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 2024)
+	ctx := context.Background()
+	err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "", 2024)
 	if err != nil {
 		t.Fatalf("unexpected error while extracting the date field: %v", err)
 	}
@@ -641,9 +653,10 @@ func TestExtractFieldDateWithoutYear2(t *testing.T) {
 		DateLocation:     dateLoc,
 		GuessYear:        true,
 	}}
+	ctx := context.Background()
 	event := output.Record{}
 	for _, f := range fs {
-		err = extractField(f, event, fetch.NewSelection(doc.Selection), "", 2025)
+		err = extractField(ctx, f, event, fetch.NewSelection(doc.Selection), "", 2025)
 		if err != nil {
 			t.Fatalf("unexpected error while extracting the date field: %v", err)
 		}

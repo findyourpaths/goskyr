@@ -2,6 +2,7 @@ package scrape
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -19,11 +20,15 @@ import (
 	"github.com/antchfx/jsonquery"
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
+	"github.com/findyourpaths/goskyr/observability"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/findyourpaths/phil/datetime"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/jpillora/go-tld"
+	"github.com/kr/pretty"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
 )
@@ -368,7 +373,26 @@ func (s Scraper) HostSlug() string {
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not detail pages). This is used by the ML feature generation.
-func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.Records, error) {
+func Page(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, rawDyn bool, path string) (output.Records, error) {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, "scrape.Page")
+
+	// Metering
+	// source := "error"
+	defer func() {
+		// entity.observability.Add(ctx, insts.Generate, 1,
+		// 	// attribute.String("source", source),
+		// 	attribute.Int("arg.i", i),
+		// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+		// 	attribute.String("ret.title", ret.Title),
+		// 	attribute.Int("ret.images.len", len(ret.Images)),
+		// 	attribute.Int("ret.links.len", len(ret.Links)),
+		// 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+		// )
+		span.End()
+	}()
+
+	// Logging
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQPage_log.txt", slog.LevelDebug)
@@ -428,7 +452,7 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 			return nil, fmt.Errorf("failed to fetch next page (gqdoc == nil: %t)", gqdoc == nil)
 		}
 
-		recs, err := GQDocument(c, s, gqdoc)
+		recs, err := GQDocument(ctx, c, s, gqdoc)
 		if err != nil {
 			return nil, err
 		}
@@ -453,7 +477,35 @@ func Page(cache fetch.Cache, c *Config, s *Scraper, globalConfig *GlobalConfig, 
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not detail pages). This is used by the ML feature generation.
-func GQDocument(c *Config, s *Scraper, gqdoc *fetch.Document) (output.Records, error) {
+func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Document) (output.Records, error) {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.GQDocument(%q)", s.Selector))
+
+	// Metering
+	// source := "error"
+	var count int
+	var rs output.Records
+	// var rsStr string
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Scrape, 1,
+			// 	// attribute.String("source", source),
+			attribute.String("arg.config.id", c.ID.String()),
+			attribute.String("arg.scraper.selector", s.Selector),
+			attribute.Int("arg.scraper.found_nodes.len", len(gqdoc.Find(s.Selector).Nodes)),
+			attribute.Int("int.count", count),
+			// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+			// 	attribute.String("ret.title", ret.Title),
+			attribute.Int("ret.len", len(rs)),
+			attribute.String("ret", fmt.Sprintf("%# v\n", pretty.Formatter(rs))),
+
+			// attribute.Int("ret.total_fields", recs.TotalFields()),
+		// 	attribute.Int("ret.links.len", len(ret.Links)),
+		// 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+		)
+		span.End()
+	}()
+
+	// Logging
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_GQDocument_log.txt", slog.LevelDebug)
@@ -467,7 +519,6 @@ func GQDocument(c *Config, s *Scraper, gqdoc *fetch.Document) (output.Records, e
 		defer slog.Debug("scrape.GQDocument() returning")
 	}
 
-	rs := output.Records{}
 	baseURL := getBaseURL(s.URL, gqdoc)
 
 	// recElts := strings.Split(s.Item, " > ")
@@ -489,9 +540,10 @@ func GQDocument(c *Config, s *Scraper, gqdoc *fetch.Document) (output.Records, e
 		}
 	}
 	found.Each(func(i int, sel *goquery.Selection) {
+		count = i
 		// fmt.Println("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		slog.Debug("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
-		r, err := GQSelection(c, s, fetch.NewSelection(sel), baseURL)
+		r, err := GQSelection(ctx, c, s, fetch.NewSelection(sel), baseURL)
 		if err != nil {
 			slog.Warn("while scraping document got error", "baseUrl", baseURL, "err", err.Error())
 			return
@@ -504,6 +556,7 @@ func GQDocument(c *Config, s *Scraper, gqdoc *fetch.Document) (output.Records, e
 		// fmt.Println("in scrape.GQDocument()", "r[URLFieldName]", r[URLFieldName])
 		// fmt.Println("in scrape.GQDocument()", "rs", rs)
 		rs = append(rs, r)
+		// rsStr = rsStr + fmt.Sprintf("%#v\n", r)
 	})
 
 	s.guessYear(rs, time.Now())
@@ -537,7 +590,30 @@ func printGQFindDebug(gqdoc *fetch.Document, sel string) {
 // location is returned (ignore regex_extract??). And only those of dynamic
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not detail pages). This is used by the ML feature generation.
-func GQSelection(c *Config, s *Scraper, sel *fetch.Selection, baseURL string) (output.Record, error) {
+func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selection, baseURL string) (output.Record, error) {
+	// // Tracing
+	// ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.GQSelection()"))
+
+	// // Metering
+	// // source := "error"
+	rs := output.Record{}
+	// defer func() {
+	// 	observability.Add(ctx, observability.Instruments.Scrape, 1,
+	// 		// 	// attribute.String("source", source),
+	// 		// attribute.String("arg.scraper.selector", s.Selector),
+	// 		// attribute.Int("arg.scraper.found_nodes.len", len(gqdoc.Find(s.Selector).Nodes)),
+	// 		// attribute.Int("int.count", count),
+	// 		// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+	// 		// 	attribute.String("ret.title", ret.Title),
+	// 		// attribute.Int("ret.len", len(rs)),
+	// 		// attribute.Int("ret.total_fields", rs.TotalFields()),
+	// 	// 	attribute.Int("ret.links.len", len(ret.Links)),
+	// 	// 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+	// 	)
+	// 	span.End()
+	// }()
+
+	// Logging
 	// fmt.Println("scrape.GQSelection()", "c.ID", c.ID)
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
@@ -559,7 +635,6 @@ func GQSelection(c *Config, s *Scraper, sel *fetch.Selection, baseURL string) (o
 	// 	// slog.Debug("in Scraper.GetRecords(), c.Record matched", "c.Fields", c.Fields)
 	// }
 
-	rs := output.Record{}
 	fs := s.Fields
 	sort.Slice(fs, func(i, j int) bool { return fs[i].Type == "url" })
 	for _, f := range fs {
@@ -579,7 +654,7 @@ func GQSelection(c *Config, s *Scraper, sel *fetch.Selection, baseURL string) (o
 			// if rawDyn {
 			// err = extractRawField(&f, rs, sel)
 			// } else {
-			err = extractField(&f, rs, sel, baseURL, 0)
+			err = extractField(ctx, &f, rs, sel, baseURL, 0)
 			// }
 			if err != nil {
 				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping rs %v.", f.Name, err, rs)
@@ -857,7 +932,31 @@ func DebugDateTime(args ...any) { slog.Debug(args[0].(string), args[1:]...) }
 
 // func DebugDateTime(args ...any) { fmt.Println(args...) }
 
-func extractField(f *Field, rec output.Record, sel *fetch.Selection, baseURL string, baseYear int) error {
+func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.Selection, baseURL string, baseYear int) error {
+	// // Tracing
+	// _, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.ExtractField()"))
+
+	// // Metering
+	// // source := "error"
+	// // var count int
+	// // rs := output.Records{}
+	// defer func() {
+	// 	// insts.observability.Add(ctx, observability.Instruments.Scrape, 1,
+	// 	// 	// 	// attribute.String("source", source),
+	// 	// 	attribute.String("arg.scraper.selector", s.Selector),
+	// 	// 	attribute.Int("arg.scraper.found_nodes.len", len(gqdoc.Find(s.Selector).Nodes)),
+	// 	// 	attribute.Int("int.count", count),
+	// 	// 	// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+	// 	// 	// 	attribute.String("ret.title", ret.Title),
+	// 	// 	attribute.Int("ret.len", len(rs)),
+	// 	// 	attribute.Int("ret.total_fields", recs.TotalFields()),
+	// 	// // 	attribute.Int("ret.links.len", len(ret.Links)),
+	// 	// // 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+	// 	// )
+	// 	span.End()
+	// }()
+
+	// Logging
 	slog.Debug("scrape.extractField()", "field", f, "event", rec, "sel", sel, "baseURL", baseURL)
 	switch f.Type {
 	case "text", "": // the default, ie when type is not configured, is 'text'
@@ -1240,7 +1339,31 @@ var KeepSubURLScheme = map[string]bool{
 	"https": true,
 }
 
-func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, domain string) error {
+func DetailPages(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, recs output.Records, domain string) error {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.DetailPages(%d)", len(recs)))
+
+	// Metering
+	// source := "error"
+	// var count int
+	// rs := output.Records{}
+	defer func() {
+		// insts.observability.Add(ctx, observability.Instruments.Scrape, 1,
+		// 	// 	// attribute.String("source", source),
+		// 	attribute.String("arg.scraper.selector", s.Selector),
+		// 	attribute.Int("arg.scraper.found_nodes.len", len(gqdoc.Find(s.Selector).Nodes)),
+		// 	attribute.Int("int.count", count),
+		// 	// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+		// 	// 	attribute.String("ret.title", ret.Title),
+		// 	attribute.Int("ret.len", len(rs)),
+		// 	attribute.Int("ret.total_fields", recs.TotalFields()),
+		// // 	attribute.Int("ret.links.len", len(ret.Links)),
+		// // 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+		// )
+		span.End()
+	}()
+
+	// Logging
 	if DoDebug {
 		slog.Debug("scrape.DetailPages()")
 		defer slog.Debug("scrape.DetailPages() returning")
@@ -1287,14 +1410,38 @@ func DetailPages(cache fetch.Cache, c *Config, s *Scraper, recs output.Records, 
 			// return fmt.Errorf("error fetching detail page GQDocument at %q (found: %t): %v", subURL, found, err)
 			continue
 		}
-		if err := SubGQDocument(c, s, rec, c.ID.Field, subGQDoc); err != nil {
+		if err := SubGQDocument(ctx, c, s, rec, c.ID.Field, subGQDoc); err != nil {
 			return fmt.Errorf("error extending records: %v", err)
 		}
 	}
 	return nil
 }
 
-func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc *fetch.Document) error {
+func SubGQDocument(ctx context.Context, c *Config, s *Scraper, rec output.Record, fname string, gqdoc *fetch.Document) error {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.SubGQDocument(%q)", s.Selector))
+
+	// Metering
+	// source := "error"
+	// var count int
+	// rs := output.Records{}
+	defer func() {
+		// insts.observability.Add(ctx, observability.Instruments.Scrape, 1,
+		// 	// 	// attribute.String("source", source),
+		// 	attribute.String("arg.scraper.selector", s.Selector),
+		// 	attribute.Int("arg.scraper.found_nodes.len", len(gqdoc.Find(s.Selector).Nodes)),
+		// 	attribute.Int("int.count", count),
+		// 	// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+		// 	// 	attribute.String("ret.title", ret.Title),
+		// 	attribute.Int("ret.len", len(rs)),
+		// 	attribute.Int("ret.total_fields", recs.TotalFields()),
+		// // 	attribute.Int("ret.links.len", len(ret.Links)),
+		// // 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+		// )
+		span.End()
+	}()
+
+	// Logging
 	if DoDebug {
 		if output.WriteSeparateLogFiles {
 			prevLogger, err := output.SetDefaultLogger("/tmp/goskyr/main/"+s.HostSlug()+"_configs/"+c.ID.String()+"_scrape_SubGQDocument_log.txt", slog.LevelDebug)
@@ -1308,7 +1455,7 @@ func SubGQDocument(c *Config, s *Scraper, rec output.Record, fname string, gqdoc
 		defer slog.Debug("scrape.SubGQDocument() returning")
 	}
 
-	subRecs, err := GQDocument(c, s, gqdoc)
+	subRecs, err := GQDocument(ctx, c, s, gqdoc)
 	if err != nil {
 		return fmt.Errorf("error scraping detail page for field %q: %v", fname, err)
 	}

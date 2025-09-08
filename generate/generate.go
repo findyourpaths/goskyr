@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,10 +12,13 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/findyourpaths/goskyr/fetch"
+	"github.com/findyourpaths/goskyr/observability"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/jpillora/go-tld"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var DoPruning = true
@@ -67,7 +71,26 @@ func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	return opts, nil
 }
 
-func ConfigurationsForPage(cache fetch.Cache, opts ConfigOptions) (map[string]*scrape.Config, error) {
+func ConfigurationsForPage(ctx context.Context, cache fetch.Cache, opts ConfigOptions) (map[string]*scrape.Config, error) {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, "generate.ConfigurationsForPage")
+
+	// Metering
+	// source := "error"
+	defer func() {
+		// entity.observability.Add(ctx, observability.Instruments.Generate, 1,
+		// 	// attribute.String("source", source),
+		// 	attribute.Int("arg.i", i),
+		// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+		// 	attribute.String("ret.title", ret.Title),
+		// 	attribute.Int("ret.images.len", len(ret.Images)),
+		// 	attribute.Int("ret.links.len", len(ret.Links)),
+		// 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+		// )
+		span.End()
+	}()
+
+	// Logging
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForPage_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -86,10 +109,30 @@ func ConfigurationsForPage(cache fetch.Cache, opts ConfigOptions) (map[string]*s
 	if err != nil {
 		return nil, fmt.Errorf("failed to get page %s (found: %t): %v", opts.URL, found, err)
 	}
-	return ConfigurationsForGQDocument(cache, opts, gqdoc)
+	return ConfigurationsForGQDocument(ctx, cache, opts, gqdoc)
 }
 
-func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document) (map[string]*scrape.Config, error) {
+func ConfigurationsForGQDocument(ctx context.Context, cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document) (map[string]*scrape.Config, error) {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, "generate.ConfigurationsForGQDocument")
+
+	// Metering
+	// source := "error"
+	defer func() {
+		// entity.observability.Add(ctx, observability.Instruments.Generate, 1,
+		// 	// attribute.String("source", source),
+		// 	attribute.Int("arg.i", i),
+		// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+		// 	attribute.String("ret.title", ret.Title),
+		// 	attribute.Int("ret.images.len", len(ret.Images)),
+		// 	attribute.Int("ret.links.len", len(ret.Links)),
+		// 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+		// )
+		span.End()
+	}()
+
+	// Logging
+
 	// cims := map[string]*scrape.Config{}
 	// fmt.Println("in ConfigurationsForGQDocument()", "cims == nil", cims == nil)
 	var err error
@@ -100,7 +143,7 @@ func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *f
 	for _, minOcc := range minOccs {
 		slog.Info("calling ConfigurationsForGQDocument()", "minOcc", minOcc, "rs == nil", rs == nil)
 		// fmt.Println("calling ConfigurationsForGQDocument()", "minOcc", minOcc, "rs == nil", rs == nil)
-		rs, err = ConfigurationsForGQDocumentWithMinOccurrence(cache, opts, gqdoc, minOcc, rs)
+		rs, err = ConfigurationsForGQDocumentWithMinOccurrence(ctx, cache, opts, gqdoc, minOcc, rs)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +164,7 @@ func ConfigurationsForGQDocument(cache fetch.Cache, opts ConfigOptions, gqdoc *f
 // 	return ConfigurationsForGQDocumentWithMinOccurrence(opts, gqdoc, minOcc, gqdocsByURL)
 // }
 
-func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document, minOcc int, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document, minOcc int, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	minOccStr := fmt.Sprintf("%02da", minOcc)
 	if opts.configID.Field != "" {
 		opts.configID.SubID = minOccStr
@@ -129,6 +172,23 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 		opts.configID.ID = minOccStr
 	}
 
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.ConfigurationsForGQDocumentWithMinOccurrence(%d, %q, len(rs): %d)", minOcc, opts.configID.String(), len(rs)))
+
+	// Metering
+	var lps []*locationProps
+	var pagProps []*locationProps
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Generate, 1,
+			attribute.Int("arg.minocc", minOcc),
+			attribute.Int("int.lps.len", len(lps)),
+			attribute.Int("int.pag_props.len", len(pagProps)),
+			attribute.Int("ret.len", len(rs)),
+		)
+		span.End()
+	}()
+
+	// Logging
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForGQDocument_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -147,7 +207,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 		return nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
 	}
 
-	lps, pagProps, err := analyzePage(opts, htmlStr, minOcc)
+	lps, pagProps, err = analyzePage(ctx, opts, htmlStr, minOcc)
 	if err != nil {
 		return nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
 	}
@@ -167,7 +227,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	// }
 
 	exsCache := map[string]string{}
-	rs, err = expandAllPossibleConfigs(cache, exsCache, gqdoc, opts, lps, findSharedRootSelector(lps), pagProps, rs)
+	rs, err = expandAllPossibleConfigs(ctx, cache, exsCache, gqdoc, opts, lps, findSharedRootSelector(ctx, lps), pagProps, rs)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +237,30 @@ func ConfigurationsForGQDocumentWithMinOccurrence(cache fetch.Cache, opts Config
 	return rs, nil
 }
 
-func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqdoc *fetch.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache map[string]string, gqdoc *fetch.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+	rootSel := rootSelector.string()
+
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.expandAllPossibleConfigs(%d, %q, %d)", len(lps), rootSel, len(pagProps)))
+
+	// Metering
+	var recs output.Records
+	var clusters map[string][]*locationProps
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Generate, 1,
+			// 	// attribute.String("source", source),
+			attribute.Int("arg.lps.len", len(lps)),
+			attribute.String("arg.root_selector", rootSel),
+			attribute.Int("arg.pag_props.len", len(pagProps)),
+			attribute.Int("int.recs.len", len(recs)),
+			attribute.Int("int.recs.total_fields", recs.TotalFields()),
+			attribute.Int("int.clusters.len", len(clusters)),
+			attribute.Int("ret.len", len(rs)),
+		)
+		span.End()
+	}()
+
+	// Logging
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -217,8 +300,8 @@ func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqd
 	}
 
 	// s.Record = shortenRootSelector(rootSelector).string()
-	s.Selector = rootSelector.string()
-	s.Fields = processFields(exsCache, lps, rootSelector)
+	s.Selector = rootSel
+	s.Fields = processFields(ctx, exsCache, lps, rootSelector)
 	if opts.DoDetailPages && len(s.GetDetailPageURLFields()) == 0 {
 		slog.Info("candidate configuration failed to find a detail page URL field, excluding", "opts.configID", opts.configID)
 		return rs, nil
@@ -229,14 +312,15 @@ func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqd
 		Scrapers: []scrape.Scraper{s},
 	}
 
-	recs, err := scrape.GQDocument(c, &s, gqdoc)
+	var err error
+	recs, err = scrape.GQDocument(ctx, c, &s, gqdoc)
 	if err != nil {
 		slog.Info("candidate configuration got error scraping GQDocument, excluding", "opts.configID", opts.configID)
 		return nil, err
 	}
 	c.Records = recs
 
-	clusters := findClusters(lps, rootSelector)
+	clusters = findClusters(lps, rootSelector)
 	clusterIDs := []string{}
 	for clusterID := range clusters {
 		clusterIDs = append(clusterIDs, clusterID)
@@ -297,7 +381,7 @@ func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqd
 		}
 		nextLPs := clusters[clusterID]
 		nextRootSel := clusters[clusterID][0].path[0 : len(rootSelector)+1]
-		rs, err = expandAllPossibleConfigs(cache, exsCache, gqdoc, nextOpts, nextLPs, nextRootSel, pagProps, rs)
+		rs, err = expandAllPossibleConfigs(ctx, cache, exsCache, gqdoc, nextOpts, nextLPs, nextRootSel, pagProps, rs)
 		if err != nil {
 			return nil, err
 		}
@@ -307,7 +391,7 @@ func expandAllPossibleConfigs(cache fetch.Cache, exsCache map[string]string, gqd
 	return rs, nil
 }
 
-func ExtendPageConfigsWithNexts(cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) error {
+func ExtendPageConfigsWithNexts(ctx context.Context, cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) error {
 	gqdoc, _, err := fetch.GetGQDocument(cache, opts.URL)
 	if err != nil {
 		return fmt.Errorf("failed to get next page %s: %v", opts.URL, err)
@@ -320,14 +404,14 @@ func ExtendPageConfigsWithNexts(cache fetch.Cache, opts ConfigOptions, pageConfi
 	sort.Strings(pageCIDs)
 
 	for _, id := range pageCIDs {
-		if err := ExtendPageConfigRecordsWithNext(cache, opts, pageConfigs[id], fetch.NewSelection(gqdoc.Document.Selection)); err != nil {
+		if err := ExtendPageConfigRecordsWithNext(ctx, cache, opts, pageConfigs[id], fetch.NewSelection(gqdoc.Document.Selection)); err != nil {
 			return fmt.Errorf("error extending page config records with next page records: %v", err)
 		}
 	}
 	return nil
 }
 
-func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, pageC *scrape.Config, sel *fetch.Selection) error {
+func ExtendPageConfigRecordsWithNext(ctx context.Context, cache fetch.Cache, opts ConfigOptions, pageC *scrape.Config, sel *fetch.Selection) error {
 	// fmt.Printf("looking at %q\n", pageC.ID.String())
 	// fmt.Printf("looking at opts url %q\n", fetch.TrimURLScheme(opts.URL))
 
@@ -393,7 +477,7 @@ func ExtendPageConfigRecordsWithNext(cache fetch.Cache, opts ConfigOptions, page
 
 		// fmt.Printf("read next page: %q\n", u)
 
-		recs, err := scrape.GQDocument(pageC, &pageS, nextGQDoc)
+		recs, err := scrape.GQDocument(ctx, pageC, &pageS, nextGQDoc)
 		if err != nil {
 			return err
 		}
@@ -459,7 +543,29 @@ var KnownDomains = map[string]bool{
 	"dice":      true,
 }
 
-func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func ConfigurationsForAllDetailPages(ctx context.Context, cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, "generate.ConfigurationsForAllDetailPages")
+
+	// Metering
+	// source := "error"
+	var subURLs []string
+	var fnames []string
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Generate, 1,
+			// 	// attribute.String("source", source),
+			// 	attribute.Int("arg.i", i),
+			// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+			attribute.String("int.sub_urls", strings.Join(subURLs, "\n")),
+			attribute.String("int.fnames", strings.Join(fnames, "\n")),
+		// 	attribute.Int("ret.images.len", len(ret.Images)),
+		// 	attribute.Int("ret.links.len", len(ret.Links)),
+		// 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+		)
+		span.End()
+	}()
+
+	// Logging
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForAllDetailPages_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -549,7 +655,7 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 		}
 	}
 
-	subURLs := pageJoinsURLs(pageJoinsByFieldName)
+	subURLs = pageJoinsURLs(pageJoinsByFieldName)
 	if opts.ConfigOutputDir != "" {
 		urlsPath := filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_urls.txt")
 		if err := utils.WriteStringFile(urlsPath, strings.Join(subURLs, "\n")); err != nil {
@@ -562,7 +668,6 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 		sort.Strings(fURLs)
 	}
 
-	fnames := []string{}
 	for fname := range pageJoinsByFieldName {
 		fnames = append(fnames, fname)
 	}
@@ -588,7 +693,7 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 		sort.Slice(pjs, func(i, j int) bool {
 			return pjs[i].config.ID.String() < pjs[j].config.ID.String()
 		})
-		rs, err = ConfigurationsForDetailPages(cache, opts, pjs, rs)
+		rs, err = ConfigurationsForDetailPages(ctx, cache, opts, pjs, rs)
 		if err != nil {
 			return nil, fmt.Errorf("error generating configuration for detail pages for field %q: %v", fname, err)
 		}
@@ -612,7 +717,7 @@ func ConfigurationsForAllDetailPages(cache fetch.Cache, opts ConfigOptions, page
 // page field, retrieves the pages at those URLs, concatenates them, trains a
 // scraper to extract from those detail pages, and merges the resulting records
 // into the parent page, outputting the result.
-func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*pageJoin, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func ConfigurationsForDetailPages(ctx context.Context, cache fetch.Cache, opts ConfigOptions, pjs []*pageJoin, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_ConfigurationsForDetailPages_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -630,7 +735,7 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 	// Prepare for calling general page generator.
 	opts.DoDetailPages = false
 	opts.RequireString = ""
-	cs, err := ConfigurationsForGQDocument(cache, opts, gqdoc)
+	cs, err := ConfigurationsForGQDocument(ctx, cache, opts, gqdoc)
 	if err != nil {
 		return nil, err
 	}
@@ -706,7 +811,7 @@ func ConfigurationsForDetailPages(cache fetch.Cache, opts ConfigOptions, pjs []*
 			mergedC.ID.SubID = c.ID.SubID
 			mergedC.Scrapers = append(mergedC.Scrapers, subScraper)
 			// fmt.Println("    merged as", mergedC.ID)
-			if err := scrape.DetailPages(cache, mergedC, &subScraper, mergedC.Records, domain); err != nil {
+			if err := scrape.DetailPages(ctx, cache, mergedC, &subScraper, mergedC.Records, domain); err != nil {
 				// fmt.Printf("skipping generating configuration for detail pages for merged config %q: %v\n", mergedC.ID, err)
 				slog.Info("skipping generating configuration for detail pages for merged config with error", "mergedC.ID", mergedC.ID, "err", err)
 				continue

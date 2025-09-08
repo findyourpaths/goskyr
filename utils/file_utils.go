@@ -68,6 +68,11 @@ func WriteJSONFile(path string, data any) error {
 	return WriteBytesFile(path, content)
 }
 
+// WriteJSONString writes the given JSON to a string.
+func WriteJSONBytes(data any) ([]byte, error) {
+	return json.MarshalIndent(data, "", "  ")
+}
+
 // WriteStringFile writes the given file contents to the given path.
 func WriteStringFile(path string, content string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0770); err != nil {
@@ -100,4 +105,14 @@ func WriteTempStringFile(path string, content string) (string, error) {
 	}
 
 	return path, WriteStringFile(path, content)
+}
+
+func EnsureDir(dir string) error {
+	return os.MkdirAll(dir, 0770)
+}
+
+func MustEnsureDir(dir string) {
+	if err := EnsureDir(dir); err != nil {
+		panic(err)
+	}
 }

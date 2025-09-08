@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -11,9 +13,11 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/generate"
+	"github.com/findyourpaths/goskyr/observability"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
+	"go.opentelemetry.io/otel"
 )
 
 var version = "dev"
@@ -150,7 +154,27 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	cache = fetch.NewURLFileCache(cache, cmd.CacheOutputParentDir, true)
 	cache = fetch.NewMemoryCache(cache)
 
-	cs, err := generate.ConfigurationsForPage(cache, opts)
+	ctx := context.Background()
+	endFn, err := observability.InitAll(ctx, cmd.CacheOutputParentDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/paths/internal/event").Start(ctx, "GenerateCmd.Run")
+
+	// Metering
+	defer func() {
+		// observability.Add(ctx, observability.Instruments.Test, 1,
+		// 	attribute.String("int.test_cat_input_dir", testCatInputDir),
+		// 	attribute.String("int.test_cat_output_dir", testCatOutputDir),
+		// )
+		span.End()
+
+		endFn()
+	}()
+
+	cs, err := generate.ConfigurationsForPage(ctx, cache, opts)
 	if err != nil {
 		return fmt.Errorf("error generating page configs: %v", err)
 	}
@@ -158,7 +182,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 
 	var subCs map[string]*scrape.Config
 	if opts.DoDetailPages {
-		if subCs, err = generate.ConfigurationsForAllDetailPages(cache, opts, cs); err != nil {
+		if subCs, err = generate.ConfigurationsForAllDetailPages(ctx, cache, opts, cs); err != nil {
 			return fmt.Errorf("error generating detail page configs: %v", err)
 		}
 	}
@@ -316,7 +340,16 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 		return fmt.Errorf("error reading config: %v", err)
 	}
 
-	recs, err := scrape.Page(cache, conf, &conf.Scrapers[0], &conf.Global, true, cmd.File)
+	ctx := context.Background()
+	endFn, err := observability.InitAll(ctx, cmd.CacheOutputParentDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		endFn()
+	}()
+
+	recs, err := scrape.Page(ctx, cache, conf, &conf.Scrapers[0], &conf.Global, true, cmd.File)
 	if err != nil {
 		return err
 	}
@@ -330,7 +363,7 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 	// }
 
 	if len(conf.Scrapers) > 1 {
-		if err = scrape.DetailPages(cache, conf, &conf.Scrapers[1], recs, ""); err != nil {
+		if err = scrape.DetailPages(ctx, cache, conf, &conf.Scrapers[1], recs, ""); err != nil {
 			return err
 		}
 	}
