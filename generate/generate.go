@@ -176,10 +176,12 @@ func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fet
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.ConfigurationsForGQDocumentWithMinOccurrence(%d, %q, len(rs): %d)", minOcc, opts.configID.String(), len(rs)))
 
 	// Metering
+	status := "unknown"
 	var lps []*locationProps
 	var pagProps []*locationProps
 	defer func() {
 		observability.Add(ctx, observability.Instruments.Generate, 1,
+			attribute.String("status", status),
 			attribute.Int("arg.minocc", minOcc),
 			attribute.Int("int.lps.len", len(lps)),
 			attribute.Int("int.pag_props.len", len(pagProps)),
@@ -212,6 +214,7 @@ func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fet
 		return nil, fmt.Errorf("error when generating configurations for GQDocument: %v", err)
 	}
 	if len(lps) == 0 {
+		status = "failed_to_find_fields"
 		// No fields were found, so just return.
 		return rs, nil
 	}
@@ -227,34 +230,46 @@ func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fet
 	// }
 
 	exsCache := map[string]string{}
-	rs, err = expandAllPossibleConfigs(ctx, cache, exsCache, gqdoc, opts, lps, findSharedRootSelector(ctx, lps), pagProps, rs)
+	rootSel := findSharedRootSelector(ctx, gqdoc, lps)
+	rs, err = expandAllPossibleConfigs(ctx, cache, exsCache, gqdoc, opts, "", lps, rootSel, pagProps, rs)
 	if err != nil {
+		status = "failed_to_expand"
 		return nil, err
 	}
 
 	slog.Info("in ConfigurationsForGQDocumentWithMinOccurrence()", "len(results)", len(rs))
 	// fmt.Println("in ConfigurationsForGQDocumentWithMinOccurrence()", "len(results)", len(rs))
+	status = "success"
 	return rs, nil
 }
 
-func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache map[string]string, gqdoc *fetch.Document, opts ConfigOptions, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache map[string]string, gqdoc *fetch.Document, opts ConfigOptions, clusterID string, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	rootSel := rootSelector.string()
 
 	// Tracing
-	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.expandAllPossibleConfigs(%d, %q, %d)", len(lps), rootSel, len(pagProps)))
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.expandAllPossibleConfigs(%q, %q, %d, %q, %d)", opts.configID.String(), clusterID, len(lps), rootSel, len(pagProps)))
 
 	// Metering
+	status := "unknown"
 	var recs output.Records
+	var clusterIDs []string
 	var clusters map[string][]*locationProps
+	var s scrape.Scraper
+	var include bool
 	defer func() {
 		observability.Add(ctx, observability.Instruments.Generate, 1,
+			attribute.String("status", status),
 			// 	// attribute.String("source", source),
+			attribute.String("arg.opts", opts.configID.String()),
 			attribute.Int("arg.lps.len", len(lps)),
 			attribute.String("arg.root_selector", rootSel),
 			attribute.Int("arg.pag_props.len", len(pagProps)),
 			attribute.Int("int.recs.len", len(recs)),
 			attribute.Int("int.recs.total_fields", recs.TotalFields()),
 			attribute.Int("int.clusters.len", len(clusters)),
+			attribute.String("int.cluster_ids", fmt.Sprintf("%#v", clusterIDs)),
+			attribute.String("int.scraper", fmt.Sprintf("%#v", s)),
+			attribute.Bool("int.include", include),
 			attribute.Int("ret.len", len(rs)),
 		)
 		span.End()
@@ -273,7 +288,7 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 	// fmt.Println("in expandAllPossibleConfigs()", "results == nil", rs == nil)
 
 	slog.Info("in expandAllPossibleConfigs()", "opts.configID", opts.configID, "len(lps)", len(lps))
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		for i, lp := range lps {
 			slog.Debug("in expandAllPossibleConfigs()", "i", i, "lp", lp.DebugString())
 		}
@@ -292,7 +307,7 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 
 	slog.Info("in expandAllPossibleConfigs()", "pags", pags)
 
-	s := scrape.Scraper{
+	s = scrape.Scraper{
 		Name:       opts.configID.String(),
 		Paginators: pags,
 		RenderJs:   opts.RenderJS,
@@ -304,6 +319,7 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 	s.Fields = processFields(ctx, exsCache, lps, rootSelector)
 	if opts.DoDetailPages && len(s.GetDetailPageURLFields()) == 0 {
 		slog.Info("candidate configuration failed to find a detail page URL field, excluding", "opts.configID", opts.configID)
+		status = "failed_to_find_detail_page_url"
 		return rs, nil
 	}
 
@@ -313,25 +329,27 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 	}
 
 	var err error
+	slog.Info("in expandAllPossibleConfigs(), scraping")
 	recs, err = scrape.GQDocument(ctx, c, &s, gqdoc)
 	if err != nil {
 		slog.Info("candidate configuration got error scraping GQDocument, excluding", "opts.configID", opts.configID)
+		status = "failed_to_scrape_gqdoc"
 		return nil, err
 	}
+	slog.Info("in expandAllPossibleConfigs(), scraped", "len(recs)", len(recs))
 	c.Records = recs
 
-	clusters = findClusters(lps, rootSelector)
-	clusterIDs := []string{}
+	clusters = findClusters(ctx, lps, rootSelector)
 	for clusterID := range clusters {
 		clusterIDs = append(clusterIDs, clusterID)
 	}
 	sort.Strings(clusterIDs)
 
-	if slog.Default().Enabled(nil, slog.LevelInfo) {
+	if slog.Default().Enabled(ctx, slog.LevelInfo) {
 		slog.Info("in expandAllPossibleConfigs()", "len(recs)", len(recs), "recs.TotalFields()", recs.TotalFields(), "len(clusters)", len(clusters))
 	}
 
-	include := true
+	include = true
 	recsStr := recs.String()
 	// fmt.Printf("strings.Index(itemsStr, opts.RequireString): %d\n", strings.Index(itemsStr, opts.RequireString))
 	if opts.RequireString != "" && strings.Index(recsStr, opts.RequireString) == -1 {
@@ -381,13 +399,15 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 		}
 		nextLPs := clusters[clusterID]
 		nextRootSel := clusters[clusterID][0].path[0 : len(rootSelector)+1]
-		rs, err = expandAllPossibleConfigs(ctx, cache, exsCache, gqdoc, nextOpts, nextLPs, nextRootSel, pagProps, rs)
+		rs, err = expandAllPossibleConfigs(ctx, cache, exsCache, gqdoc, nextOpts, clusterID, nextLPs, nextRootSel, pagProps, rs)
 		if err != nil {
+			status = "failed_to_expand"
 			return nil, err
 		}
 		lastID++
 	}
 
+	status = "success"
 	return rs, nil
 }
 

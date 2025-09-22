@@ -36,7 +36,7 @@ func init() {
 	}
 }
 
-func InitAll(ctx context.Context, dir string) (func(), error) {
+func InitAll(ctx context.Context, dir string) (func() error, error) {
 	if err := InitLogging(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize logging: %v", err)
 	}
@@ -54,13 +54,14 @@ func InitAll(ctx context.Context, dir string) (func(), error) {
 		return nil, fmt.Errorf("failed to init instruments: %v", err)
 	}
 
-	endFn := func() {
+	endFn := func() error {
 		wantsTracesP := TracesFilePath(dir, "traces")
 		if err := WriteTraces(ctx, wantsTracesP); err != nil {
 			slog.Error("in InitTestMain.endFn()", "err", err)
-			return
+			return err
 		}
 		HandleShutdown(ctx, func() {})()
+		return nil
 	}
 
 	return endFn, nil

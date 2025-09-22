@@ -4,19 +4,27 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/observability"
+	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
 	"github.com/findyourpaths/goskyr/utils"
 	"github.com/findyourpaths/phil/datetime"
 	"github.com/kr/pretty"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/net/html"
 )
+
+// var DoDebug = false
+
+var DoDebug = true
 
 func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc int) ([]*locationProps, []*locationProps, error) {
 	// Tracing
@@ -29,44 +37,67 @@ func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc
 		ChildNodes:  map[string][]node{},
 		FindNext:    opts.configID.Field == "" && opts.configID.SubID == "",
 	}
+	var locManRaws []string
+	var locManSquasheds []string
+	var locManFilteredMins []string
+	var retLocMans []string
+	var pagManRaws []string
+	var pagManSquasheds []string
+	var pagManFilteredMins []string
+	var retPagMans []string
 	defer func() {
 		observability.Add(ctx, observability.Instruments.Generate, 1,
 			attribute.Int("arg.minocc", minOcc),
-			attribute.Int("int.locman.len", len(a.LocMan)),
-			attribute.Int("int.pagman.len", len(a.PagMan)),
+			attribute.Int("int.locman_1.len", len(a.LocMan)),
+			attribute.String("int.locman_1.raws", strings.Join(locManRaws, "\n")),
+			attribute.String("int.locman_2.squasheds", strings.Join(locManSquasheds, "\n")),
+			attribute.String("int.locman_3.filtered_mins", strings.Join(locManFilteredMins, "\n")),
+			attribute.String("ret.locman_4", strings.Join(retLocMans, "\n")),
+			attribute.Int("int.pagman_1.len", len(a.PagMan)),
+			attribute.String("int.pagman_1.raws", strings.Join(pagManRaws, "\n")),
+			attribute.String("int.pagman_2.squasheds", strings.Join(pagManSquasheds, "\n")),
+			attribute.String("int.pagman_3.filtered_mins", strings.Join(pagManFilteredMins, "\n")),
+			attribute.String("ret.pagman_4", strings.Join(retPagMans, "\n")),
 		)
 		span.End()
 	}()
 
 	// Logging
-
-	// if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
-	// 	prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_analyzePage_log.txt"), slog.LevelDebug)
-	// 	if err != nil {
-	// 		return nil, nil, err
-	// 	}
-	// 	defer output.RestoreDefaultLogger(prevLogger)
-	// }
-	// slog.Info("analyzePage()", "opts", opts)
+	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
+		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_analyzePage_log.txt"), slog.LevelDebug)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer output.RestoreDefaultLogger(prevLogger)
+	}
+	slog.Info("analyzePage()", "opts", opts)
 	// defer slog.Info("analyzePage() returning")
 
 	a.Parse()
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range a.LocMan {
+	for i, lp := range a.LocMan {
+		locManRaws = append(locManRaws, lp.DebugString())
+		if DoDebug && slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.Debug("raw", "i", i, "lp", lp.DebugString())
 		}
-		for i, lp := range a.PagMan {
+	}
+	for i, lp := range a.PagMan {
+		pagManRaws = append(pagManRaws, lp.DebugString())
+		if DoDebug && slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.Debug("raw pags", "i", i, "lp", lp.DebugString())
 		}
 	}
 
 	a.LocMan = squashLocationManager(a.LocMan, minOcc)
 	a.PagMan = squashLocationManager(a.PagMan, 3)
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range a.LocMan {
+	for i, lp := range a.LocMan {
+		locManSquasheds = append(locManSquasheds, lp.DebugString())
+		if DoDebug && slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.Debug("after squashing", "i", i, "lp", lp.DebugString())
 		}
-		for i, lp := range a.PagMan {
+	}
+	for i, lp := range a.PagMan {
+		pagManSquasheds = append(pagManSquasheds, lp.DebugString())
+		if DoDebug && slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.Debug("after squashing pags", "i", i, "lp", lp.DebugString())
 		}
 	}
@@ -78,11 +109,15 @@ func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc
 
 	a.LocMan = filterBelowMinCount(a.LocMan, minOcc)
 	a.PagMan = filterBelowMinCount(a.PagMan, 3)
-	if slog.Default().Enabled(nil, slog.LevelDebug) {
-		for i, lp := range a.LocMan {
+	for i, lp := range a.LocMan {
+		locManFilteredMins = append(locManFilteredMins, lp.DebugString())
+		if DoDebug && slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.Debug("after filtering min count", "i", i, "lp", lp.DebugString())
 		}
-		for i, lp := range a.PagMan {
+	}
+	for i, lp := range a.PagMan {
+		pagManFilteredMins = append(pagManFilteredMins, lp.DebugString())
+		if DoDebug && slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.Debug("after filtering min count pags", "i", i, "lp", lp.DebugString())
 		}
 	}
@@ -91,11 +126,15 @@ func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc
 	if opts.OnlyVaryingFields {
 		a.LocMan = filterStaticFields(a.LocMan)
 		a.PagMan = filterStaticFields(a.PagMan)
-		if slog.Default().Enabled(nil, slog.LevelDebug) {
-			for i, lp := range a.LocMan {
+		for i, lp := range a.LocMan {
+			retLocMans = append(retLocMans, lp.DebugString())
+			if DoDebug && slog.Default().Enabled(ctx, slog.LevelDebug) {
 				slog.Debug("after filtering static", "i", i, "lp", lp.DebugString())
 			}
-			for i, lp := range a.PagMan {
+		}
+		for i, lp := range a.PagMan {
+			retPagMans = append(retPagMans, lp.DebugString())
+			if DoDebug && slog.Default().Enabled(ctx, slog.LevelDebug) {
 				slog.Debug("after filtering static pags", "i", i, "lp", lp.DebugString())
 			}
 		}
@@ -110,7 +149,9 @@ func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc
 	}
 
 	var lps []*locationProps
-	if !opts.Batch {
+	if opts.Batch {
+		lps = a.LocMan
+	} else {
 		a.LocMan.setColors()
 		a.LocMan.selectFieldsTable()
 		for _, lm := range a.LocMan {
@@ -118,8 +159,6 @@ func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc
 				lps = append(lps, lm)
 			}
 		}
-	} else {
-		lps = a.LocMan
 	}
 	if len(lps) == 0 {
 		return nil, nil, fmt.Errorf("no fields selected")
@@ -127,43 +166,60 @@ func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc
 	return lps, append(a.NextPaths, a.PagMan...), nil
 }
 
-func findSharedRootSelector(ctx context.Context, lps []*locationProps) path {
+func findSharedRootSelector(ctx context.Context, gqdoc *fetch.Document, lps []*locationProps) path {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.findSharedRootSelector(%d)", len(lps)))
 
 	// Metering
+	status := "unknown"
 	var i int
 	var j int
-	var ret path
+	var retPath path
 	defer func() {
 		observability.Add(ctx, observability.Instruments.Generate, 1,
+			attribute.String("status", status),
 			attribute.Int("arg.lps.len", len(lps)),
 			attribute.Int("int.i", i),
 			attribute.Int("int.j", j),
-			attribute.String("ret", ret.string()),
+			attribute.String("ret", retPath.string()),
 		)
 		span.End()
 	}()
 
 	// Logging
-	slog.Debug("findSharedRootSelector()", "len(lps)", len(lps))
-	if len(lps) == 1 {
-		slog.Debug("in findSharedRootSelector(), found singleton, returning", "lps[0].path.string()", lps[0].path.string())
-		return lps[0].path
+	if DoDebug {
+		slog.Debug("findSharedRootSelector()", "len(lps)", len(lps))
 	}
-	for j, lp := range lps {
-		slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
+	if len(lps) == 1 {
+		status = "singleton"
+		if DoDebug {
+			slog.Debug("in findSharedRootSelector(), found singleton, returning", "lps[0].path.string()", lps[0].path.string())
+		}
+		retPath = pullBackRootSelector(ctx, lps[0].path, gqdoc, lps[0].count)
+		return retPath
+	}
+	if DoDebug {
+		for j, lp := range lps {
+			slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
+		}
 	}
 	for i = 0; ; i++ {
-		slog.Debug("in findSharedRootSelector()", "i", i)
+		if DoDebug {
+			slog.Debug("in findSharedRootSelector()", "i", i)
+		}
 		var n node
 		var lp *locationProps
 		for j, lp = range lps {
-			slog.Debug("in findSharedRootSelector()", "  j", j, "lp", lp.DebugString())
+			if DoDebug {
+				slog.Debug("in findSharedRootSelector()", "  j", j, "lp", lp.DebugString())
+			}
 			if i+1 == len(lp.path) {
-				slog.Debug("in findSharedRootSelector(), returning end", "lp.path[:i].string()", lp.path[:i].string())
-				ret = lp.path[:i]
-				return ret
+				status = "end"
+				if DoDebug {
+					slog.Debug("in findSharedRootSelector(), returning end", "lp.path[:i].string()", lp.path[:i].string())
+				}
+				retPath = pullBackRootSelector(ctx, lp.path[:i], gqdoc, lp.count)
+				return retPath
 			}
 
 			// if lp.isText && i == len(lp.path) {
@@ -180,15 +236,71 @@ func findSharedRootSelector(ctx context.Context, lps []*locationProps) path {
 			} else {
 				// Look for divergence and if found, return what we have so far.
 				if !n.equals(lp.path[i]) {
-					slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
-					ret = lp.path[:i]
-					return ret
+					status = "divergence"
+					if DoDebug {
+						slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
+					}
+					retPath = pullBackRootSelector(ctx, lp.path[:i], gqdoc, lp.count)
+					return retPath
 				}
 			}
 		}
 	}
-	slog.Debug("in findSharedRootSelector(), returning nil")
-	ret = []node{}
+	status = "nil"
+	if DoDebug {
+		slog.Debug("in findSharedRootSelector(), returning nil")
+	}
+	retPath = []node{}
+	return retPath
+}
+
+func pullBackRootSelector(ctx context.Context, rootSel path, gqdoc *fetch.Document, count int) path {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.pullBackRootSelector(%d)", len(rootSel)))
+
+	// Metering
+	// status := "unknown"
+	// var i int
+	var ret path
+	var selLen int
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Generate, 1,
+			// attribute.String("status", status),
+			attribute.String("arg.root_sel", rootSel.string()),
+			attribute.Int("arg.count", count),
+			attribute.Int("int.sel.len", selLen),
+			attribute.String("ret", ret.string()),
+		)
+		span.End()
+	}()
+
+	// Logging
+	if DoDebug {
+		slog.Debug("pullBackRootSelector()", "len(rootSel)", len(rootSel))
+	}
+
+	ret = rootSel
+	prev := ret
+	if len(ret) == 0 {
+		return ret
+	}
+	for {
+		retStr := ret.string()
+		selLen = gqdoc.Document.Selection.Find(retStr).Filter(retStr).Length()
+		if selLen == count {
+			return ret
+		}
+		if selLen%count != 0 {
+			// something went wrong
+			return prev
+		}
+		if len(ret) == 0 {
+			break
+		}
+		prev = ret
+		ret = ret[:len(ret)-1]
+	}
+
 	return ret
 }
 
@@ -224,7 +336,8 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 	// var ret path
 	defer func() {
 		observability.Add(ctx, observability.Instruments.Generate, 1,
-			attribute.Int("arg.lps.len", len(lps)),
+			attribute.String("arg.lps", fmt.Sprintf("%# v\n", pretty.Formatter(lps))),
+			// attribute.Int("arg.lps.len", len(lps)),
 			// 	attribute.Int("int.i", i),
 			// 	attribute.Int("int.j", j),
 			attribute.String("ret", fmt.Sprintf("%# v\n", pretty.Formatter(rs))),
@@ -434,14 +547,31 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 			continue
 		}
 
-		ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
-		// If nodes have more than 0 classes, there has to be at least 1 overlapping class.
-		if len(ovClasses) > 0 {
-			newNode.classes = ovClasses
-			newPath = append(newPath, newNode)
-		} else {
-			return false // No overlapping classes, no overlap
+		// We require an identical set of classes to merge.
+		if len(on.classes) != len(new.path[i].classes) {
+			return false // Different number of classes, so they can't be identical.
 		}
+
+		if len(on.classes) > 0 {
+			// Verify that the set of classes is the same.
+			ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
+			if len(ovClasses) != len(on.classes) {
+				return false // The classes are not an identical set.
+			}
+		}
+
+		// If we reach here, the classes are identical (or both empty).
+		newNode.classes = on.classes // Use the original classes since they match.
+		newPath = append(newPath, newNode)
+
+		// ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
+		// // If nodes have more than 0 classes, there has to be at least 1 overlapping class.
+		// if len(ovClasses) > 0 {
+		// 	newNode.classes = ovClasses
+		// 	newPath = append(newPath, newNode)
+		// } else {
+		// 	return false // No overlapping classes, no overlap
+		// }
 	}
 
 	// slog.Debug("in checkAndUpdateLocProps, incrementing")
@@ -457,7 +587,9 @@ func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
 	var kept []*locationProps
 	for _, lp := range lps {
 		if lp.count < minCount {
-			slog.Debug("in filterBelowMinCount dropping", "minCount", minCount, "lp.count", lp.count, "lp.path", lp.path.string())
+			if DoDebug {
+				slog.Debug("in filterBelowMinCount dropping", "minCount", minCount, "lp.count", lp.count, "lp.path", lp.path.string())
+			}
 			continue
 		}
 		kept = append(kept, lp)
@@ -470,16 +602,22 @@ func filterStaticFields(lps []*locationProps) locationManager {
 	var kept []*locationProps
 	for _, lp := range lps {
 		varied := false
-		slog.Debug("in filterStaticFields", "lp", lp.DebugString())
-		slog.Debug("in filterStaticFields", "len(lp.examples)", len(lp.examples), "lp.examples[0]", lp.examples[0])
+		if DoDebug {
+			slog.Debug("in filterStaticFields", "lp", lp.DebugString())
+			slog.Debug("in filterStaticFields", "len(lp.examples)", len(lp.examples), "lp.examples[0]", lp.examples[0])
+		}
 		for i, ex := range lp.examples {
-			slog.Debug("in filterStaticFields, looking for varying", "i", i, "ex", ex)
+			if DoDebug {
+				slog.Debug("in filterStaticFields, looking for varying", "i", i, "ex", ex)
+			}
 			if ex != lp.examples[0] {
 				varied = true
 				// break
 			}
 		}
-		slog.Debug("in filterStaticFields", "varied", varied)
+		if DoDebug {
+			slog.Debug("in filterStaticFields", "varied", varied)
+		}
 		if varied {
 			kept = append(kept, lp)
 		}
@@ -489,10 +627,54 @@ func filterStaticFields(lps []*locationProps) locationManager {
 
 // Go one element beyond the root selector length and find the cluster with the largest number of fields.
 // Filter out all of the other fields.
-func findClusters(lps []*locationProps, rootSelector path) map[string][]*locationProps {
+func findClusters(ctx context.Context, lps []*locationProps, rootSelector path) map[string][]*locationProps {
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.findClusters(%q)", rootSelector.string()))
+
+	// Metering
+	rets := map[string][]*locationProps{}
+
+	// status := "unknown"
+	// var recs output.Records
+	// var clusters map[string][]*locationProps
+	// var s scrape.Scraper
+	// var include bool
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Generate, 1,
+
+			attribute.String("lps", fmt.Sprintf("%# v\n", pretty.Formatter(lps))),
+			attribute.Int("lps.len", len(lps)),
+			// attribute.String("status", status),
+			// // 	// attribute.String("source", source),
+			// attribute.String("arg.opts", opts.configID.String()),
+			// attribute.Int("arg.lps.len", len(lps)),
+			// attribute.String("arg.root_selector", rootSel),
+			// attribute.Int("arg.pag_props.len", len(pagProps)),
+			// attribute.Int("int.recs.len", len(recs)),
+			// attribute.Int("int.recs.total_fields", recs.TotalFields()),
+			// attribute.Int("int.clusters.len", len(clusters)),
+			// attribute.String("int.scraper", fmt.Sprintf("%#v", s)),
+			// attribute.Bool("int.include", include),
+			// attribute.String("rets.summary", fmt.Sprintf("%# v\n", pretty.Formatter(rets))),
+			attribute.String("rets", fmt.Sprintf("%# v\n", pretty.Formatter(rets))),
+			attribute.Int("rets.len", len(rets)),
+			attribute.String("rets.summary", strings.Join(lo.MapToSlice(rets, func(k string, v []*locationProps) string {
+				return fmt.Sprintf("%q:\n%s", k, strings.Join(lo.Map(v, func(lp *locationProps, i int) string {
+					return fmt.Sprintf("--> %q: %d", lp.path.string(), len(lp.examples))
+				}), "\n"))
+			}), "\n")),
+			// attribute.String("rets.lens", lo.MapToSlice(rets, func(k string], v []*locationProps{}) string {
+			// 	return fmt.Sprintf("%q: %d", k, len(v))
+
+			// 	len(rets)),
+		)
+
+		span.End()
+	}()
+
+	// Logging
 	slog.Debug("findClusters()", "len(lps)", len(lps), "len(rootSelector)", len(rootSelector), "rootSelector", rootSelector.string())
 
-	locationPropsByPath := map[string][]*locationProps{}
 	newLen := len(rootSelector) + 1
 	slog.Debug("in findClusters()", "newLen", newLen)
 	for _, lp := range lps {
@@ -504,11 +686,13 @@ func findClusters(lps []*locationProps, rootSelector path) map[string][]*locatio
 			// return locationPropsByPath
 		}
 		lpStr := lp.path[0:newLen].string()
-		locationPropsByPath[lpStr] = append(locationPropsByPath[lpStr], lp)
+		rets[lpStr] = append(rets[lpStr], lp)
+		i := newLen - 1
+		slog.Debug("in findClusters(), lp path node", "i", i, "lp.path.node", lp.path[i])
 		slog.Debug("in findClusters(), added lp", "lpStr", lpStr)
 	}
-	for pStr, pByP := range locationPropsByPath {
+	for pStr, pByP := range rets {
 		slog.Debug("in findClusters()", "pStr", pStr, "len(pByP)", len(pByP))
 	}
-	return locationPropsByPath
+	return rets
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/jpillora/go-tld"
 	"github.com/kr/pretty"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/net/html"
@@ -127,7 +128,7 @@ func (c Config) String() string {
 }
 
 func (c Config) WriteToFile(dir string) error {
-	// fmt.Printf("WriteToFile(dir: %q) %q\n", dir, c.ID.String())
+	fmt.Printf("WriteToFile(dir: %q) %q\n", dir, c.ID.String())
 	if err := utils.WriteStringFile(filepath.Join(dir, c.ID.String()+".yml"), c.String()); err != nil {
 		return err
 	}
@@ -479,12 +480,12 @@ func Page(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, globalC
 // present on the main page (not detail pages). This is used by the ML feature generation.
 func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Document) (output.Records, error) {
 	// Tracing
-	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.GQDocument(%q)", s.Selector))
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.GQDocument(%q, %q)", c.ID.String(), s.Selector))
 
 	// Metering
 	// source := "error"
 	var count int
-	var rs output.Records
+	var rets output.Records
 	// var rsStr string
 	defer func() {
 		observability.Add(ctx, observability.Instruments.Scrape, 1,
@@ -495,8 +496,8 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 			attribute.Int("int.count", count),
 			// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
 			// 	attribute.String("ret.title", ret.Title),
-			attribute.Int("ret.len", len(rs)),
-			attribute.String("ret", fmt.Sprintf("%# v\n", pretty.Formatter(rs))),
+			attribute.Int("ret.len", len(rets)),
+			attribute.String("ret", fmt.Sprintf("%# v\n", pretty.Formatter(rets))),
 
 			// attribute.Int("ret.total_fields", recs.TotalFields()),
 		// 	attribute.Int("ret.links.len", len(ret.Links)),
@@ -540,7 +541,7 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 		}
 	}
 	found.Each(func(i int, sel *goquery.Selection) {
-		count = i
+		count = i + 1
 		// fmt.Println("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		slog.Debug("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		r, err := GQSelection(ctx, c, s, fetch.NewSelection(sel), baseURL)
@@ -555,15 +556,15 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 		r[TitleFieldName] = gqdoc.Find("title").Text()
 		// fmt.Println("in scrape.GQDocument()", "r[URLFieldName]", r[URLFieldName])
 		// fmt.Println("in scrape.GQDocument()", "rs", rs)
-		rs = append(rs, r)
+		rets = append(rets, r)
 		// rsStr = rsStr + fmt.Sprintf("%#v\n", r)
 	})
 
-	s.guessYear(rs, time.Now())
+	s.guessYear(rets, time.Now())
 
-	slog.Debug("in scrape.GQDocument()", "len(rs)", len(rs), "rs.TotalFields()", rs.TotalFields())
+	slog.Debug("in scrape.GQDocument()", "len(rs)", len(rets), "rs.TotalFields()", rets.TotalFields())
 	// fmt.Println("in scrape.GQDocument()", "len(rs)", len(rs), "rs.TotalFields()", rs.TotalFields())
-	return rs, nil
+	return rets, nil
 }
 
 func printGQFindDebug(gqdoc *fetch.Document, sel string) {
@@ -591,27 +592,29 @@ func printGQFindDebug(gqdoc *fetch.Document, sel string) {
 // fields, ie fields that don't have a predefined value and that are present on
 // the main page (not detail pages). This is used by the ML feature generation.
 func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selection, baseURL string) (output.Record, error) {
-	// // Tracing
-	// ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.GQSelection()"))
+	// Tracing
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.GQSelection()"))
 
-	// // Metering
+	// Metering
 	// // source := "error"
 	rs := output.Record{}
-	// defer func() {
-	// 	observability.Add(ctx, observability.Instruments.Scrape, 1,
-	// 		// 	// attribute.String("source", source),
-	// 		// attribute.String("arg.scraper.selector", s.Selector),
-	// 		// attribute.Int("arg.scraper.found_nodes.len", len(gqdoc.Find(s.Selector).Nodes)),
-	// 		// attribute.Int("int.count", count),
-	// 		// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
-	// 		// 	attribute.String("ret.title", ret.Title),
-	// 		// attribute.Int("ret.len", len(rs)),
-	// 		// attribute.Int("ret.total_fields", rs.TotalFields()),
-	// 	// 	attribute.Int("ret.links.len", len(ret.Links)),
-	// 	// 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
-	// 	)
-	// 	span.End()
-	// }()
+	defer func() {
+		observability.Add(ctx, observability.Instruments.Scrape, 1, // 	// attribute.String("source", source),
+			// attribute.String("arg.scraper.selector", s.Selector),
+			// attribute.Int("arg.scraper.found_nodes.len", len(gqdoc.Find(s.Selector).Nodes)),
+			// attribute.Int("int.count", count),
+			// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
+			// 	attribute.String("ret.title", ret.Title),
+			// attribute.Int("ret.len", len(rs)),
+			// attribute.Int("ret.total_fields", rs.TotalFields()),
+			// 	attribute.Int("ret.links.len", len(ret.Links)),
+			// 	attribute.Int("ret.datetime_ranges.len", len(ret.DatetimeRanges)),
+			attribute.String("fields", strings.Join(lo.Map(s.Fields, func(f Field, i int) string {
+				return f.Name
+			}), "\n")),
+		)
+		span.End()
+	}()
 
 	// Logging
 	// fmt.Println("scrape.GQSelection()", "c.ID", c.ID)
@@ -672,48 +675,6 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 			return nil, nil
 		}
 	}
-	// slog.Debug("in Scraper.GQSelection(), after field check", "currentItem", rs)
-
-	// Handle all fields on detail pages.
-	// if !rawDyn {
-	// 	dpDocs := make(map[string]*fetch.Document)
-	// 	for _, f := range s.Fields {
-	// 		if f.OnDetailPage == "" || f.Value != "" {
-	// 			continue
-	// 		}
-
-	// 		// check whether we fetched the page already
-	// 		dpURL := fmt.Sprint(rs[f.OnDetailPage])
-	// 		_, found := dpDocs[dpURL]
-	// 		if !found {
-	// 			panic("in scrape.GQSelection(), we can't fetch pages here")
-	// 			// dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
-	// 			// dpDocs[dpURL] = dpDoc
-
-	// 			// // dpRes, err := s.fetcher.Fetch(dpURL, nil)
-	// 			// dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
-	// 			// if err != nil {
-	// 			// 	return nil, fmt.Errorf("error while fetching detail page: %v. Skipping record %v.", err, rs)
-	// 			// }
-	// 			// // dpDoc, err := goquery.NewDocumentFromReader(strings.NewReader(dpRes))
-	// 			// // if err != nil {
-	// 			// // 	return nil, fmt.Errorf("error while reading detail page document: %v. Skipping record %v", err, rs)
-	// 			// // }
-	// 			// dpDocs[dpURL] = dpDoc
-	// 		}
-
-	// 		baseURLDetailPage := getBaseURL(dpURL, dpDocs[dpURL])
-	// 		err := extractField(&f, rs, dpDocs[dpURL].Selection, baseURLDetailPage)
-	// 		if err != nil {
-	// 			return nil, fmt.Errorf("error while parsing detail page field %s: %v. Skipping record %v.", f.Name, err, rs)
-	// 		}
-	// 		// filter fast!
-	// 		if !s.keepRecord(rs) {
-	// 			return nil, nil
-	// 		}
-	// 	}
-	// }
-	// slog.Debug("in Scraper.GQSelection(), after rawDyn", "currentItem", rs)
 
 	// check if item should be filtered
 	if !s.keepRecord(rs) {
@@ -730,6 +691,49 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 	// fmt.Println("in scrape.GQSelection()", "rs", rs)
 	return rs, nil
 }
+
+// slog.Debug("in Scraper.GQSelection(), after field check", "currentItem", rs)
+
+// Handle all fields on detail pages.
+// if !rawDyn {
+// 	dpDocs := make(map[string]*fetch.Document)
+// 	for _, f := range s.Fields {
+// 		if f.OnDetailPage == "" || f.Value != "" {
+// 			continue
+// 		}
+
+// 		// check whether we fetched the page already
+// 		dpURL := fmt.Sprint(rs[f.OnDetailPage])
+// 		_, found := dpDocs[dpURL]
+// 		if !found {
+// 			panic("in scrape.GQSelection(), we can't fetch pages here")
+// 			// dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
+// 			// dpDocs[dpURL] = dpDoc
+
+// 			// // dpRes, err := s.fetcher.Fetch(dpURL, nil)
+// 			// dpDoc, _, err := fetch.GetGQDocument(cache, dpURL)
+// 			// if err != nil {
+// 			// 	return nil, fmt.Errorf("error while fetching detail page: %v. Skipping record %v.", err, rs)
+// 			// }
+// 			// // dpDoc, err := goquery.NewDocumentFromReader(strings.NewReader(dpRes))
+// 			// // if err != nil {
+// 			// // 	return nil, fmt.Errorf("error while reading detail page document: %v. Skipping record %v", err, rs)
+// 			// // }
+// 			// dpDocs[dpURL] = dpDoc
+// 		}
+
+// 		baseURLDetailPage := getBaseURL(dpURL, dpDocs[dpURL])
+// 		err := extractField(&f, rs, dpDocs[dpURL].Selection, baseURLDetailPage)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("error while parsing detail page field %s: %v. Skipping record %v.", f.Name, err, rs)
+// 		}
+// 		// filter fast!
+// 		if !s.keepRecord(rs) {
+// 			return nil, nil
+// 		}
+// 	}
+// }
+// slog.Debug("in Scraper.GQSelection(), after rawDyn", "currentItem", rs)
 
 func (c *Scraper) guessYear(recs output.Records, ref time.Time) {
 	// get date field names where we need to adapt the year

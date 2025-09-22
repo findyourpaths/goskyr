@@ -64,3 +64,4 @@ user.bazelrc
 # Old and new files
 *-old
 *-new
+.aider*

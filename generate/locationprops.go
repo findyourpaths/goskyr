@@ -38,9 +38,9 @@ func makeLocationProps(nodePath path, example string, isText bool) locationProps
 
 func (lp locationProps) DebugString() string {
 	p := lp.path.string()
-	if len(p) > 100 {
-		p = p[0:20] + "... ..." + p[len(p)-75:len(p)]
-	}
+	// if len(p) > 100 {
+	// 	p = p[0:20] + "... ..." + p[len(p)-75:len(p)]
+	// }
 	return fmt.Sprintf("{count: %d, name: %q, attr: %q, isText: %t, path.string()(%d): %q}", lp.count, lp.name, lp.attr, lp.isText, len(lp.path), p)
 }
 

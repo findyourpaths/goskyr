@@ -99,7 +99,8 @@ func testGenerateCategoryHostPage(t *testing.T, cat string, hostSlug string, tes
 	// fmt.Println("doDetailPages", doDetailPages)
 
 	opts, err := generate.InitOpts(generate.ConfigOptions{
-		Batch: true,
+		Batch:                 true,
+		ConfigOutputParentDir: testCatOutputDir,
 		// CacheInputParentDir: testInputDir,
 		DoDetailPages: doDetailPages,
 		MinOccs:       []int{5, 10, 20},
@@ -125,7 +126,7 @@ func testGenerateCategoryHostPage(t *testing.T, cat string, hostSlug string, tes
 
 	csByID := map[string]*scrape.Config{}
 	for _, c := range cs {
-		// fmt.Println("found config with ID", c.ID.String())
+		fmt.Printf("found config with ID: %q\n", c.ID.String())
 		csByID[c.ID.String()] = c
 	}
 
@@ -141,6 +142,19 @@ func testGenerateCategoryHostPage(t *testing.T, cat string, hostSlug string, tes
 		}
 	}
 
+	for _, c := range cs {
+		// fmt.Println("writing config", "len(key)", len(key), "c.ID.String()", c.ID.String())
+		if err := c.WriteToFile(opts.ConfigOutputDir); err != nil {
+			t.Fatalf("%v", err)
+		}
+	}
+	// for _, c := range subCs {
+	// 	// fmt.Println("writing subconfig", "len(key)", len(key), "c.ID.String()", c.ID.String())
+	// 	if err := c.WriteToFile(opts.ConfigOutputDir); err != nil {
+	// 		return err
+	// 	}
+	// }
+
 	testGenerateCategoryHostPageConfigs(t, cat, hostSlug, test, csByID)
 }
 
@@ -154,7 +168,7 @@ func testGenerateCategoryHostPageConfigs(t *testing.T, cat string, hostSlug stri
 	}
 
 	for _, wantP := range wantPs {
-		// fmt.Println("in testGenerateCategoryHostPageConfigs()", "expP", expP)
+		fmt.Println("in testGenerateCategoryHostPageConfigs()", "wantP", wantP)
 		if _, err := os.Stat(wantP); err != nil {
 			t.Fatal(err)
 		}
@@ -191,6 +205,7 @@ func testGenerateCategoryHostPageConfig(t *testing.T, cat string, hostSlug strin
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(string(want), got, false)
 	if len(diffs) == 1 && diffs[0].Type == diffmatchpatch.DiffEqual {
+		fmt.Printf("matched configuration %q\n", config.ID.String())
 		return
 	}
 	diffStr := ""
