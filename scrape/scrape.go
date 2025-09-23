@@ -496,8 +496,8 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 			attribute.Int("int.count", count),
 			// 	attribute.Int64("arg.gmail_id", ret.Email.GmailId),
 			// 	attribute.String("ret.title", ret.Title),
-			attribute.Int("ret.len", len(rets)),
-			attribute.String("ret", fmt.Sprintf("%# v\n", pretty.Formatter(rets))),
+			attribute.Int("rets.len", len(rets)),
+			attribute.String("rets", fmt.Sprintf("%# v\n", pretty.Formatter(rets))),
 
 			// attribute.Int("ret.total_fields", recs.TotalFields()),
 		// 	attribute.Int("ret.links.len", len(ret.Links)),
@@ -543,7 +543,7 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 	found.Each(func(i int, sel *goquery.Selection) {
 		count = i + 1
 		// fmt.Println("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
-		slog.Debug("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
+		slog.Debug("in scrape.GQDocument()", "i", i, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		r, err := GQSelection(ctx, c, s, fetch.NewSelection(sel), baseURL)
 		if err != nil {
 			slog.Warn("while scraping document got error", "baseUrl", baseURL, "err", err.Error())
@@ -597,7 +597,7 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 
 	// Metering
 	// // source := "error"
-	rs := output.Record{}
+	rets := output.Record{}
 	defer func() {
 		observability.Add(ctx, observability.Instruments.Scrape, 1, // 	// attribute.String("source", source),
 			// attribute.String("arg.scraper.selector", s.Selector),
@@ -612,6 +612,7 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 			attribute.String("fields", strings.Join(lo.Map(s.Fields, func(f Field, i int) string {
 				return f.Name
 			}), "\n")),
+			attribute.String("rets", fmt.Sprintf("%# v\n", pretty.Formatter(rets))),
 		)
 		span.End()
 	}()
@@ -657,10 +658,10 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 			// if rawDyn {
 			// err = extractRawField(&f, rs, sel)
 			// } else {
-			err = extractField(ctx, &f, rs, sel, baseURL, 0)
+			err = extractField(ctx, &f, rets, sel, baseURL, 0)
 			// }
 			if err != nil {
-				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping rs %v.", f.Name, err, rs)
+				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping rs %v.", f.Name, err, rets)
 			}
 		}
 		slog.Debug("in scrape.GQSelection(), after extract", "f", f)
@@ -671,25 +672,25 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 		// from detail pages.
 		//
 		// Filter fast!
-		if !s.keepRecord(rs) {
+		if !s.keepRecord(rets) {
 			return nil, nil
 		}
 	}
 
 	// check if item should be filtered
-	if !s.keepRecord(rs) {
+	if !s.keepRecord(rets) {
 		return nil, nil
 	}
 
-	rs = s.removeHiddenFields(rs)
+	rets = s.removeHiddenFields(rets)
 	// fmt.Println("s.numNonEmptyFields(rs)", s.numNonEmptyFields(rs))
 	// if s.numNonEmptyFields(rs) == 0 {
 	// 	return nil, nil
 	// }
 
-	slog.Debug("in scrape.GQSelection()", "rs", rs)
+	slog.Debug("in scrape.GQSelection()", "rets", rets)
 	// fmt.Println("in scrape.GQSelection()", "rs", rs)
-	return rs, nil
+	return rets, nil
 }
 
 // slog.Debug("in Scraper.GQSelection(), after field check", "currentItem", rs)
@@ -1146,7 +1147,7 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	}
 	if len(fieldSelection.Nodes) > 0 {
 		if e.Attr == "" {
-			if e.EntireSubtree {
+			if true { //if e.EntireSubtree {
 				// copied from https://github.com/PuerkitoBio/goquery/blob/v1.8.0/property.go#L62
 				var buf bytes.Buffer
 				var f func(*html.Node)
@@ -1165,7 +1166,7 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 						}
 					}
 				}
-				if e.AllNodes {
+				if true { //if e.AllNodes {
 					for _, node := range fieldSelection.Nodes {
 						f(node)
 						fieldStrings = append(fieldStrings, buf.String())
@@ -1178,7 +1179,7 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 			} else {
 
 				var fieldNodes []*html.Node
-				if e.AllNodes {
+				if true { // if e.AllNodes {
 					for _, node := range fieldSelection.Nodes {
 						fieldNode := node.FirstChild
 						if fieldNode != nil {
@@ -1247,7 +1248,7 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	for i, f := range fieldStrings {
 		fieldStrings[i] = utils.ShortenString(f, e.MaxLength)
 	}
-	r := strings.Join(fieldStrings, e.Separator)
+	r := strings.Join(fieldStrings, "\n") // e.Separator)
 	slog.Debug("getTextString(), returning", "r", r)
 	return r, nil
 }

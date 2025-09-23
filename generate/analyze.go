@@ -364,6 +364,9 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 			Selector:   lp.path[len(rootSelector):].string(),
 			ChildIndex: lp.textIndex,
 			Attr:       lp.attr,
+			// AllNodes:      true,
+			// EntireSubtree: true,
+			// Separator:     "\n",
 		}
 		fName := lp.name
 		fType := "text"
@@ -378,7 +381,7 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 				}
 
 				if !datetimeFieldRE.MatchString(ex) {
-					slog.Debug("in processFields(), ignoring field value with no datetimes", "ex", ex)
+					slog.Debug("in processFields(), no datetimes match in field", "ex", ex)
 					continue
 				}
 

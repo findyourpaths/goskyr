@@ -299,6 +299,9 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 		pags = append(pags, scrape.Paginator{
 			Location: scrape.ElementLocation{
 				Selector: lp.path.string(),
+				// AllNodes:      true,
+				// EntireSubtree: true,
+				// Separator:     "\n",
 			}})
 	}
 	sort.Slice(pags, func(i, j int) bool {
