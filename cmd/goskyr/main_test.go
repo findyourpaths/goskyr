@@ -71,7 +71,7 @@ func testGenerateCategoryHostPage(t *testing.T, cat string, hostSlug string, tes
 	testCatOutputDir := filepath.Join(testOutputDir, cat)
 
 	ctx := context.Background()
-	endFn, err := observability.InitAll(ctx, testCatOutputDir)
+	endFn, err := observability.InitAll(ctx, testCatOutputDir, true)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -87,7 +87,9 @@ func testGenerateCategoryHostPage(t *testing.T, cat string, hostSlug string, tes
 		)
 		span.End()
 
-		endFn()
+		if err := endFn(); err != nil {
+			t.Errorf("endFn() failed: %v", err)
+		}
 	}()
 
 	pageSlug := fetch.MakeURLStringSlug(test.url)

@@ -22,7 +22,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
 )
 
 var tracerProvider *sdktrace.TracerProvider
@@ -37,7 +36,7 @@ func InitTracing(ctx context.Context) error {
 	otlpExp, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithEndpoint("localhost:4327"),
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithDialOption(grpc.WithBlock()),
+		// otlptracegrpc.WithDialOption(grpc.WithBlock()),
 	)
 	if err != nil {
 		return err

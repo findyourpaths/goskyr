@@ -36,7 +36,7 @@ func init() {
 	}
 }
 
-func InitAll(ctx context.Context, dir string) (func() error, error) {
+func InitAll(ctx context.Context, dir string, inTest bool) (func() error, error) {
 	if err := InitLogging(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize logging: %v", err)
 	}
@@ -60,7 +60,12 @@ func InitAll(ctx context.Context, dir string) (func() error, error) {
 			slog.Error("in InitTestMain.endFn()", "err", err)
 			return err
 		}
-		HandleShutdown(ctx, func() {})()
+		if !inTest {
+			HandleShutdown(ctx, func() {})
+		} else {
+			ShutdownAll(ctx)
+		}
+
 		return nil
 	}
 
@@ -115,9 +120,9 @@ func HandleShutdown(ctx context.Context, closeFn func()) func() {
 
 func ShutdownAll(ctx context.Context) {
 	if err := ShutdownMetrics(ctx); err != nil {
-		log.Fatalf("failed to shutdown metrics: %v", err)
+		slog.Error("failed to shutdown metrics", "error", err)
 	}
 	if err := ShutdownTracing(ctx); err != nil {
-		log.Fatalf("failed to shutdown tracing: %v", err)
+		slog.Error("failed to shutdown tracing", "error", err)
 	}
 }

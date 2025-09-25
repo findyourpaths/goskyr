@@ -24,15 +24,30 @@ scrapers:
       url: https://www.scrapethissite.com/pages/forms
       selector: div > section > div.container > table.table
       fields:
+        - name: F1f34bb6a--0
+          type: text
+          location:
+            - selector: tbody > tr.team > td.pct.text-danger
+          can_be_empty: true
         - name: F21ad7531--0
           type: text
           location:
             - selector: tbody > tr.team > td.year
           can_be_empty: true
+        - name: F224fa9ed--0
+          type: text
+          location:
+            - selector: tbody > tr.team > td.diff.text-success
+          can_be_empty: true
         - name: F38f7d73f--0
           type: text
           location:
             - selector: tbody > tr.team > td.wins
+          can_be_empty: true
+        - name: F4b026715--0
+          type: text
+          location:
+            - selector: tbody > tr.team > td.diff.text-danger
           can_be_empty: true
         - name: F5b7dae5e--0
           type: text
@@ -43,11 +58,6 @@ scrapers:
           type: text
           location:
             - selector: tbody > tr.team > td.ot-losses
-          can_be_empty: true
-        - name: F6d27d28f--0
-          type: text
-          location:
-            - selector: tbody > tr.team > td.text-success
           can_be_empty: true
         - name: F9414709d--0
           type: text
@@ -69,10 +79,10 @@ scrapers:
           location:
             - selector: tbody > tr > th
           can_be_empty: true
-        - name: Ffc8b57b6--0
+        - name: Fe2a1f39c--0
           type: text
           location:
-            - selector: tbody > tr.team > td.text-danger
+            - selector: tbody > tr.team > td.pct.text-success
           can_be_empty: true
       render_js: true
 records: []

@@ -1021,11 +1021,13 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 		rec[f.Name+URLFieldSuffix] = u
 
 	case "date_time_tz_ranges":
+		// fmt.Println("case date_time_tz_ranges")
 		if len(f.ElementLocations) != 1 {
 			return fmt.Errorf("a field of type 'date_time_tz_ranges' must exactly have one location, found %d", len(f.ElementLocations))
 		}
 		str, err := getTextString(&f.ElementLocations[0], sel)
 		rec[f.Name] = str
+		// fmt.Println("in case date_time_tz_ranges", "str", str)
 		if err != nil {
 			return err
 		}

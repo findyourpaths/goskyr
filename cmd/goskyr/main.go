@@ -155,7 +155,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	cache = fetch.NewMemoryCache(cache)
 
 	ctx := context.Background()
-	endFn, err := observability.InitAll(ctx, cmd.CacheOutputParentDir)
+	endFn, err := observability.InitAll(ctx, cmd.CacheOutputParentDir, false)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -341,7 +341,7 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 	}
 
 	ctx := context.Background()
-	endFn, err := observability.InitAll(ctx, cmd.CacheOutputParentDir)
+	endFn, err := observability.InitAll(ctx, cmd.CacheOutputParentDir, false)
 	if err != nil {
 		log.Fatal(err)
 	}

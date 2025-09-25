@@ -23,36 +23,35 @@ type maintest struct {
 //
 //	go run main.go --debug regenerate
 var testsByHostSlugByCategory = map[string]map[string][]maintest{
-	// "regression": {
-	// 	"basic-detail-pages-com":            []maintest{{url: "https://basic-detail-pages.com"}},
-	// 	"basic-detail-pages-w-links-com":    []maintest{{url: "https://basic-detail-pages-w-links.com"}},
-	// 	"basic-detail-pages-w-static-com":   []maintest{{url: "https://basic-detail-pages-w-static.com"}},
-	// 	"basic-field-com":                   []maintest{{url: "https://basic-field.com"}},
-	// 	"basic-field-w-div-com":             []maintest{{url: "https://basic-field-w-div.com"}},
-	// 	"basic-fields-w-div-com":            []maintest{{url: "https://basic-fields-w-div.com"}},
-	// 	"basic-fields-w-div-w-div-com":      []maintest{{url: "https://basic-fields-w-div-w-div.com"}},
-	// 	"basic-fields-w-div-w-link-div-com": []maintest{{url: "https://basic-fields-w-div-w-link-div.com"}},
-	// 	"basic-fields-w-link-com":           []maintest{{url: "https://basic-fields-w-link.com"}},
-	// 	"basic-fields-w-link-div-com":       []maintest{{url: "https://basic-fields-w-link-div.com"}},
-	// 	"basic-fields-w-style-com":          []maintest{{url: "https://basic-fields-w-style.com"}},
-	// 	"basic-fields-w-table-com":          []maintest{{url: "https://basic-fields-w-table.com"}},
-	// 	"basic-fields-w-table-in-table-com": []maintest{{url: "https://basic-fields-w-table-in-table.com"}},
-	// 	"css-class-with-special-chars-com":  []maintest{{url: "https://css-class-with-special-chars.com"}},
-	// 	// "dates-com": []maintest{
-	// 	// 	{url: "https://dates.com/all"},
-	// 	// 	{url: "https://dates.com/most"}},
-	// 	"fields-w-a-com": []maintest{{url: "https://fields-w-a.com"}},
-
-	// 	"real-table-w-extra-rows-com": []maintest{{url: "https://real-table-w-extra-rows.com"}},
-	// },
+	"regression": {
+		"basic-detail-pages-com":            []maintest{{url: "https://basic-detail-pages.com"}},
+		"basic-detail-pages-w-links-com":    []maintest{{url: "https://basic-detail-pages-w-links.com"}},
+		"basic-detail-pages-w-static-com":   []maintest{{url: "https://basic-detail-pages-w-static.com"}},
+		"basic-field-com":                   []maintest{{url: "https://basic-field.com"}},
+		"basic-field-w-div-com":             []maintest{{url: "https://basic-field-w-div.com"}},
+		"basic-fields-w-div-com":            []maintest{{url: "https://basic-fields-w-div.com"}},
+		"basic-fields-w-div-w-div-com":      []maintest{{url: "https://basic-fields-w-div-w-div.com"}},
+		"basic-fields-w-div-w-link-div-com": []maintest{{url: "https://basic-fields-w-div-w-link-div.com"}},
+		"basic-fields-w-link-com":           []maintest{{url: "https://basic-fields-w-link.com"}},
+		"basic-fields-w-link-div-com":       []maintest{{url: "https://basic-fields-w-link-div.com"}},
+		"basic-fields-w-style-com":          []maintest{{url: "https://basic-fields-w-style.com"}},
+		"basic-fields-w-table-com":          []maintest{{url: "https://basic-fields-w-table.com"}},
+		"basic-fields-w-table-in-table-com": []maintest{{url: "https://basic-fields-w-table-in-table.com"}},
+		"css-class-with-special-chars-com":  []maintest{{url: "https://css-class-with-special-chars.com"}},
+		// "dates-com": []maintest{
+		// 	{url: "https://dates.com/all"},
+		// 	{url: "https://dates.com/most"}},
+		"fields-w-a-com":              []maintest{{url: "https://fields-w-a.com"}},
+		"real-table-w-extra-rows-com": []maintest{{url: "https://real-table-w-extra-rows.com"}},
+	},
 	"scraping": {
-		"books-toscrape-com": []maintest{{url: "https://books.toscrape.com", required: "Soumission"}},
-		// "quotes-toscrape-com":  []maintest{{url: "https://quotes.toscrape.com", required: "Imperfection"}},
-		// "realpython-github-io": []maintest{{url: "https://realpython.github.io/fake-jobs"}},
-		// "webscraper-io":        []maintest{{url: "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", required: "Android"}},
-		// "scrapethissite-com": []maintest{
-		// 	{url: "https://www.scrapethissite.com/pages/forms"},
-		// 	{url: "https://www.scrapethissite.com/pages/simple"}},
+		"books-toscrape-com":   []maintest{{url: "https://books.toscrape.com", required: "Soumission"}},
+		"quotes-toscrape-com":  []maintest{{url: "https://quotes.toscrape.com", required: "Imperfection"}},
+		"realpython-github-io": []maintest{{url: "https://realpython.github.io/fake-jobs"}},
+		"webscraper-io":        []maintest{{url: "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", required: "Android"}},
+		"scrapethissite-com": []maintest{
+			{url: "https://www.scrapethissite.com/pages/forms"},
+			{url: "https://www.scrapethissite.com/pages/simple"}},
 	},
 }
 

@@ -29,3 +29,29 @@ release:
 		-w /go/src/$(PACKAGE_NAME) \
 		ghcr.io/goreleaser/goreleaser-cross:${GOLANG_CROSS_VERSION} \
 		release --clean
+
+.PHONY: update-tests
+update-tests:
+	@echo "Updating test expectations from actual outputs..."
+	@for category in scraping regression; do \
+		echo "Processing $$category tests..."; \
+		for actual in /tmp/goskyr/main/$$category/*_configs/*.actual.yml; do \
+			if [ -f "$$actual" ]; then \
+				basename=$$(basename "$$actual" .actual.yml); \
+				config_dir=$$(basename $$(dirname "$$actual")); \
+				target="testdata/$$category/$$config_dir/$$basename.yml"; \
+				echo "Copying $$actual -> $$target"; \
+				cp "$$actual" "$$target"; \
+			fi; \
+		done; \
+		for actual in /tmp/goskyr/main/$$category/*_configs/*.actual.json; do \
+			if [ -f "$$actual" ]; then \
+				basename=$$(basename "$$actual" .actual.json); \
+				config_dir=$$(basename $$(dirname "$$actual")); \
+				target="testdata/$$category/$$config_dir/$$basename.json"; \
+				echo "Copying $$actual -> $$target"; \
+				cp "$$actual" "$$target"; \
+			fi; \
+		done; \
+	done
+	@echo "Test expectations updated."
