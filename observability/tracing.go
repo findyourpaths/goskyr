@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
@@ -30,7 +31,7 @@ var inMemoryExporter *tracetest.InMemoryExporter
 // InitTracing sets up OpenTelemetry for testing. It sends traces to a running
 // Jaeger instance and also collects them in memory for snapshot comparison.
 // It returns the in-memory exporter and a shutdown function to be deferred.
-func InitTracing(ctx context.Context) error {
+func InitTracing(ctx context.Context, rsc *sdkresource.Resource) error {
 	slog.Info("Configuring OpenTelemetry tracing...")
 
 	otlpExp, err := otlptracegrpc.New(ctx,
@@ -46,7 +47,7 @@ func InitTracing(ctx context.Context) error {
 	inMemoryExporter = tracetest.NewInMemoryExporter()
 
 	tracerProvider = sdktrace.NewTracerProvider(
-		sdktrace.WithResource(Resource),
+		sdktrace.WithResource(rsc),
 		sdktrace.WithBatcher(otlpExp),
 		// Use SimpleSpanProcessor for in-memory exporter to ensure immediate export
 		sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(inMemoryExporter)),

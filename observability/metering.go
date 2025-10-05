@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 )
 
 // Define package-level variables for your metric instruments.
@@ -32,7 +33,7 @@ var Meter metric.Meter
 
 // InitMetrics sets up OTel metrics, creating the meter provider and the global
 // Meter.
-func InitMetrics(ctx context.Context) error {
+func InitMetrics(ctx context.Context, rsc *sdkresource.Resource) error {
 	slog.Info("Configuring OpenTelemetry metrics...")
 
 	// Exporter for pushing metrics to an OTLP collector.
@@ -56,7 +57,7 @@ func InitMetrics(ctx context.Context) error {
 	}
 
 	meterProvider = sdkmetric.NewMeterProvider(
-		sdkmetric.WithResource(Resource),
+		sdkmetric.WithResource(rsc),
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(otlpExp, sdkmetric.WithInterval(10*time.Second))),
 		sdkmetric.WithReader(prometheusExporter),
 	)

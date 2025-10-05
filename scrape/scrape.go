@@ -444,7 +444,7 @@ func Page(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, globalC
 	hasNextPage, pageURL, gqdoc, err := s.fetchPage(cache, nil, currentPage, u, globalConfig.UserAgent, s.Interaction)
 	if err != nil {
 		// slog.Debug("pageURL: %q", pageURL)
-		return nil, fmt.Errorf("failed to fetch next page: %w", err)
+		return nil, fmt.Errorf("failed to fetch next page %q: %w", u, err)
 	}
 
 	for hasNextPage {

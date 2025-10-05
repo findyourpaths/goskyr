@@ -610,7 +610,8 @@ func ConfigurationsForAllDetailPages(ctx context.Context, cache fetch.Cache, opt
 
 	uBase, err := tld.Parse(opts.URL)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing input url %q: %v", opts.URL, err)
+		uBase = nil
+		// return nil, fmt.Errorf("error parsing input url %q: %v", opts.URL, err)
 	}
 
 	pageJoinsByFieldName := map[string][]*pageJoin{}
@@ -646,7 +647,12 @@ func ConfigurationsForAllDetailPages(ctx context.Context, cache fetch.Cache, opt
 					continue
 				}
 
-				absURL, err := tld.Parse(uBase.ResolveReference(relURL).String())
+				absStr := relURL.String()
+				if uBase != nil {
+					absStr = uBase.ResolveReference(relURL).String()
+				}
+
+				absURL, err := tld.Parse(absStr)
 				if err != nil {
 					slog.Error("error parsing detail page absolute url", "fj.value", fj.value, "err", err)
 					continue
