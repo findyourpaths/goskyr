@@ -1,49 +1,61 @@
 id:
     slug: basic-detail-pages-w-static-com
-    id: 10a
+    id: n10a
     field: F5b85d7a5-href-0
-    subid: 10a
+    subid: n10a
 scrapers:
-    - name: basic-detail-pages-w-static-com__10a
-      url: https://basic-detail-pages-w-static.com
+    - name: basic-detail-pages-w-static-com__n10a
+      render_js: true
       selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
+      url: https://basic-detail-pages-w-static.com
       fields:
         - name: F66e5fe15-href-0
           type: url
           location:
             - selector: div > span.a-3x > a
               attr: href
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: F5b85d7a5-href-0
           type: url
           location:
             - selector: div > span.a-3y > a
               attr: href
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: Fa5ccda70--0
           type: text
           location:
             - selector: div
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
+    - name: basic-detail-pages-w-static-com__F5b85d7a5-href-0_n10a
       render_js: true
-    - name: basic-detail-pages-w-static-com__F5b85d7a5-href-0_10a
-      url: https://basic-detail-pages-w-static.com
       selector: ""
+      url: https://basic-detail-pages-w-static.com
       fields:
         - name: F14fd4c6e--0
           type: text
           location:
             - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div.city
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: F21de3337--0
           type: text
           location:
             - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div.street
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: Fd179bb67--0
           type: text
           location:
             - selector: title
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
-      render_js: true
 records: []

@@ -1,17 +1,18 @@
 id:
     slug: basic-field-com
-    id: 10a
+    id: n10a
     field: ""
     subid: ""
 scrapers:
-    - name: basic-field-com__10a
-      url: https://basic-field.com
+    - name: basic-field-com__n10a
+      render_js: true
       selector: body > div.a-0.b-0 > div.a-1.b-1 > div.a-2.b-2
+      url: https://basic-field.com
       fields:
         - name: F91a2c1be--0
           type: text
           location:
-            - {}
+            - entire_subtree: true
+              all_nodes: true
           can_be_empty: true
-      render_js: true
 records: []

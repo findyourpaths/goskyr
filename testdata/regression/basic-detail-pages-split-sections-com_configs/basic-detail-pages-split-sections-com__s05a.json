@@ -1,0 +1,52 @@
+[
+  {
+    "Atitle": "Split Sections Test",
+    "Aurl": "https://basic-detail-pages-split-sections.com",
+    "F2c464de2--0": "Alice",
+    "F33c1d6a0--0": "Alice is a security researcher specializing in cryptography.",
+    "Fd8135b41-href-0": "/alice-address",
+    "Fd8135b41-href-0__Aurl": "https://basic-detail-pages-split-sections.com/alice-address",
+    "Fd8fb049e--0": "Feb 3, 2023",
+    "Fd8fb049e--0__Pdate_time_tz_ranges": "2023-02-03TZ"
+  },
+  {
+    "Atitle": "Split Sections Test",
+    "Aurl": "https://basic-detail-pages-split-sections.com",
+    "F2c464de2--0": "Bob",
+    "F33c1d6a0--0": "Bob works on distributed systems and consensus protocols.",
+    "Fd8135b41-href-0": "/bob-address",
+    "Fd8135b41-href-0__Aurl": "https://basic-detail-pages-split-sections.com/bob-address",
+    "Fd8fb049e--0": "Feb 4, 2023",
+    "Fd8fb049e--0__Pdate_time_tz_ranges": "2023-02-04TZ"
+  },
+  {
+    "Atitle": "Split Sections Test",
+    "Aurl": "https://basic-detail-pages-split-sections.com",
+    "F2c464de2--0": "Carol",
+    "F33c1d6a0--0": "Carol focuses on secure communication channels and privacy.",
+    "Fd8135b41-href-0": "/carol-address",
+    "Fd8135b41-href-0__Aurl": "https://basic-detail-pages-split-sections.com/carol-address",
+    "Fd8fb049e--0": "Feb 5, 2023",
+    "Fd8fb049e--0__Pdate_time_tz_ranges": "2023-02-05TZ"
+  },
+  {
+    "Atitle": "Split Sections Test",
+    "Aurl": "https://basic-detail-pages-split-sections.com",
+    "F2c464de2--0": "Dan",
+    "F33c1d6a0--0": "Dan specializes in threat modeling and security architecture.",
+    "Fd8135b41-href-0": "/dan-address",
+    "Fd8135b41-href-0__Aurl": "https://basic-detail-pages-split-sections.com/dan-address",
+    "Fd8fb049e--0": "Feb 6, 2023",
+    "Fd8fb049e--0__Pdate_time_tz_ranges": "2023-02-06TZ"
+  },
+  {
+    "Atitle": "Split Sections Test",
+    "Aurl": "https://basic-detail-pages-split-sections.com",
+    "F2c464de2--0": "Eve",
+    "F33c1d6a0--0": "Eve researches network security and intrusion detection systems.",
+    "Fd8135b41-href-0": "/eve-address",
+    "Fd8135b41-href-0__Aurl": "https://basic-detail-pages-split-sections.com/eve-address",
+    "Fd8fb049e--0": "Feb 7, 2023",
+    "Fd8fb049e--0__Pdate_time_tz_ranges": "2023-02-07TZ"
+  }
+]

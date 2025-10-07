@@ -1,17 +1,18 @@
 id:
     slug: css-class-with-special-chars-com
-    id: 10a
+    id: n10a
     field: ""
     subid: ""
 scrapers:
-    - name: css-class-with-special-chars-com__10a
-      url: https://css-class-with-special-chars.com
+    - name: css-class-with-special-chars-com__n10a
+      render_js: true
       selector: body > div.a-0.b-0 > div.\31-1.a-1.b-1\@1 > div.a-2.b-2
+      url: https://css-class-with-special-chars.com
       fields:
         - name: F6d652493--0
           type: text
           location:
-            - {}
+            - entire_subtree: true
+              all_nodes: true
           can_be_empty: true
-      render_js: true
 records: []

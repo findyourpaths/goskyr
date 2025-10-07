@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/net/html"
 )
 
 var DoDebug = false
@@ -73,8 +74,34 @@ func NewDocumentFromResponse(str string) (*Document, error) {
 	return gqdoc, nil
 }
 
+// NormalizeHTMLString parses and re-serializes HTML to ensure consistent structure.
+// This ensures that HTML auto-corrections (like wrapping <tr> in <tbody>) are
+// applied consistently during both pattern generation and scraping phases.
+func NormalizeHTMLString(htmlStr string) (string, error) {
+	// Parse HTML
+	doc, err := html.Parse(strings.NewReader(htmlStr))
+	if err != nil {
+		return "", fmt.Errorf("parsing HTML: %w", err)
+	}
+
+	// Serialize back to HTML
+	var buf bytes.Buffer
+	err = html.Render(&buf, doc)
+	if err != nil {
+		return "", fmt.Errorf("rendering HTML: %w", err)
+	}
+
+	return buf.String(), nil
+}
+
 func NewDocumentFromString(str string) (*Document, error) {
-	gqdoc, err := goquery.NewDocumentFromReader(strings.NewReader(str))
+	// Normalize HTML to ensure consistent structure across generation and scraping
+	normalizedHTML, err := NormalizeHTMLString(str)
+	if err != nil {
+		return nil, fmt.Errorf("normalizing HTML: %w", err)
+	}
+
+	gqdoc, err := goquery.NewDocumentFromReader(strings.NewReader(normalizedHTML))
 	if err != nil {
 		return nil, err
 	}

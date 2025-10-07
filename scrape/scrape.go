@@ -30,6 +30,7 @@ import (
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/net/html"
 	"gopkg.in/yaml.v3"
 )
@@ -41,6 +42,10 @@ var DoDebug = true
 var DebugGQFind = true
 
 // var DebugGQFind = false
+
+// FieldPartSeparator is used to join multiple parts when extracting field values.
+// Using newline preserves text structure and helps with date parsing.
+var FieldPartSeparator = "\n"
 
 func init() {
 	utils.WriteStringFile("/tmp/goskyr/main/scrape_Page_log.txt", "")
@@ -128,7 +133,6 @@ func (c Config) String() string {
 }
 
 func (c Config) WriteToFile(dir string) error {
-	fmt.Printf("WriteToFile(dir: %q) %q\n", dir, c.ID.String())
 	if err := utils.WriteStringFile(filepath.Join(dir, c.ID.String()+".yml"), c.String()); err != nil {
 		return err
 	}
@@ -233,9 +237,8 @@ type Field struct {
 	Name             string           `yaml:"name"`
 	Value            string           `yaml:"value,omitempty"`
 	Type             string           `yaml:"type,omitempty"`     // can currently be text, url or date
-	ElementLocations ElementLocations `yaml:"location,omitempty"` // elements are extracted strings joined using the given Separator
+	ElementLocations ElementLocations `yaml:"location,omitempty"` // elements are extracted strings joined with newlines
 	Default          string           `yaml:"default,omitempty"`  // the default for a dynamic field (text or url) if no value is found
-	Separator        string           `yaml:"separator,omitempty"`
 	// If a field can be found on a detail page the following variable has to
 	// contain a field name of a field of type 'url' that is located on the main
 	// page.
@@ -346,16 +349,21 @@ type Paginator struct {
 // A Scraper contains all the necessary config parameters and structs needed
 // to extract the desired information from a website
 type Scraper struct {
-	Name string `yaml:"name"`
-	URL  string `yaml:"url"`
-	// HostSlug     string               `yaml:"hostslug"`
-	Selector     string               `yaml:"selector"`
-	Fields       []Field              `yaml:"fields,omitempty"`
-	Filters      []*Filter            `yaml:"filters,omitempty"`
-	Paginators   []Paginator          `yaml:"paginators,omitempty"`
-	RenderJs     bool                 `yaml:"render_js,omitempty"`
-	PageLoadWait int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
-	Interaction  []*fetch.Interaction `yaml:"interaction,omitempty"`
+	Interaction         []*fetch.Interaction `yaml:"interaction,omitempty"`
+	Name                string               `yaml:"name"`
+	PageLoadWait        int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
+	RenderJs            bool                 `yaml:"render_js,omitempty"`
+	Selector            string               `yaml:"selector"`
+	Strategy            string               `yaml:"strategy,omitempty"` // "nested" (default) or "sequential"
+	URL                 string               `yaml:"url"`
+	Validation          *ValidationConfig    `yaml:"validation,omitempty"`
+	Fields              []Field              `yaml:"fields,omitempty"`
+	Filters             []*Filter            `yaml:"filters,omitempty"`
+	Paginators          []Paginator          `yaml:"paginators,omitempty"`
+}
+
+type ValidationConfig struct {
+	RequiresCTASelector string `yaml:"requires_cta_selector,omitempty"`
 }
 
 func (s Scraper) HostSlug() string {
@@ -488,7 +496,11 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 	var rets output.Records
 	// var rsStr string
 	defer func() {
-		observability.Add(ctx, observability.Instruments.Scrape, 1,
+		var counter metric.Int64Counter
+		if observability.Instruments != nil {
+			counter = observability.Instruments.Scrape
+		}
+		observability.Add(ctx, counter, 1,
 			// 	// attribute.String("source", source),
 			attribute.String("arg.config.id", c.ID.String()),
 			attribute.String("arg.scraper.selector", s.Selector),
@@ -540,6 +552,17 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 			return nil, nil
 		}
 	}
+
+	if s.Strategy == "sequential" {
+		rets, err := scrapeSequential(ctx, c, s, found, baseURL, gqdoc)
+		if err != nil {
+			return nil, err
+		}
+		s.guessYear(rets, time.Now())
+		slog.Debug("in scrape.GQDocument() sequential", "len(rets)", len(rets), "rets.TotalFields()", rets.TotalFields())
+		return rets, nil
+	}
+
 	found.Each(func(i int, sel *goquery.Selection) {
 		count = i + 1
 		// fmt.Println("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
@@ -564,6 +587,204 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 
 	slog.Debug("in scrape.GQDocument()", "len(rs)", len(rets), "rs.TotalFields()", rets.TotalFields())
 	// fmt.Println("in scrape.GQDocument()", "len(rs)", len(rs), "rs.TotalFields()", rs.TotalFields())
+	return rets, nil
+}
+
+func cloneHTMLNode(n *html.Node) *html.Node {
+	clone := &html.Node{
+		Type:      n.Type,
+		DataAtom:  n.DataAtom,
+		Data:      n.Data,
+		Namespace: n.Namespace,
+		Attr:      make([]html.Attribute, len(n.Attr)),
+	}
+	copy(clone.Attr, n.Attr)
+
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		clonedChild := cloneHTMLNode(child)
+		clone.AppendChild(clonedChild)
+	}
+
+	return clone
+}
+
+func isDateElement(sel *goquery.Selection, s *Scraper) bool {
+	// Get direct text content (not from descendants)
+	// We need to check if THIS element directly contains a date, not if any descendant does
+	var directText string
+	sel.Contents().Each(func(i int, content *goquery.Selection) {
+		// Only get text nodes (type 3), not element nodes
+		if len(content.Nodes) > 0 && content.Nodes[0].Type == html.TextNode {
+			directText += content.Text()
+		}
+	})
+
+	// Also check immediate children for date text
+	// This handles cases like <div><span>Feb 3, 2023</span></div>
+	childText := ""
+	sel.Children().Each(func(i int, child *goquery.Selection) {
+		childText += " " + child.Text()
+	})
+
+	combined := strings.TrimSpace(directText + " " + childText)
+	if combined == "" {
+		return false
+	}
+
+	// Check if text matches date patterns
+	if DateRE.MatchString(combined) {
+		return true
+	}
+
+	return false
+}
+
+func isDescendantOfAny(n *html.Node, ancestors map[*html.Node]bool) bool {
+	for p := n.Parent; p != nil; p = p.Parent {
+		if ancestors[p] {
+			return true
+		}
+	}
+	return false
+}
+
+func scrapeSequential(ctx context.Context, c *Config, s *Scraper, parentSel *goquery.Selection, baseURL string, gqdoc *fetch.Document) (output.Records, error) {
+	slog.Info("scrapeSequential()")
+	defer slog.Info("scrapeSequential() returning")
+
+	// First pass: initial chunking by date boundaries
+	var initialChunks [][]*goquery.Selection
+	var currentChunk []*goquery.Selection
+	var foundFirstDate bool
+
+	parentSel.Children().Each(func(i int, childSel *goquery.Selection) {
+		isDate := isDateElement(childSel, s)
+
+		if isDate {
+			if foundFirstDate && len(currentChunk) > 0 {
+				initialChunks = append(initialChunks, currentChunk)
+			}
+			currentChunk = []*goquery.Selection{childSel}
+			foundFirstDate = true
+		} else if foundFirstDate {
+			currentChunk = append(currentChunk, childSel)
+		}
+	})
+
+	if foundFirstDate && len(currentChunk) > 0 {
+		initialChunks = append(initialChunks, currentChunk)
+		slog.Debug("scrapeSequential() saved final initial chunk", "len", len(currentChunk))
+	}
+
+	slog.Info("scrapeSequential() found initial chunks", "count", len(initialChunks))
+
+	// Second pass: split chunks that contain multiple date-bearing sections
+	// This handles the case where dates are in section A and descriptions in section B
+	var chunks [][]*goquery.Selection
+	for _, chunk := range initialChunks {
+		// Find all elements with dates in this chunk
+		var dateIndices []int
+		for i, sel := range chunk {
+			if isDateElement(sel, s) {
+				dateIndices = append(dateIndices, i)
+			}
+		}
+
+		if len(dateIndices) <= 1 {
+			// Single date or no dates - keep chunk as is
+			chunks = append(chunks, chunk)
+			continue
+		}
+
+		// Multiple dates found - split at each date boundary
+		slog.Debug("scrapeSequential() splitting chunk with multiple dates", "dateCount", len(dateIndices))
+		for di, dateIdx := range dateIndices {
+			var subChunk []*goquery.Selection
+
+			// Include the date element
+			subChunk = append(subChunk, chunk[dateIdx])
+
+			// Determine the end boundary for this subchunk
+			endIdx := len(chunk)
+			if di+1 < len(dateIndices) {
+				endIdx = dateIndices[di+1]
+			}
+
+			// Include elements between this date and the next date (or end)
+			for i := dateIdx + 1; i < endIdx; i++ {
+				subChunk = append(subChunk, chunk[i])
+			}
+
+			chunks = append(chunks, subChunk)
+			slog.Debug("scrapeSequential() created subchunk", "dateIdx", dateIdx, "subChunkLen", len(subChunk))
+		}
+	}
+
+	slog.Info("scrapeSequential() found chunks after split", "count", len(chunks))
+
+	var ctaSelector string
+	if s.Validation != nil {
+		ctaSelector = s.Validation.RequiresCTASelector
+	}
+
+	var rets output.Records
+	for chunkIdx, chunk := range chunks {
+		slog.Debug("scrapeSequential() processing chunk", "chunkIdx", chunkIdx, "len", len(chunk))
+
+		var hasDate bool
+		var hasCTA bool
+
+		// Validate chunk
+		for _, sel := range chunk {
+			if isDateElement(sel, s) {
+				hasDate = true
+			}
+			if ctaSelector != "" && len(sel.Find(ctaSelector).Nodes) > 0 {
+				hasCTA = true
+			}
+		}
+
+		if !hasDate {
+			slog.Debug("scrapeSequential() skipping chunk without date", "chunkIdx", chunkIdx)
+			continue
+		}
+		if ctaSelector != "" && !hasCTA {
+			slog.Debug("scrapeSequential() skipping chunk without CTA", "chunkIdx", chunkIdx, "ctaSelector", ctaSelector)
+			continue
+		}
+
+		slog.Debug("scrapeSequential() chunk validated", "chunkIdx", chunkIdx, "hasDate", hasDate, "hasCTA", hasCTA)
+
+		// Extract fields from the chunk
+		// Try each element in the chunk and extract fields from it
+		r := output.Record{}
+		for _, field := range s.Fields {
+			// Try to extract this field from each element in the chunk
+			for _, chunkElem := range chunk {
+				err := extractField(ctx, &field, r, fetch.NewSelection(chunkElem), baseURL, 0)
+				if err != nil {
+					slog.Debug("scrapeSequential() error extracting field from chunk element", "chunkIdx", chunkIdx, "field", field.Name, "err", err.Error())
+				}
+				// If we successfully extracted this field, stop trying other elements
+				if r[field.Name] != nil && r[field.Name] != "" {
+					slog.Info("scrapeSequential() successfully extracted field", "chunkIdx", chunkIdx, "field", field.Name, "value", r[field.Name])
+					break
+				}
+			}
+		}
+
+		if len(r) == 0 {
+			slog.Debug("scrapeSequential() chunk produced empty record", "chunkIdx", chunkIdx)
+			continue
+		}
+
+		r[URLFieldName] = baseURL
+		r[TitleFieldName] = gqdoc.Find("title").Text()
+		rets = append(rets, r)
+		slog.Debug("scrapeSequential() added record", "chunkIdx", chunkIdx, "totalRecords", len(rets))
+	}
+
+	slog.Info("scrapeSequential() completed", "totalRecords", len(rets))
 	return rets, nil
 }
 
@@ -599,7 +820,11 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 	// // source := "error"
 	rets := output.Record{}
 	defer func() {
-		observability.Add(ctx, observability.Instruments.Scrape, 1, // 	// attribute.String("source", source),
+		var counter metric.Int64Counter
+		if observability.Instruments != nil {
+			counter = observability.Instruments.Scrape
+		}
+		observability.Add(ctx, counter, 1, // 	// attribute.String("source", source),
 			// attribute.String("arg.scraper.selector", s.Selector),
 			// attribute.Int("arg.scraper.found_nodes.len", len(gqdoc.Find(s.Selector).Nodes)),
 			// attribute.Int("int.count", count),
@@ -930,7 +1155,7 @@ var TitleFieldSuffix = "__" + TitleFieldName
 var DateTimeFieldSuffix = "__" + DateTimeFieldName
 var DateTimeFieldName = "Pdate_time_tz_ranges"
 
-var DateRE = regexp.MustCompile(`(?i)\b(2024|2025|January|February|March|April|` + /* May */ `|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b`)
+var DateRE = regexp.MustCompile(`(?i)\b(2024|2025|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b`)
 var yearRE = regexp.MustCompile(`(?i)\b(20[0-9][0-9])\b`)
 
 func DebugDateTime(args ...any) { slog.Debug(args[0].(string), args[1:]...) }
@@ -979,7 +1204,7 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 				}
 			}
 		}
-		t := strings.Join(parts, f.Separator)
+		t := strings.Join(parts, FieldPartSeparator)
 		if t == "" {
 			// if the extracted value is an empty string assign the default value
 			t = f.Default
@@ -1133,6 +1358,22 @@ var SkipTag = map[string]bool{
 
 func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	slog.Debug("getTextString()", "e", e, "s", sel)
+
+	// Set sensible defaults for EntireSubtree and AllNodes if not explicitly configured
+	entireSubtree := e.EntireSubtree
+	allNodes := e.AllNodes
+	// Default both to true unless ChildIndex is set (which requires EntireSubtree=false)
+	if e.ChildIndex == 0 {
+		if !e.EntireSubtree && !e.AllNodes {
+			// Neither explicitly set - default both to true
+			entireSubtree = true
+			allNodes = true
+		} else if e.EntireSubtree && !e.AllNodes {
+			// EntireSubtree explicitly set to true but AllNodes not set - default AllNodes to true
+			allNodes = true
+		}
+	}
+
 	var fieldStrings []string
 	var fieldSelection *fetch.Selection
 	if e.Selector == "" {
@@ -1149,7 +1390,7 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	}
 	if len(fieldSelection.Nodes) > 0 {
 		if e.Attr == "" {
-			if true { //if e.EntireSubtree {
+			if entireSubtree {
 				// copied from https://github.com/PuerkitoBio/goquery/blob/v1.8.0/property.go#L62
 				var buf bytes.Buffer
 				var f func(*html.Node)
@@ -1168,7 +1409,7 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 						}
 					}
 				}
-				if true { //if e.AllNodes {
+				if allNodes {
 					for _, node := range fieldSelection.Nodes {
 						f(node)
 						fieldStrings = append(fieldStrings, buf.String())
@@ -1181,7 +1422,7 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 			} else {
 
 				var fieldNodes []*html.Node
-				if true { // if e.AllNodes {
+				if allNodes {
 					for _, node := range fieldSelection.Nodes {
 						fieldNode := node.FirstChild
 						if fieldNode != nil {

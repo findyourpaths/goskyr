@@ -300,6 +300,16 @@ func testScrapeCategoryHostPageConfig(t *testing.T, cat string, hostSlug string,
 		t.Fatalf("failed to marshal json: %v", err)
 	}
 
+	// Write config and expected JSON to output directory
+	configOutDir := filepath.Join(testCatOutputDir, hostSlug+"_configs")
+	if err := os.MkdirAll(configOutDir, 0755); err != nil {
+		t.Fatalf("failed to create config output directory %q: %v", configOutDir, err)
+	}
+	c.Records = recs
+	if err := c.WriteToFile(configOutDir); err != nil {
+		t.Fatalf("failed to write config and records to %q: %v", configOutDir, err)
+	}
+
 	// Each input file is expected to have a "golden output" file, with the
 	// same path except the .input extension is replaced by the golden suffix.
 	// jsonfile := path[:len(path)-len(configSuffix)] + jsonSuffix

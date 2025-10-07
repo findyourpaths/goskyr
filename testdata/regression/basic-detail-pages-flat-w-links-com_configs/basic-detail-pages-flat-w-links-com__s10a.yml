@@ -1,0 +1,37 @@
+id:
+    slug: basic-detail-pages-flat-w-links-com
+    id: s10a
+    field: ""
+    subid: ""
+scrapers:
+    - name: basic-detail-pages-flat-w-links-com__s10a
+      render_js: true
+      selector: body > div.a-0.b-0 > div.a-1.b-1
+      strategy: sequential
+      url: https://basic-detail-pages-flat-w-links.com
+      validation:
+        requires_cta_selector: span.a-3x > a
+      fields:
+        - name: F5af81126--0
+          type: date_time_tz_ranges
+          location:
+            - selector: span.a-3y
+              entire_subtree: true
+              all_nodes: true
+          can_be_empty: true
+        - name: Fd92b94e1--0
+          type: text
+          location:
+            - selector: span.a-3n
+              entire_subtree: true
+              all_nodes: true
+          can_be_empty: true
+        - name: Ff2b40e9e-href-0
+          type: url
+          location:
+            - selector: span.a-3x > a
+              attr: href
+              entire_subtree: true
+              all_nodes: true
+          can_be_empty: true
+records: []

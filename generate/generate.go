@@ -23,6 +23,178 @@ import (
 
 var DoPruning = true
 
+// addStrategyPrefix adds the strategy prefix ('n' or 's') to the appropriate ID field.
+// For detail pages (Field != ""), it modifies SubID. Otherwise it modifies ID.
+func addStrategyPrefix(configID *scrape.ConfigID, prefix string) {
+	if configID.Field != "" {
+		if !strings.HasPrefix(configID.SubID, "n") && !strings.HasPrefix(configID.SubID, "s") {
+			configID.SubID = prefix + configID.SubID
+		}
+	} else {
+		if !strings.HasPrefix(configID.ID, "n") && !strings.HasPrefix(configID.ID, "s") {
+			configID.ID = prefix + configID.ID
+		}
+	}
+}
+
+// replaceStrategyPrefix replaces 'n' prefix with 's' (or vice versa) in the appropriate ID field.
+func replaceStrategyPrefix(configID scrape.ConfigID, newPrefix string) scrape.ConfigID {
+	if configID.Field != "" {
+		baseSubID := strings.TrimPrefix(configID.SubID, "n")
+		baseSubID = strings.TrimPrefix(baseSubID, "s")
+		configID.SubID = newPrefix + baseSubID
+	} else {
+		baseID := strings.TrimPrefix(configID.ID, "n")
+		baseID = strings.TrimPrefix(baseID, "s")
+		configID.ID = newPrefix + baseID
+	}
+	return configID
+}
+
+// createSequentialConfig creates a sequential strategy config from the nested config parameters.
+// Returns the config and scraped records, or an error.
+func createSequentialConfig(ctx context.Context, opts ConfigOptions, gqdoc *fetch.Document, pags []scrape.Paginator, rootSelector path, exsCache map[string]string, lps []*locationProps) (*scrape.Config, output.Records, error) {
+	seqOpts := opts
+	seqOpts.configID = replaceStrategyPrefix(opts.configID, "s")
+
+	// Create sequential scraper
+	seqScraper := scrape.Scraper{
+		Name:       seqOpts.configID.String(),
+		Paginators: pags,
+		RenderJs:   opts.RenderJS,
+		URL:        opts.URL,
+		Strategy:   "sequential",
+	}
+
+	// For sequential mode, determine if we should use parent or root selector
+	// Check the direct children of the rootSelector to determine if they represent
+	// different sibling groups (like event-info vs event-desc) or if all fields
+	// come from deeper nested elements
+	if len(rootSelector) > 1 {
+		// Get the element types at the rootSelector level for all fields
+		childPaths := make(map[string]bool)
+		allFieldsGoDeeper := true
+
+		for _, lp := range lps {
+			if len(lp.path) == len(rootSelector) {
+				// Some field paths end exactly at rootSelector
+				allFieldsGoDeeper = false
+			} else if len(lp.path) > len(rootSelector) {
+				// Get the path one level beyond rootSelector
+				childPath := lp.path[0 : len(rootSelector)+1].string()
+				childPaths[childPath] = true
+			}
+		}
+
+		// Heuristic to distinguish between:
+		// 1. Split sections (event-info/event-desc) - exactly 2 child paths representing structural divisions
+		// 2. Flat fields (span.date, span.name, span.link) - 3+ child paths representing individual fields
+		//
+		// If we have exactly 2 different child paths (like event-info vs event-desc),
+		// they likely represent structural sections that should be kept as siblings.
+		// If we have 3+ child paths, they likely represent individual fields within a repeating structure.
+		if len(childPaths) == 2 && allFieldsGoDeeper {
+			// Exactly 2 child paths - likely structural sections, use rootSelector as parent
+			seqScraper.Selector = rootSelector.string()
+		} else {
+			// 1 child path, 3+ child paths, or fields end at rootSelector - trim to get parent
+			parentSelector := rootSelector[:len(rootSelector)-1]
+			seqScraper.Selector = parentSelector.string()
+		}
+	} else if len(rootSelector) == 1 {
+		// Only one level - use as is
+		seqScraper.Selector = rootSelector.string()
+	}
+
+	// Special handling for email HTML with section divs
+	// Email HTML often has structure: body > ... > div[data-dynamic-sections] > div[data-section-id]
+	// where each div[data-section-id] represents one event/record.
+	// Check if such a structure exists and use it as the selector.
+	sectionDivSelector := `div[data-dynamic-sections="index"] > div[data-section-id]`
+	sectionDivCount := gqdoc.Document.Selection.Find(sectionDivSelector).Length()
+	if sectionDivCount > 0 {
+		// Found section divs - check if this looks like a better selector than what we have
+		currentSel := seqScraper.Selector
+		currentCount := gqdoc.Document.Selection.Find(currentSel).Filter(currentSel).Length()
+
+		// Use section div selector if:
+		// 1. We have a reasonable number of sections (4-100)
+		// 2. The current selector matches many more elements (suggesting it's too granular)
+		if sectionDivCount >= 4 && sectionDivCount <= 100 && currentCount > sectionDivCount*2 {
+			slog.Info("createSequentialConfig() using section div selector for email HTML",
+				"originalSelector", currentSel,
+				"originalCount", currentCount,
+				"sectionDivSelector", sectionDivSelector,
+				"sectionDivCount", sectionDivCount)
+			seqScraper.Selector = sectionDivSelector
+		}
+	}
+
+	seqScraper.Fields = processFields(ctx, exsCache, lps, rootSelector)
+
+	// Add validation requiring CTA (link) for sequential mode
+	for _, f := range seqScraper.Fields {
+		if f.Type == "url" && len(f.ElementLocations) > 0 {
+			seqScraper.Validation = &scrape.ValidationConfig{
+				RequiresCTASelector: f.ElementLocations[0].Selector,
+			}
+			break
+		}
+	}
+
+	seqConfig := &scrape.Config{
+		ID:       seqOpts.configID,
+		Scrapers: []scrape.Scraper{seqScraper},
+	}
+
+	slog.Info("in expandAllPossibleConfigs(), scraping sequential")
+	seqRecs, err := scrape.GQDocument(ctx, seqConfig, &seqScraper, gqdoc)
+	if err != nil {
+		return nil, nil, err
+	}
+	slog.Info("in expandAllPossibleConfigs(), scraped sequential", "len(seqRecs)", len(seqRecs))
+	seqConfig.Records = seqRecs
+	return seqConfig, seqRecs, nil
+}
+
+func shouldUseSequentialStrategy(gqdoc *fetch.Document, rootSel string, fields []scrape.Field) bool {
+	slog.Info("shouldUseSequentialStrategy() called", "rootSel", rootSel, "len(fields)", len(fields))
+	// Check if we have date fields - a key indicator of sequential records
+	hasDateField := false
+	for _, f := range fields {
+		if f.Type == "date_time_tz_ranges" {
+			hasDateField = true
+			break
+		}
+	}
+
+	if !hasDateField {
+		slog.Info("shouldUseSequentialStrategy() no date field", "rootSel", rootSel)
+		return false
+	}
+
+	// Check if the selector targets container elements
+	// Sequential mode is appropriate when we're selecting sibling elements
+	// that should be grouped into records
+	// Match selectors ending with container elements (with or without classes)
+	endsWithContainer := false
+	for _, suffix := range []string{" > div", " > span", " > tr", " > td", " > table"} {
+		if strings.HasSuffix(rootSel, suffix) || strings.Contains(rootSel[len(rootSel)-20:], suffix+".") || strings.Contains(rootSel[len(rootSel)-20:], suffix+"#") {
+			endsWithContainer = true
+			break
+		}
+	}
+	if !endsWithContainer {
+		slog.Info("shouldUseSequentialStrategy() selector doesn't end with container element", "rootSel", rootSel)
+		return false
+	}
+
+	// Simple heuristic: if we have date fields, try sequential strategy
+	// The duplicate record filtering will handle cases where it doesn't make sense
+	slog.Info("shouldUseSequentialStrategy() yes - has date field", "rootSel", rootSel)
+	return true
+}
+
 type ConfigOptions struct {
 	Batch bool
 	// CacheInputDir             string
@@ -172,6 +344,9 @@ func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fet
 		opts.configID.ID = minOccStr
 	}
 
+	// NOTE: Don't add strategy prefix here - this function generates both nested and sequential configs
+	// The prefix is added later in expandAllPossibleConfigs() after the strategy is determined
+
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.ConfigurationsForGQDocumentWithMinOccurrence(%d, %q, len(rs): %d)", minOcc, opts.configID.String(), len(rs)))
 
@@ -275,6 +450,9 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 		span.End()
 	}()
 
+	// Add 'n' prefix for nested strategy (the default) to distinguish from sequential
+	addStrategyPrefix(&opts.configID, "n")
+
 	// Logging
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
@@ -320,27 +498,56 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 	// s.Record = shortenRootSelector(rootSelector).string()
 	s.Selector = rootSel
 	s.Fields = processFields(ctx, exsCache, lps, rootSelector)
+
+	// Detect if we should generate both nested and sequential strategies
+	generateSequential := shouldUseSequentialStrategy(gqdoc, rootSel, s.Fields)
+
+	// Generate nested config (always)
+	// Note: opts.configID already has 'n' prefix added at start of function
+	nestedOpts := opts
+	nestedOpts.configID = opts.configID
+
 	if opts.DoDetailPages && len(s.GetDetailPageURLFields()) == 0 {
-		slog.Info("candidate configuration failed to find a detail page URL field, excluding", "opts.configID", opts.configID)
+		slog.Info("candidate configuration failed to find a detail page URL field, excluding", "opts.configID", nestedOpts.configID)
 		status = "failed_to_find_detail_page_url"
 		return rs, nil
 	}
 
-	c := &scrape.Config{
-		ID:       opts.configID,
+	nestedConfig := &scrape.Config{
+		ID:       nestedOpts.configID,
 		Scrapers: []scrape.Scraper{s},
 	}
 
 	var err error
-	slog.Info("in expandAllPossibleConfigs(), scraping")
-	recs, err = scrape.GQDocument(ctx, c, &s, gqdoc)
+	slog.Info("in expandAllPossibleConfigs(), scraping nested")
+	recs, err = scrape.GQDocument(ctx, nestedConfig, &s, gqdoc)
 	if err != nil {
-		slog.Info("candidate configuration got error scraping GQDocument, excluding", "opts.configID", opts.configID)
+		slog.Info("candidate configuration got error scraping GQDocument, excluding", "opts.configID", nestedOpts.configID)
 		status = "failed_to_scrape_gqdoc"
 		return nil, err
 	}
-	slog.Info("in expandAllPossibleConfigs(), scraped", "len(recs)", len(recs))
-	c.Records = recs
+	slog.Info("in expandAllPossibleConfigs(), scraped nested", "len(recs)", len(recs))
+	nestedConfig.Records = recs
+
+	// Store nested config
+	c := nestedConfig
+
+	// Generate sequential config if applicable
+	if generateSequential {
+		seqConfig, seqRecs, err := createSequentialConfig(ctx, opts, gqdoc, pags, rootSelector, exsCache, lps)
+		if err != nil {
+			slog.Warn("failed to scrape sequential config, skipping", "opts.configID", opts.configID, "err", err)
+		} else {
+			// Add sequential config to results if it produces unique records
+			seqRecsStr := seqRecs.String()
+			if _, found := rs[seqRecsStr]; !found {
+				rs[seqRecsStr] = seqConfig
+				slog.Info("added sequential config", "id", seqConfig.ID.String())
+			} else {
+				slog.Info("sequential config produces duplicate records, skipping", "id", seqConfig.ID.String())
+			}
+		}
+	}
 
 	clusters = findClusters(ctx, lps, rootSelector)
 	for clusterID := range clusters {

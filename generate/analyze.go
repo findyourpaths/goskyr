@@ -284,6 +284,51 @@ func pullBackRootSelector(ctx context.Context, rootSel path, gqdoc *fetch.Docume
 	if len(ret) == 0 {
 		return ret
 	}
+
+	// For sequential scraping with email HTML, try to find the shallowest div-ending selector
+	// Email HTML often has structure like: body > ... > div > div (section containers)
+	// followed by deeper nesting for individual elements.
+	// We want to group at the section level, not the deep element level.
+
+	// Collect all potential selectors, looking for div-ending selectors that are divisors of count
+	var candidates []struct {
+		path  path
+		count int
+	}
+	testRet := ret
+	for len(testRet) > 3 {
+		testStr := testRet.string()
+		testLen := gqdoc.Document.Selection.Find(testStr).Filter(testStr).Length()
+
+		// Accept selectors where count is a multiple of testLen (more sections than fields is OK)
+		// or where testLen equals count (exact match)
+		if testLen > 0 && (count%testLen == 0 || testLen == count) {
+			candidates = append(candidates, struct {
+				path  path
+				count int
+			}{testRet, testLen})
+		}
+
+		testRet = testRet[:len(testRet)-1]
+	}
+
+	// Prefer the shallowest div-ending selector with a reasonable count ratio
+	// A "reasonable" ratio means we don't have too many sections per field (e.g., < 20)
+	for _, candidate := range candidates {
+		if len(candidate.path) > 0 && candidate.path[len(candidate.path)-1].tagName == "div" {
+			ratio := candidate.count / count
+			if ratio == 1 || (ratio > 1 && ratio < 20) {
+				slog.Info("pullBackRootSelector() found div-ending selector",
+					"selector", candidate.path.string(),
+					"selectorCount", candidate.count,
+					"fieldCount", count,
+					"ratio", ratio)
+				return candidate.path
+			}
+		}
+	}
+
+	// If no div-ending selector found, use standard pullback logic
 	for {
 		retStr := ret.string()
 		selLen = gqdoc.Document.Selection.Find(retStr).Filter(retStr).Length()
@@ -318,7 +363,7 @@ func shortenRootSelector(p path) path {
 	return p
 }
 
-var datetimeFieldThreshold = 0.5
+var datetimeFieldThreshold = 0.25
 
 var datetimeWeekdays = "sun|sunday|mon|monday|tue|tues|tuesday|wed|weds|wednesday|thu|thus|thursday|fri|friday|saturday|sat"
 var datetimeMonths = "jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december"
@@ -361,12 +406,12 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 		// slog.Debug("in processFields()", "e.path", e.path.string())
 		// slog.Debug("in processFields()", "e.path[len(rootSelector):]", e.path[len(rootSelector):].string())
 		fLoc := scrape.ElementLocation{
-			Selector:   lp.path[len(rootSelector):].string(),
-			ChildIndex: lp.textIndex,
-			Attr:       lp.attr,
-			// AllNodes:      true,
-			// EntireSubtree: true,
-			// Separator:     "\n",
+			Selector:      lp.path[len(rootSelector):].string(),
+			// Don't set ChildIndex when using EntireSubtree - they're incompatible
+			// ChildIndex:    lp.textIndex,
+			Attr:          lp.attr,
+			AllNodes:      true,
+			EntireSubtree: true,
 		}
 		fName := lp.name
 		fType := "text"

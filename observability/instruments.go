@@ -48,12 +48,16 @@ func NewInstruments(meter metric.Meter, prefix string) (*instruments, error) {
 }
 
 func Add(ctx context.Context, ic metric.Int64Counter, incr int64, kvs ...attribute.KeyValue) {
-	ic.Add(ctx, 1, metric.WithAttributes(lo.Filter(kvs, KeepNonVarAttributes)...))
+	if ic != nil {
+		ic.Add(ctx, 1, metric.WithAttributes(lo.Filter(kvs, KeepNonVarAttributes)...))
+	}
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(kvs...)
-	// if span.IsRecording() {
-	// 	span.AddEvent("From", trace.WithAttributes(kvs...))
-	// }
+	if span != nil {
+		span.SetAttributes(kvs...)
+		// if span.IsRecording() {
+		// 	span.AddEvent("From", trace.WithAttributes(kvs...))
+		// }
+	}
 }
 
 func KeepNonVarAttributes(kv attribute.KeyValue, i int) bool {
