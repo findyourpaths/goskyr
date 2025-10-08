@@ -42,6 +42,8 @@ type Cache interface {
 	Set(key string, responseBytes []byte)
 	// Delete removes the value associated with the key
 	Delete(key string)
+	// GetResolvedURL returns the final URL after following redirects
+	GetResolvedURL(rawURL string) (string, error)
 }
 
 // var fetcher = NewDynamicFetcher("", 1) //s.PageLoadWait)

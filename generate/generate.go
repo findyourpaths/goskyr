@@ -178,8 +178,13 @@ func shouldUseSequentialStrategy(gqdoc *fetch.Document, rootSel string, fields [
 	// that should be grouped into records
 	// Match selectors ending with container elements (with or without classes)
 	endsWithContainer := false
+	checkLen := 20
+	if len(rootSel) < checkLen {
+		checkLen = len(rootSel)
+	}
+	suffixPart := rootSel[len(rootSel)-checkLen:]
 	for _, suffix := range []string{" > div", " > span", " > tr", " > td", " > table"} {
-		if strings.HasSuffix(rootSel, suffix) || strings.Contains(rootSel[len(rootSel)-20:], suffix+".") || strings.Contains(rootSel[len(rootSel)-20:], suffix+"#") {
+		if strings.HasSuffix(rootSel, suffix) || strings.Contains(suffixPart, suffix+".") || strings.Contains(suffixPart, suffix+"#") {
 			endsWithContainer = true
 			break
 		}
@@ -859,9 +864,17 @@ func ConfigurationsForAllDetailPages(ctx context.Context, cache fetch.Cache, opt
 					absStr = uBase.ResolveReference(relURL).String()
 				}
 
-				absURL, err := tld.Parse(absStr)
+				// Resolve redirects to get final URL
+				resolvedStr, err := cache.GetResolvedURL(absStr)
 				if err != nil {
-					slog.Error("error parsing detail page absolute url", "fj.value", fj.value, "err", err)
+					slog.Error("error resolving URL redirects", "absStr", absStr, "err", err)
+					// Fall back to original URL if resolution fails
+					resolvedStr = absStr
+				}
+
+				absURL, err := tld.Parse(resolvedStr)
+				if err != nil {
+					slog.Error("error parsing detail page absolute url", "resolvedStr", resolvedStr, "err", err)
 					continue
 				}
 
@@ -874,7 +887,9 @@ func ConfigurationsForAllDetailPages(ctx context.Context, cache fetch.Cache, opt
 				// fmt.Println("checking skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value, "opts.OnlySameDomainDetailPages", opts.OnlySameDomainDetailPages, "uBase.Domain != absURL.Domain", uBase.Domain != absURL.Domain)
 				slog.Debug("checking", "absURL", absURL)
 				slog.Debug("checking", "absURL.Domain", absURL.Domain)
-				if opts.OnlyKnownDomainDetailPages && !(uBase.Domain == absURL.Domain || KnownDomains[absURL.Domain]) {
+				// Skip domain checking for email sources (gmail://) - emails can link to any domain
+				isEmailSource := strings.HasPrefix(opts.URL, "gmail://")
+				if !isEmailSource && opts.OnlyKnownDomainDetailPages && !(uBase.Domain == absURL.Domain || KnownDomains[absURL.Domain]) {
 					slog.Debug("skipping sub URL with different domain", "uBase", uBase, "fj.value", fj.value)
 					continue
 				}

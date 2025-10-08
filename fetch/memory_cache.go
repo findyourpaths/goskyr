@@ -58,3 +58,13 @@ func (c *MemoryCache) Delete(key string) {
 	delete(c.respsByKey, key)
 	c.respsByKeyMutex.Unlock()
 }
+
+// GetResolvedURL returns the final URL after following redirects
+func (c *MemoryCache) GetResolvedURL(rawURL string) (string, error) {
+	// MemoryCache delegates to fallback if available
+	if c.fallback != nil {
+		return c.fallback.GetResolvedURL(rawURL)
+	}
+	// No fallback - just return the raw URL
+	return rawURL, nil
+}
