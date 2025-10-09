@@ -10,6 +10,8 @@ import (
 	"github.com/rivo/tview"
 )
 
+// locationProps contains metadata about a discovered field location including its DOM path,
+// occurrence count, example values, and generated field name.
 type locationProps struct {
 	path      path
 	attr      string
@@ -24,6 +26,7 @@ type locationProps struct {
 	isText    bool
 }
 
+// makeLocationProps creates a new locationProps from a DOM path and an example value.
 func makeLocationProps(nodePath path, example string, isText bool) locationProps {
 	// slog.Debug("makeLocationProps()", "nodePath.actualstring()", nodePath.string(), "example", example)
 	p := make([]node, len(nodePath))
@@ -36,6 +39,7 @@ func makeLocationProps(nodePath path, example string, isText bool) locationProps
 	}
 }
 
+// DebugString returns a human-readable debug string for locationProps including count, name, and path.
 func (lp locationProps) DebugString() string {
 	p := lp.path.string()
 	// if len(p) > 100 {
@@ -44,8 +48,11 @@ func (lp locationProps) DebugString() string {
 	return fmt.Sprintf("{count: %d, name: %q, attr: %q, isText: %t, path.string()(%d): %q}", lp.count, lp.name, lp.attr, lp.isText, len(lp.path), p)
 }
 
+// locationManager is a collection of locationProps that can be manipulated as a group.
 type locationManager []*locationProps
 
+// setColors assigns colors to location properties based on their distance from each other in the
+// DOM tree for visualization purposes.
 func (l locationManager) setColors() {
 	if len(l) == 0 {
 		return
@@ -66,6 +73,8 @@ func (l locationManager) setColors() {
 	}
 }
 
+// setFieldNames generates unique field names for all location properties using CRC32 hashing
+// of their DOM paths, creating stable identifiers in the format F{hash}-{attribute}-{index}.
 func (l locationManager) setFieldNames(modelName, wordsDir string) error {
 	hashes := map[uint32]string{}
 	if modelName == "" {
@@ -96,6 +105,8 @@ func (l locationManager) setFieldNames(modelName, wordsDir string) error {
 	return nil
 }
 
+// selectFieldsTable displays an interactive terminal UI table for manually selecting which
+// discovered fields to include in the generated scraper configuration.
 func (l locationManager) selectFieldsTable() {
 	app := tview.NewApplication()
 	table := tview.NewTable().SetBorders(true)

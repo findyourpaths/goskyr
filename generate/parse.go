@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-// A node is our representation of a node in an html tree
+// node represents a single element in an HTML DOM tree with its tag name, classes, and pseudo-classes.
 type node struct {
 	tagName       string
 	classes       []string
@@ -22,6 +22,8 @@ type node struct {
 
 var nodeStringsCache map[*node]string
 
+// string converts a node to its CSS selector string representation, handling special characters
+// and constructing the selector with classes and pseudo-classes.
 func (n node) string() string {
 	r := n.tagName
 	for _, cl := range n.classes {
@@ -41,6 +43,7 @@ func (n node) string() string {
 	return r
 }
 
+// equals checks if two nodes are equal by comparing tag names, classes, and pseudo-classes.
 func (n node) equals(n2 node) bool {
 	if n.tagName == n2.tagName {
 		if utils.SliceEquals(n.classes, n2.classes) {
@@ -52,14 +55,16 @@ func (n node) equals(n2 node) bool {
 	return false
 }
 
-// A path is a list of nodes starting from the root node and going down
-// the html tree to a specific node
+// path represents a DOM path from the root to a specific element as a sequence of nodes.
 type path []node
 
+// last returns a pointer to the last node in the path.
 func (p path) last() *node {
 	return &p[len(p)-1]
 }
 
+// memoString converts a path to its CSS selector string using memoization to avoid recomputing
+// common prefixes for paths that share the same initial nodes.
 func (p path) memoString(pathStringsCache map[*node]string) string {
 	if len(p) == 0 {
 		return ""
@@ -78,6 +83,8 @@ func (p path) memoString(pathStringsCache map[*node]string) string {
 	return str
 }
 
+// string converts a path to its CSS selector string representation by joining node selectors
+// with the " > " combinator.
 func (p path) string() string {
 	rs := []string{}
 	for _, n := range p {
@@ -92,8 +99,7 @@ func (p path) distance(p2 path) float64 {
 	return float64(levenshtein.ComputeDistance(p.string(), p2.string()))
 }
 
-// Analyzer contains all the necessary config parameters and structs needed
-// to analyze the webpage.
+// Analyzer tokenizes and analyzes HTML to discover repeating patterns and field locations.
 type Analyzer struct {
 	Tokenizer   *html.Tokenizer
 	LocMan      locationManager
@@ -111,6 +117,7 @@ type Analyzer struct {
 	pathStringsCache map[*node]string
 }
 
+// Parse tokenizes the HTML document and processes each token to build field location maps.
 func (a *Analyzer) Parse() {
 	a.pathStringsCache = map[*node]string{}
 	// start analyzing the html

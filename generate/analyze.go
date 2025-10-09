@@ -26,6 +26,8 @@ import (
 
 var DoDebug = true
 
+// analyzePage parses HTML and discovers repeating patterns by tokenizing the HTML, tracking element
+// paths, and identifying fields that appear at least minOcc times.
 func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc int) ([]*locationProps, []*locationProps, error) {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.analyzePage(%d)", minOcc))
@@ -166,6 +168,8 @@ func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc
 	return lps, append(a.NextPaths, a.PagMan...), nil
 }
 
+// findSharedRootSelector finds the common parent selector that contains all discovered field locations
+// by walking up the DOM tree and finding where paths diverge.
 func findSharedRootSelector(ctx context.Context, gqdoc *fetch.Document, lps []*locationProps) path {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.findSharedRootSelector(%d)", len(lps)))
@@ -254,6 +258,8 @@ func findSharedRootSelector(ctx context.Context, gqdoc *fetch.Document, lps []*l
 	return retPath
 }
 
+// pullBackRootSelector adjusts the root selector by pulling back to a parent element if the
+// selector matches more elements than expected, ensuring it targets the repeating container.
 func pullBackRootSelector(ctx context.Context, rootSel path, gqdoc *fetch.Document, count int) path {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.pullBackRootSelector(%d)", len(rootSel)))
@@ -349,6 +355,8 @@ func pullBackRootSelector(ctx context.Context, rootSel path, gqdoc *fetch.Docume
 	return ret
 }
 
+// shortenRootSelector shortens a path by removing elements from the beginning until a threshold
+// number of classes is found, reducing selector specificity.
 func shortenRootSelector(p path) path {
 	// the following algorithm is a bit arbitrary. Let's
 	// see if it works.
@@ -369,7 +377,8 @@ var datetimeWeekdays = "sun|sunday|mon|monday|tue|tues|tuesday|wed|weds|wednesda
 var datetimeMonths = "jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december"
 var datetimeFieldRE = regexp.MustCompile(`(?i)\b(?:(?:19|20)\d{2}|` + datetimeMonths + `|` + datetimeWeekdays + `)\b`)
 
-// for now we assume that there will only be one date field
+// processFields converts discovered location properties into scrape field definitions by determining
+// field types (text, url, date) and constructing relative selectors from the root.
 func processFields(ctx context.Context, exsCache map[string]string, lps []*locationProps, rootSelector path) []scrape.Field {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.processFields(%d, %q)", len(lps), rootSelector.string()))
@@ -545,6 +554,8 @@ func stripNthChild(lps *locationProps, minOcc int) {
 	}
 }
 
+// checkAndUpdateLocProps checks if two location properties represent the same field pattern and
+// merges them if they match, returning true if merged.
 func checkAndUpdateLocProps(old, new *locationProps) bool {
 	// slog.Debug("checkAndUpdateLocProps()", "old.path", old.path, "new.path", new.path)
 	// Returns true if the paths overlap and the rest of the
@@ -630,7 +641,7 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 	return true
 }
 
-// remove if count is smaller than minCount
+// filterBelowMinCount removes location properties with count below the minimum threshold.
 func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
 	var kept []*locationProps
 	for _, lp := range lps {
@@ -645,7 +656,8 @@ func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
 	return kept
 }
 
-// remove if the examples are all the same (if onlyVarying is true)
+// filterStaticFields removes location properties where all examples have the same value,
+// keeping only fields that vary across records.
 func filterStaticFields(lps []*locationProps) locationManager {
 	var kept []*locationProps
 	for _, lp := range lps {
@@ -673,8 +685,8 @@ func filterStaticFields(lps []*locationProps) locationManager {
 	return kept
 }
 
-// Go one element beyond the root selector length and find the cluster with the largest number of fields.
-// Filter out all of the other fields.
+// findClusters groups field locations into clusters by extending the root selector by one level
+// and grouping fields that share the same extended path.
 func findClusters(ctx context.Context, lps []*locationProps, rootSelector path) map[string][]*locationProps {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.findClusters(%q)", rootSelector.string()))

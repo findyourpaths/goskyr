@@ -77,6 +77,8 @@ type ConfigID struct {
 	SubID string
 }
 
+// String converts a ConfigID to its string representation by joining its components
+// with underscores, creating a hierarchical identifier.
 func (cid ConfigID) String() string {
 	// slog.Debug(fmt.Sprintf("ConfigID.String(): cid %#v\n", cid))
 	// fmt.Printf("ConfigID.String(): cid %#v\n", cid)
@@ -109,6 +111,7 @@ func (cid ConfigID) String() string {
 	return r
 }
 
+// Copy creates a deep copy of the Config including all records.
 func (c Config) Copy() *Config {
 	r := c
 	r.Records = output.Records{}
@@ -122,6 +125,7 @@ func (c Config) Copy() *Config {
 	return &r
 }
 
+// String converts a Config to its YAML representation, excluding records.
 func (c Config) String() string {
 	cCopy := c
 	cCopy.Records = nil
@@ -132,6 +136,8 @@ func (c Config) String() string {
 	return string(yamlData)
 }
 
+// WriteToFile writes the Config to a YAML file and optionally writes records to a JSON file
+// in the specified directory.
 func (c Config) WriteToFile(dir string) error {
 	if err := utils.WriteStringFile(filepath.Join(dir, c.ID.String()+".yml"), c.String()); err != nil {
 		return err
@@ -144,6 +150,7 @@ func (c Config) WriteToFile(dir string) error {
 	return nil
 }
 
+// ReadConfig reads a scraper configuration from a YAML file or directory of YAML files.
 func ReadConfig(configPath string) (*Config, error) {
 	var config Config
 	fileInfo, err := os.Stat(configPath)
@@ -254,6 +261,8 @@ type Field struct {
 
 type ElementLocations []ElementLocation
 
+// UnmarshalYAML handles YAML unmarshalling for ElementLocations, accepting either a single
+// ElementLocation or a list of ElementLocations.
 func (e *ElementLocations) UnmarshalYAML(value *yaml.Node) error {
 	var multi []ElementLocation
 	err := value.Decode(&multi)
@@ -284,6 +293,7 @@ type Filter struct {
 	Match      bool `yaml:"match"`
 }
 
+// FilterMatch checks if a value matches the filter's criteria based on regex or date comparison.
 func (f *Filter) FilterMatch(value interface{}) bool {
 	switch f.Type {
 	case "regex":
@@ -300,6 +310,7 @@ func (f *Filter) FilterMatch(value interface{}) bool {
 	}
 }
 
+// Initialize compiles the filter's regex pattern or parses date comparison expressions.
 func (f *Filter) Initialize(fieldType string) error {
 	if fieldType == "date" {
 		f.Type = "date"
@@ -366,6 +377,7 @@ type ValidationConfig struct {
 	RequiresCTASelector string `yaml:"requires_cta_selector,omitempty"`
 }
 
+// HostSlug extracts and returns a URL slug from the scraper's URL host.
 func (s Scraper) HostSlug() string {
 	host := s.URL[strings.Index(s.URL, "//")+2:]
 	end := strings.Index(host, "/")
@@ -590,6 +602,7 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 	return rets, nil
 }
 
+// cloneHTMLNode creates a deep copy of an HTML node and all its descendants.
 func cloneHTMLNode(n *html.Node) *html.Node {
 	clone := &html.Node{
 		Type:      n.Type,
@@ -608,6 +621,8 @@ func cloneHTMLNode(n *html.Node) *html.Node {
 	return clone
 }
 
+// isDateElement checks if a goquery selection contains date-related text by examining direct
+// text content and immediate children for date patterns.
 func isDateElement(sel *goquery.Selection, s *Scraper) bool {
 	// Get direct text content (not from descendants)
 	// We need to check if THIS element directly contains a date, not if any descendant does
@@ -639,6 +654,7 @@ func isDateElement(sel *goquery.Selection, s *Scraper) bool {
 	return false
 }
 
+// isDescendantOfAny checks if an HTML node is a descendant of any node in the provided ancestor map.
 func isDescendantOfAny(n *html.Node, ancestors map[*html.Node]bool) bool {
 	for p := n.Parent; p != nil; p = p.Parent {
 		if ancestors[p] {
@@ -648,6 +664,8 @@ func isDescendantOfAny(n *html.Node, ancestors map[*html.Node]bool) bool {
 	return false
 }
 
+// scrapeSequential implements the sequential extraction strategy by chunking elements based on
+// date boundaries and extracting fields from each chunk to build records.
 func scrapeSequential(ctx context.Context, c *Config, s *Scraper, parentSel *goquery.Selection, baseURL string, gqdoc *fetch.Document) (output.Records, error) {
 	slog.Info("scrapeSequential()")
 	defer slog.Info("scrapeSequential() returning")
@@ -788,6 +806,8 @@ func scrapeSequential(ctx context.Context, c *Config, s *Scraper, parentSel *goq
 	return rets, nil
 }
 
+// printGQFindDebug prints debug information about CSS selector matching by progressively testing
+// each part of the selector to identify where matching fails.
 func printGQFindDebug(gqdoc *fetch.Document, sel string) {
 	selParts := strings.Split(sel, " > ")
 	fmt.Printf("    starting with selector: %q\n", selParts[0])
@@ -961,6 +981,8 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 // }
 // slog.Debug("in Scraper.GQSelection(), after rawDyn", "currentItem", rs)
 
+// guessYear attempts to assign years to dates without year information by comparing them to
+// reference dates and choosing the year that minimizes the time difference.
 func (c *Scraper) guessYear(recs output.Records, ref time.Time) {
 	// get date field names where we need to adapt the year
 	dateFieldsGuessYear := map[string]bool{}
@@ -1011,6 +1033,8 @@ func (c *Scraper) guessYear(recs output.Records, ref time.Time) {
 	}
 }
 
+// initializeFilters compiles regex patterns and parses date expressions for all filters
+// based on field types.
 func (c *Scraper) initializeFilters() error {
 	// build temporary map field name -> field type
 	fieldTypes := map[string]string{}
@@ -1029,6 +1053,8 @@ func (c *Scraper) initializeFilters() error {
 	return nil
 }
 
+// keepRecord checks if a record passes all filter criteria, returning true if the record
+// should be kept.
 func (c *Scraper) keepRecord(rec output.Record) bool {
 	nrMatchTrue := 0
 	filterMatchTrue := false
@@ -1053,6 +1079,7 @@ func (c *Scraper) keepRecord(rec output.Record) bool {
 	return filterMatchTrue && filterMatchFalse
 }
 
+// removeHiddenFields removes fields marked as hidden from a record.
 func (c *Scraper) removeHiddenFields(rec output.Record) output.Record {
 	for _, f := range c.Fields {
 		if f.Hide {
@@ -1073,6 +1100,7 @@ func (c *Scraper) removeHiddenFields(rec output.Record) output.Record {
 // 	return r
 // }
 
+// GetDetailPageURLFields returns all URL-type fields that can be used to navigate to detail pages.
 func (c *Scraper) GetDetailPageURLFields() []Field {
 	rs := []Field{}
 	for _, f := range c.Fields {
@@ -1087,6 +1115,7 @@ func (c *Scraper) GetDetailPageURLFields() []Field {
 	return rs
 }
 
+// fetchPage fetches the initial page or follows pagination links to retrieve subsequent pages.
 func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI int, currentPageURL, userAgent string, i []*fetch.Interaction) (bool, string, *fetch.Document, error) {
 	// fmt.Println("scrape.Scraper.fetchPage()", "nextPageI", nextPageI, "currentPageURL", currentPageURL)
 	if nextPageI == 0 {
@@ -1162,6 +1191,8 @@ func DebugDateTime(args ...any) { slog.Debug(args[0].(string), args[1:]...) }
 
 // func DebugDateTime(args ...any) { fmt.Println(args...) }
 
+// extractField extracts a single field's value from an HTML selection and stores it in the record,
+// handling different field types (text, url, date) and applying transformations.
 func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.Selection, baseURL string, baseYear int) error {
 	// // Tracing
 	// _, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.ExtractField()"))
@@ -1330,6 +1361,8 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 	return nil
 }
 
+// GetTextStringAndURL extracts text or attribute value from an element and resolves it as a URL
+// relative to the base URL.
 func GetTextStringAndURL(e *ElementLocation, sel *fetch.Selection, baseURL string) (string, *url.URL, error) {
 	// var urlVal, urlRes string
 	baseUU, err := url.Parse(baseURL)
@@ -1356,6 +1389,8 @@ var SkipTag = map[string]bool{
 	"style":    true,
 }
 
+// getTextString extracts text content or attribute values from elements matching the element
+// location, applying regex extraction and length limits.
 func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	slog.Debug("getTextString()", "e", e, "s", sel)
 
@@ -1496,6 +1531,8 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	return r, nil
 }
 
+// extractStringRegex applies regex pattern matching to extract a substring from a string based
+// on the regex configuration.
 func extractStringRegex(rc *RegexConfig, s string) (string, error) {
 	extractedString := s
 	if rc.RegexPattern != "" {
@@ -1521,6 +1558,8 @@ func extractStringRegex(rc *RegexConfig, s string) (string, error) {
 	return extractedString, nil
 }
 
+// transformString applies a transformation to a string based on the transform configuration,
+// currently supporting regex-replace transformations.
 func transformString(t *TransformConfig, s string) (string, error) {
 	extractedString := s
 	switch t.TransformType {
@@ -1540,6 +1579,8 @@ func transformString(t *TransformConfig, s string) (string, error) {
 	return extractedString, nil
 }
 
+// getBaseURL returns the base URL for a page, checking for <base> tags in the HTML or using
+// the page URL as the default.
 func getBaseURL(pageUrl string, gqdoc *fetch.Document) string {
 	// relevant info: https://www.w3.org/TR/WD-html40-970917/htmlweb.html#relative-urls
 	// currently this function does not fully implement the standard
@@ -1550,6 +1591,7 @@ func getBaseURL(pageUrl string, gqdoc *fetch.Document) string {
 	return baseURL
 }
 
+// extractJsonField extracts a value from JSON text using a JSONPath query string.
 func extractJsonField(p string, s string) (string, error) {
 	extractedString := s
 	if p != "" {
@@ -1587,6 +1629,8 @@ var KeepSubURLScheme = map[string]bool{
 	"https": true,
 }
 
+// DetailPages follows URL fields in records to scrape detail pages and merge the extracted
+// data back into the original records.
 func DetailPages(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, recs output.Records, domain string) error {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.DetailPages(%d)", len(recs)))
@@ -1665,6 +1709,8 @@ func DetailPages(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, 
 	return nil
 }
 
+// SubGQDocument scrapes a detail page document and merges the extracted fields into the
+// parent record with field names prefixed by the source field name.
 func SubGQDocument(ctx context.Context, c *Config, s *Scraper, rec output.Record, fname string, gqdoc *fetch.Document) error {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.SubGQDocument(%q)", s.Selector))
@@ -1724,6 +1770,7 @@ func SubGQDocument(ctx context.Context, c *Config, s *Scraper, rec output.Record
 	return nil
 }
 
+// printHTMLNodes returns a debug string representation of HTML nodes showing their data and attributes.
 func printHTMLNodes(ns []*html.Node) string {
 	var r strings.Builder
 	for _, n := range ns {
@@ -1735,6 +1782,8 @@ func printHTMLNodes(ns []*html.Node) string {
 	return r.String()
 }
 
+// printHTMLNodeAsStartTag returns a string representation of an HTML element node as an
+// opening tag with all attributes.
 func printHTMLNodeAsStartTag(n *html.Node) string {
 	if n.Type != html.ElementNode {
 		return ""

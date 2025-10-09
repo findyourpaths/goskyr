@@ -157,6 +157,8 @@ func createSequentialConfig(ctx context.Context, opts ConfigOptions, gqdoc *fetc
 	return seqConfig, seqRecs, nil
 }
 
+// shouldUseSequentialStrategy determines whether the sequential extraction strategy should be used
+// based on the presence of date fields and container-ending selectors.
 func shouldUseSequentialStrategy(gqdoc *fetch.Document, rootSel string, fields []scrape.Field) bool {
 	slog.Info("shouldUseSequentialStrategy() called", "rootSel", rootSel, "len(fields)", len(fields))
 	// Check if we have date fields - a key indicator of sequential records
@@ -200,6 +202,7 @@ func shouldUseSequentialStrategy(gqdoc *fetch.Document, rootSel string, fields [
 	return true
 }
 
+// ConfigOptions contains configuration parameters for scraper generation.
 type ConfigOptions struct {
 	Batch bool
 	// CacheInputDir             string
@@ -221,6 +224,7 @@ type ConfigOptions struct {
 	configPrefix               string
 }
 
+// InitOpts initializes configuration options by parsing the URL and setting up directory paths.
 func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	if len(opts.URL) == 0 {
 		return opts, errors.New("URL cannot be empty")
@@ -248,6 +252,8 @@ func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	return opts, nil
 }
 
+// ConfigurationsForPage generates scraper configurations for a web page by fetching the page
+// from the cache and analyzing its HTML structure.
 func ConfigurationsForPage(ctx context.Context, cache fetch.Cache, opts ConfigOptions) (map[string]*scrape.Config, error) {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, "generate.ConfigurationsForPage")
@@ -289,6 +295,8 @@ func ConfigurationsForPage(ctx context.Context, cache fetch.Cache, opts ConfigOp
 	return ConfigurationsForGQDocument(ctx, cache, opts, gqdoc)
 }
 
+// ConfigurationsForGQDocument generates scraper configurations for a parsed HTML document by trying
+// multiple minimum occurrence thresholds to find repeating patterns.
 func ConfigurationsForGQDocument(ctx context.Context, cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document) (map[string]*scrape.Config, error) {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, "generate.ConfigurationsForGQDocument")
@@ -341,6 +349,8 @@ func ConfigurationsForGQDocument(ctx context.Context, cache fetch.Cache, opts Co
 // 	return ConfigurationsForGQDocumentWithMinOccurrence(opts, gqdoc, minOcc, gqdocsByURL)
 // }
 
+// ConfigurationsForGQDocumentWithMinOccurrence generates scraper configurations using a specific
+// minimum occurrence threshold to identify repeating patterns in the HTML.
 func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document, minOcc int, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	minOccStr := fmt.Sprintf("%02da", minOcc)
 	if opts.configID.Field != "" {
@@ -423,6 +433,8 @@ func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fet
 	return rs, nil
 }
 
+// expandAllPossibleConfigs generates nested and sequential scraper configurations from discovered
+// field locations and recursively explores field clusters to create variant configurations.
 func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache map[string]string, gqdoc *fetch.Document, opts ConfigOptions, clusterID string, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	rootSel := rootSelector.string()
 
@@ -626,6 +638,8 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 	return rs, nil
 }
 
+// ExtendPageConfigsWithNexts extends page configurations by adding records from next pages
+// identified by pagination links.
 func ExtendPageConfigsWithNexts(ctx context.Context, cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) error {
 	gqdoc, _, err := fetch.GetGQDocument(cache, opts.URL)
 	if err != nil {
@@ -646,6 +660,8 @@ func ExtendPageConfigsWithNexts(ctx context.Context, cache fetch.Cache, opts Con
 	return nil
 }
 
+// ExtendPageConfigRecordsWithNext extends a single page configuration with records from the next
+// page by following pagination links and scraping additional records.
 func ExtendPageConfigRecordsWithNext(ctx context.Context, cache fetch.Cache, opts ConfigOptions, pageC *scrape.Config, sel *fetch.Selection) error {
 	// fmt.Printf("looking at %q\n", pageC.ID.String())
 	// fmt.Printf("looking at opts url %q\n", fetch.TrimURLScheme(opts.URL))
@@ -751,6 +767,7 @@ type fieldJoin struct {
 	url   string
 }
 
+// pageJoinsURLs extracts all unique URLs from a map of page joins.
 func pageJoinsURLs(pageJoinsMap map[string][]*pageJoin) []string {
 	us := map[string]bool{}
 	for _, pjs := range pageJoinsMap {
@@ -778,6 +795,8 @@ var KnownDomains = map[string]bool{
 	"dice":      true,
 }
 
+// ConfigurationsForAllDetailPages generates scraper configurations for all detail pages linked
+// from list page configurations by collecting URL fields and generating detail page scrapers.
 func ConfigurationsForAllDetailPages(ctx context.Context, cache fetch.Cache, opts ConfigOptions, pageConfigs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, "generate.ConfigurationsForAllDetailPages")
@@ -1091,6 +1110,8 @@ func ConfigurationsForDetailPages(ctx context.Context, cache fetch.Cache, opts C
 	return rs, nil
 }
 
+// joinPageJoinsGQDocuments fetches and concatenates multiple detail pages into a single HTML
+// document for pattern analysis.
 func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*pageJoin) (*fetch.Document, error) {
 	// Get all URLs appearing in the values of the fields with this name in the parent pages.
 	us := pageJoinsURLs(map[string][]*pageJoin{"": pjs})
@@ -1163,6 +1184,8 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 
 // func joinGQDocuments(opts ConfigOptions, us []string, gqdocsByURL map[string]*fetch.Document) (string, *fetch.Document, error) {
 
+// joinGQDocuments concatenates multiple HTML documents into a single document wrapped in an
+// <htmls> container element.
 func joinGQDocuments(gqdocs []*fetch.Document) (string, *fetch.Document, error) {
 	rs := strings.Builder{}
 	rs.WriteString("<htmls>\n")
