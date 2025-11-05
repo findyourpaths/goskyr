@@ -221,6 +221,7 @@ type ConfigOptions struct {
 	OnlyVaryingFields          bool
 	RenderJS                   bool
 	RequireDates               bool
+	RequireDetailURL           string
 	RequireString              string
 	URL                        string
 	WordsDir                   string

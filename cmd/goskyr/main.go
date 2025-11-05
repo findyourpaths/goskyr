@@ -104,6 +104,7 @@ type GenerateCmd struct {
 	PretrainedModelPath        string `short:"p" long:"pretrained" description:"Use a pre-trained ML model to infer names of extracted fields. Works in combination with the -g flag."`
 	RenderJs                   bool   `short:"r" long:"renderjs" default:true help:"Render JS before generating a configuration file. Works in combination with the -g flag."`
 	RequireDates               bool   `help:"Require a candidate configuration to extract a date for most items in order for it to be generated."`
+	RequireDetailURL           string `help:"Only generate detail page configurations if they include this URL (exact match)."`
 	RequireString              string `help:"Require a candidate configuration to extract the given text in order for it to be generated."`
 	WordsDir                   string `short:"w" default:"word-lists" description:"The directory that contains a number of files containing words of different languages. This is needed for the ML part (use with -e or -b)."`
 }
@@ -137,6 +138,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		OnlyVaryingFields:          cmd.OnlyVaryingFields,
 		RenderJS:                   cmd.RenderJs,
 		RequireDates:               cmd.RequireDates,
+		RequireDetailURL:           cmd.RequireDetailURL,
 		RequireString:              cmd.RequireString,
 		WordsDir:                   cmd.WordsDir,
 	})
