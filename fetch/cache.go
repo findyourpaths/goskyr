@@ -12,10 +12,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/html"
@@ -143,15 +145,31 @@ func (sel *Selection) Find(selector string) *Selection {
 }
 
 func GetGQDocument(cache Cache, u string) (*Document, bool, error) {
+	slog.Debug("[GOSKYR GetGQDocument] Called", "url", u)
 	if ShowCaching {
-		fmt.Println("fetch.GetGQDocument()", "u", u)
+		fmt.Println("fetch.GetGQDocument()", "u", u, "cache", fmt.Sprintf("%T", cache))
 	}
+
+	start := time.Now()
+	slog.Debug("[GOSKYR GetGQDocument] Calling cache.Get()", "url", u)
 	respBytes, ok := cache.Get(u) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*goquery.Document{})
+	cacheElapsed := time.Since(start)
+
+	slog.Debug("[GOSKYR GetGQDocument] cache.Get() returned",
+		"url", u,
+		"found", ok,
+		"elapsed_ms", cacheElapsed.Milliseconds())
 	if !ok {
+		slog.Debug("[GOSKYR GetGQDocument] Not found in cache", "url", u)
 		return nil, false, nil
 	}
+
+	slog.Debug("[GOSKYR GetGQDocument] Converting response bytes", "url", u)
 	r, err := ResponseBytesToGQDocument(respBytes)
 	if err != nil {
+		slog.Error("[GOSKYR GetGQDocument] Error converting response",
+			"url", u,
+			"error", err)
 		return nil, true, err
 	}
 	uu, err := url.Parse(u)
@@ -162,6 +180,7 @@ func GetGQDocument(cache Cache, u string) (*Document, bool, error) {
 	if ShowCaching {
 		fmt.Println("in fetch.GetGQDocument(), returning", "u", u)
 	}
+	slog.Debug("[GOSKYR GetGQDocument] Returning successfully", "url", u)
 	return r, true, nil
 }
 
@@ -192,6 +211,18 @@ type pageResult struct {
 
 func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
 	// func Pages(cache fetch.Cache, us []string, reqFn func(req *client.Request)) ([]*goquery.Document, []error) {
+	// ALWAYS log this critical info for debugging hangs
+	slog.Info("[GOSKYR FETCH] GetGQDocuments called",
+		"synchronized", Synchronized,
+		"url_count", len(us))
+	for i, u := range us {
+		if u != "" {
+			slog.Debug("[GOSKYR FETCH] URL in list",
+				"index", i,
+				"url", u)
+		}
+	}
+
 	rs := make([]*Document, len(us))
 	errs := make([]error, len(us))
 
@@ -212,14 +243,28 @@ func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
 
 		// go func() {
 		fn := func() {
+			start := time.Now()
+			slog.Info("[GOSKYR FETCH] Starting fetch",
+				"index", i,
+				"url", u)
 			gqdoc, _, err := GetGQDocument(cache, u)
+			elapsed := time.Since(start)
 			if err != nil {
+				slog.Error("[GOSKYR FETCH] Error fetching",
+					"index", i,
+					"url", u,
+					"elapsed_ms", elapsed.Milliseconds(),
+					"error", err)
 				if ShowCaching {
 					fmt.Println("in cache.GetGQDocuments(), got error", "i", i, "u", u, "err", err)
 				}
 				results <- &pageResult{index: i, err: err}
 				return
 			}
+			slog.Info("[GOSKYR FETCH] Successfully fetched",
+				"index", i,
+				"url", u,
+				"elapsed_ms", elapsed.Milliseconds())
 			if ShowCaching {
 				fmt.Println("in cache.GetGQDocuments(), got gqdoc", "i", i, "u", u, "gqdoc == nil", gqdoc == nil)
 			}
@@ -227,8 +272,14 @@ func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
 		}
 
 		if Synchronized {
+			slog.Debug("[GOSKYR FETCH] Executing SEQUENTIALLY",
+				"index", i,
+				"synchronized", true)
 			fn()
 		} else {
+			slog.Debug("[GOSKYR FETCH] Launching in GOROUTINE",
+				"index", i,
+				"synchronized", false)
 			go fn()
 		}
 		uCount++

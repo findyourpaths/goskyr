@@ -7,14 +7,14 @@ import (
 )
 
 func InitLogging(ctx context.Context) error {
-	// logLevel := slog.LevelDebug
-	// if InText() {
+	// Default to Info level
 	logLevel := slog.LevelInfo
-	if os.Getenv("DEBUG") != "true" {
+
+	// Enable Debug level if DEBUG env var is set
+	if os.Getenv("DEBUG") == "true" {
 		logLevel = slog.LevelDebug
-		slog.Info("Debug logging enabled.") // Optional: confirm it's working
+		slog.Info("Debug logging enabled.")
 	}
-	// }
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)

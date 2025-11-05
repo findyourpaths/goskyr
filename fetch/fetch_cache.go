@@ -80,3 +80,16 @@ func (c *FetchCache) Set(key string, resp []byte) {
 func (c *FetchCache) Delete(key string) {
 	return
 }
+
+// GetResolvedURL returns the final URL after following redirects.
+// For FetchCache, we fetch the URL and return the final resolved URL.
+func (c *FetchCache) GetResolvedURL(rawURL string) (string, error) {
+	if c.fetcher == nil {
+		return "", fmt.Errorf("fetcher is nil")
+	}
+	urlResp, err := c.fetcher.Fetch(rawURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch URL: %w", err)
+	}
+	return urlResp.ResolvedURL, nil
+}

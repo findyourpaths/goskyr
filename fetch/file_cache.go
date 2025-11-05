@@ -156,3 +156,13 @@ func CacheURLFilebase(dir string, urlStr string) string {
 	}
 	return filepath.Join(dir, uHostSlug, uSlug) + ".html"
 }
+
+// GetResolvedURL returns the final URL after following redirects.
+// For FileCache, we delegate to the fallback cache if available.
+func (c *FileCache) GetResolvedURL(rawURL string) (string, error) {
+	if c.fallback != nil {
+		return c.fallback.GetResolvedURL(rawURL)
+	}
+	// If no fallback, just return the URL as-is (no redirect resolution)
+	return rawURL, nil
+}

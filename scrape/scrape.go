@@ -143,9 +143,11 @@ func (c Config) WriteToFile(dir string) error {
 		return err
 	}
 	if len(c.Records) > 0 {
-		if err := utils.WriteStringFile(filepath.Join(dir, c.ID.String()+".json"), c.Records.String()); err != nil {
+		jsonPath := filepath.Join(dir, c.ID.String()+".json")
+		if err := utils.WriteStringFile(jsonPath, c.Records.String()); err != nil {
 			return err
 		}
+		fmt.Printf("Extracted records to: %s\n", jsonPath)
 	}
 	return nil
 }
@@ -1494,10 +1496,23 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 				}
 			}
 		} else {
-			// WRONG
-			// It could be the case that there are multiple nodes that match the selector
-			// and we don't want the attr of the first node...
-			fieldStrings = append(fieldStrings, fieldSelection.AttrOr(e.Attr, ""))
+			// Extract attribute values from nodes
+			// When allNodes is true, extract attribute from ALL matching nodes
+			// When allNodes is false, extract attribute from only the first matching node
+			if allNodes {
+				for _, node := range fieldSelection.Nodes {
+					attrValue := ""
+					for _, attr := range node.Attr {
+						if attr.Key == e.Attr {
+							attrValue = attr.Val
+							break
+						}
+					}
+					fieldStrings = append(fieldStrings, attrValue)
+				}
+			} else {
+				fieldStrings = append(fieldStrings, fieldSelection.AttrOr(e.Attr, ""))
+			}
 		}
 	}
 	slog.Debug("getTextString() 1", "fieldStrings", fieldStrings)

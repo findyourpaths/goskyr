@@ -23,6 +23,10 @@ import (
 
 var DoPruning = true
 
+// MaxRecursionDepth limits how deep expandAllPossibleConfigs can recurse to prevent
+// exponential explosion on pages with very deep/complex DOM trees
+const MaxRecursionDepth = 10
+
 // addStrategyPrefix adds the strategy prefix ('n' or 's') to the appropriate ID field.
 // For detail pages (Field != ""), it modifies SubID. Otherwise it modifies ID.
 func addStrategyPrefix(configID *scrape.ConfigID, prefix string) {
@@ -286,11 +290,12 @@ func ConfigurationsForPage(ctx context.Context, cache fetch.Cache, opts ConfigOp
 
 	scrape.DebugGQFind = false
 
-	// fmt.Println("cache", cache)
-	// fmt.Println("opts.URL", opts.URL)
 	gqdoc, found, err := fetch.GetGQDocument(cache, opts.URL) //fetchGQDocument(opts, fetch.TrimURLScheme(opts.URL), map[string]*fetch.Document{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get page %s (found: %t): %v", opts.URL, found, err)
+	}
+	if !found || gqdoc == nil {
+		return nil, fmt.Errorf("page not found in cache: %s (this usually means the page failed to fetch - check repository logs for HTTP fetch errors)", opts.URL)
 	}
 	return ConfigurationsForGQDocument(ctx, cache, opts, gqdoc)
 }
@@ -436,10 +441,24 @@ func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fet
 // expandAllPossibleConfigs generates nested and sequential scraper configurations from discovered
 // field locations and recursively explores field clusters to create variant configurations.
 func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache map[string]string, gqdoc *fetch.Document, opts ConfigOptions, clusterID string, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config) (map[string]*scrape.Config, error) {
+	return expandAllPossibleConfigsWithDepth(ctx, cache, exsCache, gqdoc, opts, clusterID, lps, rootSelector, pagProps, rs, 0)
+}
+
+func expandAllPossibleConfigsWithDepth(ctx context.Context, cache fetch.Cache, exsCache map[string]string, gqdoc *fetch.Document, opts ConfigOptions, clusterID string, lps []*locationProps, rootSelector path, pagProps []*locationProps, rs map[string]*scrape.Config, depth int) (map[string]*scrape.Config, error) {
+	// Check recursion depth limit
+	if depth >= MaxRecursionDepth {
+		slog.Warn("expandAllPossibleConfigs hit max recursion depth, stopping",
+			"depth", depth,
+			"max_depth", MaxRecursionDepth,
+			"config_id", opts.configID.String(),
+			"clusters_found_so_far", len(rs))
+		return rs, nil
+	}
+
 	rootSel := rootSelector.string()
 
 	// Tracing
-	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.expandAllPossibleConfigs(%q, %q, %d, %q, %d)", opts.configID.String(), clusterID, len(lps), rootSel, len(pagProps)))
+	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, fmt.Sprintf("generate.expandAllPossibleConfigs(%q, %q, %d, %q, %d, depth:%d)", opts.configID.String(), clusterID, len(lps), rootSel, len(pagProps), depth))
 
 	// Metering
 	status := "unknown"
@@ -471,6 +490,7 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 	addStrategyPrefix(&opts.configID, "n")
 
 	// Logging
+	fmt.Printf("in expandAllPossibleConfigs(), opts.configID: %q\n", opts.configID)
 	if output.WriteSeparateLogFiles && opts.ConfigOutputDir != "" {
 		prevLogger, err := output.SetDefaultLogger(filepath.Join(opts.ConfigOutputDir, opts.configID.String()+"_expandAllPossibleConfigs_log.txt"), slog.LevelDebug)
 		if err != nil {
@@ -626,7 +646,7 @@ func expandAllPossibleConfigs(ctx context.Context, cache fetch.Cache, exsCache m
 		}
 		nextLPs := clusters[clusterID]
 		nextRootSel := clusters[clusterID][0].path[0 : len(rootSelector)+1]
-		rs, err = expandAllPossibleConfigs(ctx, cache, exsCache, gqdoc, nextOpts, clusterID, nextLPs, nextRootSel, pagProps, rs)
+		rs, err = expandAllPossibleConfigsWithDepth(ctx, cache, exsCache, gqdoc, nextOpts, clusterID, nextLPs, nextRootSel, pagProps, rs, depth+1)
 		if err != nil {
 			status = "failed_to_expand"
 			return nil, err
@@ -847,17 +867,32 @@ func ConfigurationsForAllDetailPages(ctx context.Context, cache fetch.Cache, opt
 
 	pageJoinsByFieldName := map[string][]*pageJoin{}
 	fieldURLsByFieldName := map[string][]string{}
+	slog.Info("[DEBUG] ConfigurationsForAllDetailPages() processing page configs", "page_config_count", len(pageConfigs))
 	for _, pageC := range pageConfigs {
 		// pageCIDs = append(pageCIDs, pageC.ID.String())
 		pageS := pageC.Scrapers[0]
+		detailURLFields := pageS.GetDetailPageURLFields()
+		slog.Info("[DEBUG] Processing page config", "config_id", pageC.ID.String(), "detail_url_field_count", len(detailURLFields), "record_count", len(pageC.Records))
 		// fmt.Printf("found %d detail page URL fields\n", len(s.GetDetailPageURLFields()))
-		for _, pageF := range pageS.GetDetailPageURLFields() {
+		for _, pageF := range detailURLFields {
 			pj := &pageJoin{config: pageC}
 			pageJoinsByFieldName[pageF.Name] = append(pageJoinsByFieldName[pageF.Name], pj)
-			for _, pageIM := range pageC.Records {
+			slog.Info("[DEBUG] Processing field", "field_name", pageF.Name, "field_type", pageF.Type)
+			recordsProcessed := 0
+			recordsSkipped := 0
+			for i, pageIM := range pageC.Records {
+				fieldValue := pageIM[pageF.Name]
 				// Not sure why we need this...
-				if pageIM[pageF.Name] == "" {
+				if fieldValue == "" {
+					recordsSkipped++
+					if i < 3 { // Log first 3 skipped records
+						slog.Info("[DEBUG] Skipping record (empty field)", "record_index", i, "field_name", pageF.Name)
+					}
 					continue
+				}
+				recordsProcessed++
+				if recordsProcessed <= 3 { // Log first 3 processed records
+					slog.Info("[DEBUG] Processing record", "record_index", i, "field_name", pageF.Name, "field_value", fieldValue)
 				}
 				fj := &fieldJoin{
 					// pageConfig: pageC

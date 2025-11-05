@@ -369,12 +369,20 @@ func (d *DynamicFetcher) Fetch(urlStr string, opts *FetchOpts) (*URLResponse, er
 		// slog.Warn("DynamicFetcher.Fetch()", "resp", resp)
 	}
 
+	// Safely extract content-type header (may be nil)
+	contentType := ""
+	if ct, ok := resp.Headers["content-type"]; ok && ct != nil {
+		if ctStr, ok := ct.(string); ok {
+			contentType = ctStr
+		}
+	}
+
 	r := &URLResponse{
 		RequestedURL: urlStr,
 		Data:         []byte(body),
 		ResolvedURL:  resURL,
 		StatusCode:   int(resp.Status),
-		ContentType:  resp.Headers["content-type"].(string),
+		ContentType:  contentType,
 	}
 
 	// r.Data = body
