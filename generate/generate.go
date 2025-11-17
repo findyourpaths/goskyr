@@ -809,6 +809,7 @@ func pageJoinsURLs(pageJoinsMap map[string][]*pageJoin) []string {
 
 var BlockedDomains = map[string]bool{
 	"wikipedia": true,
+	"google":    true, // Block Google Calendar "Add to Calendar" links
 }
 
 var KnownDomains = map[string]bool{
@@ -917,6 +918,13 @@ func ConfigurationsForAllDetailPages(ctx context.Context, cache fetch.Cache, opt
 				absStr := relURL.String()
 				if uBase != nil {
 					absStr = uBase.ResolveReference(relURL).String()
+				}
+
+				// Check domain before resolving redirects to avoid wasting time on blocked domains
+				preCheckURL, err := tld.Parse(absStr)
+				if err == nil && BlockedDomains[preCheckURL.Domain] {
+					slog.Debug("skipping URL with blocked domain (pre-check)", "absStr", absStr, "domain", preCheckURL.Domain)
+					continue
 				}
 
 				// Resolve redirects to get final URL

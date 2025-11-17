@@ -87,9 +87,15 @@ func (c *FetchCache) GetResolvedURL(rawURL string) (string, error) {
 	if c.fetcher == nil {
 		return "", fmt.Errorf("fetcher is nil")
 	}
+	if ShowCaching {
+		fmt.Println("[FETCH] FetchCache.GetResolvedURL() FETCHING URL (no cache)", "rawURL", rawURL)
+	}
 	urlResp, err := c.fetcher.Fetch(rawURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch URL: %w", err)
+	}
+	if ShowCaching {
+		fmt.Println("[FETCH] FetchCache.GetResolvedURL() FETCHED", "rawURL", rawURL, "resolved", urlResp.ResolvedURL)
 	}
 	return urlResp.ResolvedURL, nil
 }

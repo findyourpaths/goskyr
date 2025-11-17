@@ -27,9 +27,9 @@ var DoDebug = false
 
 // var DoDebug = true
 
-var ShowCaching = false
+// var ShowCaching = false
 
-// var ShowCaching = true
+var ShowCaching = true
 
 var Synchronized = true
 
