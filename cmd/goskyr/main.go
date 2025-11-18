@@ -97,6 +97,7 @@ type GenerateCmd struct {
 	OnlyKnownDomainDetailPages bool   `default:true help:"Only go to detail pages on the same domain (e.g. follow z.com to y.z.com but not x.com) or a known ticketing domain (e.g. eventbrite.com)."`
 	OnlyVaryingFields          bool   `default:true help:"Only show fields that have varying values across the list of records."`
 	MinOcc                     int    `short:"m" long:"min" help:"The minimum number of records on a page. This is needed to filter out noise. Works in combination with the -g flag."`
+	MinRecords                 int    `long:"min-records" default:"0" help:"Minimum number of records a scraper must produce (0 = no minimum)."`
 	CacheInputParentDir        string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory containing cached copies of the html page and linked pages."`
 	CacheOutputParentDir       string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will receive cached copies of the html page and linked pages."`
 	ConfigOutputParentDir      string `default:"/tmp/goskyr/main/" help:"Parent directory for the directory that will recieve configuration files."`
@@ -118,7 +119,8 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
-	minOccs := []int{3, 5, 10, 20}
+	// minOccs := []int{3, 5, 7, 10, 15, 20, 25, 30}
+	minOccs := []int{15, 20, 25, 30}
 	// minOccs = []int{5}
 	if cmd.MinOcc != 0 {
 		minOccs = []int{cmd.MinOcc}
@@ -132,6 +134,7 @@ func (cmd *GenerateCmd) Run(globals *Globals) error {
 		DoDetailPages:              cmd.DoDetailPages,
 		URL:                        cmd.URL,
 		MinOccs:                    minOccs,
+		MinRecords:                 cmd.MinRecords,
 		ModelName:                  cmd.PretrainedModelPath,
 		Offline:                    cmd.Offline,
 		OnlyKnownDomainDetailPages: cmd.OnlyKnownDomainDetailPages,

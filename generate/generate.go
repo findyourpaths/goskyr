@@ -215,6 +215,7 @@ type ConfigOptions struct {
 	ConfigOutputDir            string
 	DoDetailPages              bool
 	MinOccs                    []int
+	MinRecords                 int
 	ModelName                  string
 	Offline                    bool
 	OnlyKnownDomainDetailPages bool
@@ -344,6 +345,14 @@ func ConfigurationsForGQDocument(ctx context.Context, cache fetch.Cache, opts Co
 	}
 
 	slog.Info("in ConfigurationsForPage()", "len(rs)", len(rs))
+
+	// Warn if MinRecords filter resulted in no configs
+	if opts.MinRecords > 0 && len(rs) == 0 {
+		slog.Warn("No configurations produced at least the required number of records",
+			"min_required", opts.MinRecords,
+			"suggestion", fmt.Sprintf("Try lowering --min-records or check if the page has fewer records than %d", opts.MinRecords))
+	}
+
 	return rs, nil
 }
 
@@ -576,13 +585,21 @@ func expandAllPossibleConfigsWithDepth(ctx context.Context, cache fetch.Cache, e
 		if err != nil {
 			slog.Warn("failed to scrape sequential config, skipping", "opts.configID", opts.configID, "err", err)
 		} else {
-			// Add sequential config to results if it produces unique records
-			seqRecsStr := seqRecs.String()
-			if _, found := rs[seqRecsStr]; !found {
-				rs[seqRecsStr] = seqConfig
-				slog.Info("added sequential config", "id", seqConfig.ID.String())
+			// Check MinRecords before adding sequential config
+			if opts.MinRecords > 0 && len(seqRecs) < opts.MinRecords {
+				slog.Info("sequential config produced too few records, skipping",
+					"id", seqConfig.ID.String(),
+					"records_produced", len(seqRecs),
+					"min_required", opts.MinRecords)
 			} else {
-				slog.Info("sequential config produces duplicate records, skipping", "id", seqConfig.ID.String())
+				// Add sequential config to results if it produces unique records
+				seqRecsStr := seqRecs.String()
+				if _, found := rs[seqRecsStr]; !found {
+					rs[seqRecsStr] = seqConfig
+					slog.Info("added sequential config", "id", seqConfig.ID.String())
+				} else {
+					slog.Info("sequential config produces duplicate records, skipping", "id", seqConfig.ID.String())
+				}
 			}
 		}
 	}
@@ -621,6 +638,16 @@ func expandAllPossibleConfigsWithDepth(ctx context.Context, cache fetch.Cache, e
 			slog.Info("candidate configuration failed to find dates, excluding", "opts.configID", opts.configID)
 			include = false
 		}
+	}
+
+	// Check MinRecords threshold
+	if opts.MinRecords > 0 && len(recs) < opts.MinRecords {
+		slog.Info("candidate configuration produced too few records, excluding",
+			"opts.configID", opts.configID,
+			"records_produced", len(recs),
+			"min_required", opts.MinRecords)
+		include = false
+		status = "failed_min_records"
 	}
 
 	if include {
@@ -1131,8 +1158,16 @@ func ConfigurationsForDetailPages(ctx context.Context, cache fetch.Cache, opts C
 				continue
 			}
 
-			if DoPruning && len(mergedC.Records) < 2 {
-				slog.Info("candidate detail page configuration failed to produce more than one record, pruning", "opts.configID", opts.configID)
+			// Use MinRecords if specified, otherwise default to 2 for detail pages
+			minRecords := 2
+			if opts.MinRecords > 0 {
+				minRecords = opts.MinRecords
+			}
+			if DoPruning && len(mergedC.Records) < minRecords {
+				slog.Info("candidate detail page configuration produced too few records, pruning",
+					"opts.configID", opts.configID,
+					"records_produced", len(mergedC.Records),
+					"min_required", minRecords)
 				continue
 			}
 

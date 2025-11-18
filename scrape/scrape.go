@@ -143,7 +143,7 @@ func (c Config) WriteToFile(dir string) error {
 		return err
 	}
 	if len(c.Records) > 0 {
-		jsonPath := filepath.Join(dir, c.ID.String()+".json")
+		jsonPath := filepath.Join(dir, fmt.Sprintf("%s_%d.json", c.ID.String(), len(c.Records)))
 		if err := utils.WriteStringFile(jsonPath, c.Records.String()); err != nil {
 			return err
 		}
@@ -362,17 +362,17 @@ type Paginator struct {
 // A Scraper contains all the necessary config parameters and structs needed
 // to extract the desired information from a website
 type Scraper struct {
-	Interaction         []*fetch.Interaction `yaml:"interaction,omitempty"`
-	Name                string               `yaml:"name"`
-	PageLoadWait        int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
-	RenderJs            bool                 `yaml:"render_js,omitempty"`
-	Selector            string               `yaml:"selector"`
-	Strategy            string               `yaml:"strategy,omitempty"` // "nested" (default) or "sequential"
-	URL                 string               `yaml:"url"`
-	Validation          *ValidationConfig    `yaml:"validation,omitempty"`
-	Fields              []Field              `yaml:"fields,omitempty"`
-	Filters             []*Filter            `yaml:"filters,omitempty"`
-	Paginators          []Paginator          `yaml:"paginators,omitempty"`
+	Interaction  []*fetch.Interaction `yaml:"interaction,omitempty"`
+	Name         string               `yaml:"name"`
+	PageLoadWait int                  `yaml:"page_load_wait,omitempty"` // milliseconds. Only taken into account when render_js = true
+	RenderJs     bool                 `yaml:"render_js,omitempty"`
+	Selector     string               `yaml:"selector"`
+	Strategy     string               `yaml:"strategy,omitempty"` // "nested" (default) or "sequential"
+	URL          string               `yaml:"url"`
+	Validation   *ValidationConfig    `yaml:"validation,omitempty"`
+	Fields       []Field              `yaml:"fields,omitempty"`
+	Filters      []*Filter            `yaml:"filters,omitempty"`
+	Paginators   []Paginator          `yaml:"paginators,omitempty"`
 }
 
 type ValidationConfig struct {
