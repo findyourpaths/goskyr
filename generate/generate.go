@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -258,6 +259,28 @@ func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	return opts, nil
 }
 
+// logNonDefaultConfigOptions logs all ConfigOptions fields that have non-default values.
+func logNonDefaultConfigOptions(opts ConfigOptions) {
+	v := reflect.ValueOf(opts)
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+
+		// Skip unexported fields
+		if !fieldType.IsExported() {
+			continue
+		}
+
+		// Log field if it has a non-default value
+		if !field.IsZero() {
+			// slog.Info("ConfigOption", fieldType.Name, field.Interface())
+			fmt.Println("ConfigOption", fieldType.Name, field.Interface())
+		}
+	}
+}
+
 // ConfigurationsForPage generates scraper configurations for a web page by fetching the page
 // from the cache and analyzing its HTML structure.
 func ConfigurationsForPage(ctx context.Context, cache fetch.Cache, opts ConfigOptions) (map[string]*scrape.Config, error) {
@@ -324,6 +347,7 @@ func ConfigurationsForGQDocument(ctx context.Context, cache fetch.Cache, opts Co
 	}()
 
 	// Logging
+	logNonDefaultConfigOptions(opts)
 
 	// cims := map[string]*scrape.Config{}
 	// fmt.Println("in ConfigurationsForGQDocument()", "cims == nil", cims == nil)
