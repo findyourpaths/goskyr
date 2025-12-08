@@ -43,6 +43,17 @@ var DebugGQFind = true
 
 // var DebugGQFind = false
 
+// ASCII separator characters for unambiguous field/record delimiting.
+// These never appear in HTML content, unlike \n and \t.
+const (
+	// UnitSeparator separates siblings within a single matched element (entire_subtree).
+	UnitSeparator = "\x1f"
+	// RecordSeparator separates values from multiple matched elements (all_nodes).
+	RecordSeparator = "\x1e"
+	// GroupSeparator reserved for future use (groups of records).
+	GroupSeparator = "\x1d"
+)
+
 // FieldPartSeparator is used to join multiple parts when extracting field values.
 // Using newline preserves text structure and helps with date parsing.
 var FieldPartSeparator = "\n"
@@ -219,7 +230,8 @@ type ElementLocation struct {
 	MaxLength     int         `yaml:"max_length,omitempty"`
 	EntireSubtree bool        `yaml:"entire_subtree,omitempty"`
 	AllNodes      bool        `yaml:"all_nodes,omitempty"`
-	Separator     string      `yaml:"separator,omitempty"`
+	Separator     string      `yaml:"separator,omitempty"`      // Intra-node sibling separator (default: \x1F)
+	NodeSeparator string      `yaml:"node_separator,omitempty"` // Inter-node separator (default: \x1E)
 }
 
 // TransformConfig is used to replace an existing substring with some other
@@ -1380,7 +1392,12 @@ func GetTextStringAndURL(e *ElementLocation, sel *fetch.Selection, baseURL strin
 	if err != nil {
 		return "", nil, err
 	}
-	uu, err := baseUU.Parse(relU)
+	// If multiple URLs were matched (concatenated with RecordSeparator), use only the first one for parsing
+	relUForParsing := relU
+	if idx := strings.Index(relU, RecordSeparator); idx != -1 {
+		relUForParsing = relU[:idx]
+	}
+	uu, err := baseUU.Parse(relUForParsing)
 	// fmt.Println("in GetTextStringAndURL()", "baseUU", baseUU, "relU", relU, "uu", uu)
 	return relU, uu, err
 }
@@ -1429,10 +1446,10 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 		if e.Attr == "" {
 			if entireSubtree {
 				// Separator between text from different element children.
-				// Default to tab to distinguish from newlines in content.
+				// Default to ASCII Unit Separator (never appears in HTML content).
 				subtreeSeparator := e.Separator
 				if subtreeSeparator == "" {
-					subtreeSeparator = "\t"
+					subtreeSeparator = UnitSeparator
 				}
 
 				// copied from https://github.com/PuerkitoBio/goquery/blob/v1.8.0/property.go#L62
@@ -1552,7 +1569,13 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	for i, f := range fieldStrings {
 		fieldStrings[i] = utils.ShortenString(f, e.MaxLength)
 	}
-	r := strings.Join(fieldStrings, "\n") // e.Separator)
+	// Separator between values from multiple matched nodes.
+	// Default to ASCII Record Separator (never appears in HTML content).
+	nodeSeparator := e.NodeSeparator
+	if nodeSeparator == "" {
+		nodeSeparator = RecordSeparator
+	}
+	r := strings.Join(fieldStrings, nodeSeparator)
 	slog.Debug("getTextString(), returning", "r", r)
 	return r, nil
 }

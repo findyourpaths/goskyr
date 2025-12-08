@@ -283,7 +283,8 @@ func TestExtractFieldText(t *testing.T) {
 	if v, ok := event["title"]; !ok {
 		t.Fatal("event doesn't contain the expected title field")
 	} else {
-		expected := "Final Story\nMoment Of Madness\nIrony of Fate"
+		// ASCII Record Separator (\x1e) between multiple matched nodes
+		expected := "Final Story\x1eMoment Of Madness\x1eIrony of Fate"
 		if v != expected {
 			t.Fatalf("expected '%s' for title but got '%s'", expected, v)
 		}
@@ -313,13 +314,13 @@ func TestExtractFieldTextEntireSubtree(t *testing.T) {
 	if v, ok := event["title"]; !ok {
 		t.Fatal("event doesn't contain the expected title field")
 	} else {
-		// Tab separators are inserted between sibling elements in entire_subtree mode
-		expected := "Final Story\t" + `
-                                                    Aargau
-Moment Of Madness` + "\t" + `
-                                                    Basel
-Irony of Fate` + "\t" + `
-                                                    Bern`
+		// ASCII Unit Separator (\x1f) between sibling elements in entire_subtree mode
+		// ASCII Record Separator (\x1e) between multiple matched nodes
+		// Note: \x1f appears after each element sibling (including the last one before \x1e)
+		expected := "Final Story\x1f" + `
+                                                    Aargau` + "\x1f\x1e" + `Moment Of Madness` + "\x1f" + `
+                                                    Basel` + "\x1f\x1e" + `Irony of Fate` + "\x1f" + `
+                                                    Bern` + "\x1f"
 		if v != expected {
 			t.Fatalf("expected '%s' for title but got '%s'", expected, v)
 		}
@@ -350,7 +351,8 @@ func TestExtractFieldTextAllNodes(t *testing.T) {
 	if v, ok := event["title"]; !ok {
 		t.Fatal("event doesn't contain the expected title field")
 	} else {
-		expected := "Final Story\nMoment Of Madness\nIrony of Fate"
+		// ASCII Record Separator (\x1e) between multiple matched nodes (all_nodes mode)
+		expected := "Final Story\x1eMoment Of Madness\x1eIrony of Fate"
 		if v != expected {
 			t.Fatalf("expected '%s' for title but got '%s'", expected, v)
 		}

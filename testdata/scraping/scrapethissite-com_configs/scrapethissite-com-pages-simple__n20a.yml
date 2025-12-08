@@ -1,38 +1,47 @@
 id:
     slug: scrapethissite-com-pages-simple
-    id: 20a
+    id: n20a
     field: ""
     subid: ""
 scrapers:
-    - name: scrapethissite-com-pages-simple__20a
-      url: https://www.scrapethissite.com/pages/simple
+    - name: scrapethissite-com-pages-simple__n20a
+      render_js: true
       selector: body > div > section > div.container > div.row > div.col-md-4.country
+      url: https://www.scrapethissite.com/pages/simple
       fields:
         - name: F4a72abfd--0
           type: text
           location:
             - selector: div.country-info > strong
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: F4b66d070--0
           type: text
           location:
             - selector: div.country-info > span.country-area
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: F53eebc28--0
           type: text
           location:
             - selector: div.country-info > span.country-population
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: F9a2a5663--0
           type: text
           location:
             - selector: div.country-info > span.country-capital
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: Ffd69cf0e--2
           type: text
           location:
             - selector: h3.country-name
-              child_index: 2
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
-      render_js: true
 records: []

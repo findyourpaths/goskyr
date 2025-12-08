@@ -1,38 +1,48 @@
 id:
     slug: realpython-github-io-fake-jobs
-    id: 20a
+    id: n20a
     field: ""
     subid: ""
 scrapers:
-    - name: realpython-github-io-fake-jobs__20a
-      url: https://realpython.github.io/fake-jobs
+    - name: realpython-github-io-fake-jobs__n20a
+      render_js: true
       selector: body > section.section > div.container > div.columns.is-multiline > div.column.is-half > div.card > div.card-content
+      url: https://realpython.github.io/fake-jobs
       fields:
         - name: Ffee3e7f9-href-0
           type: url
           location:
             - selector: footer.card-footer > a.card-footer-item
               attr: href
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: F1647d85c--0
           type: text
           location:
             - selector: div.media > div.media-content > h2.is-5.title
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: Fbf7d68fd--0
           type: text
           location:
             - selector: div.media > div.media-content > h3.company.is-6.subtitle
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: Fec2ce28c--0
           type: text
           location:
             - selector: div.content > p.location
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
         - name: Ffee3e7f9--0
           type: text
           location:
             - selector: footer.card-footer > a.card-footer-item
+              entire_subtree: true
+              all_nodes: true
           can_be_empty: true
-      render_js: true
 records: []

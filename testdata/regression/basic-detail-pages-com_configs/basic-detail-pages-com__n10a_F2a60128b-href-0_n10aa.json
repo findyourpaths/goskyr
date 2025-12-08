@@ -7,7 +7,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/alice-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Anaheim CA 92805",
     "F2a60128b-href-0__F21de3337--0": "123 Alder St",
-    "Fa5ccda70--0": "Alice\nAddress"
+    "Fa5ccda70--0": "Alice\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -17,7 +17,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/bob-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Berkeley CA 94704",
     "F2a60128b-href-0__F21de3337--0": "123 Bay St",
-    "Fa5ccda70--0": "Bob\nAddress"
+    "Fa5ccda70--0": "Bob\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -27,7 +27,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/carol-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Clovis CA USA 93612",
     "F2a60128b-href-0__F21de3337--0": "123 Cottonwood St",
-    "Fa5ccda70--0": "Carol\nAddress"
+    "Fa5ccda70--0": "Carol\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -37,7 +37,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/dan-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Davis CA 95616",
     "F2a60128b-href-0__F21de3337--0": "123 Dogwood St",
-    "Fa5ccda70--0": "Dan\nAddress"
+    "Fa5ccda70--0": "Dan\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -47,7 +47,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/eve-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Escondido CA 92027",
     "F2a60128b-href-0__F21de3337--0": "123 Elderberry St",
-    "Fa5ccda70--0": "Eve\nAddress"
+    "Fa5ccda70--0": "Eve\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -57,7 +57,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/frank-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Fresno CA USA 93721",
     "F2a60128b-href-0__F21de3337--0": "123 Fig St",
-    "Fa5ccda70--0": "Frank\nAddress"
+    "Fa5ccda70--0": "Frank\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -67,7 +67,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/grace-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Glendale CA USA 91202",
     "F2a60128b-href-0__F21de3337--0": "123 Gooseberry St",
-    "Fa5ccda70--0": "Grace\nAddress"
+    "Fa5ccda70--0": "Grace\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -77,7 +77,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/heidi-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Hayward CA USA 94541",
     "F2a60128b-href-0__F21de3337--0": "123 Hawthorn St",
-    "Fa5ccda70--0": "Heidi\nAddress"
+    "Fa5ccda70--0": "Heidi\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -87,7 +87,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/ivan-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Irvine CA USA 92618",
     "F2a60128b-href-0__F21de3337--0": "123 Ironwood St",
-    "Fa5ccda70--0": "Ivan\nAddress"
+    "Fa5ccda70--0": "Ivan\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -97,7 +97,7 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/judy-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Jurupa Valley CA USA 92509",
     "F2a60128b-href-0__F21de3337--0": "123 Juniper St",
-    "Fa5ccda70--0": "Judy\nAddress"
+    "Fa5ccda70--0": "Judy\u001eAddress"
   },
   {
     "Atitle": "Wypipo",
@@ -107,6 +107,6 @@
     "F2a60128b-href-0__Aurl": "https://basic-detail-pages.com/kate-address",
     "F2a60128b-href-0__F14fd4c6e--0": "Kingsburg CA USA 93631",
     "F2a60128b-href-0__F21de3337--0": "123 Kingnut St",
-    "Fa5ccda70--0": "Kate\nAddress"
+    "Fa5ccda70--0": "Kate\u001eAddress"
   }
 ]
