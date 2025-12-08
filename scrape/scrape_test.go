@@ -313,11 +313,12 @@ func TestExtractFieldTextEntireSubtree(t *testing.T) {
 	if v, ok := event["title"]; !ok {
 		t.Fatal("event doesn't contain the expected title field")
 	} else {
-		expected := `Final Story
+		// Tab separators are inserted between sibling elements in entire_subtree mode
+		expected := "Final Story\t" + `
                                                     Aargau
-Moment Of Madness
+Moment Of Madness` + "\t" + `
                                                     Basel
-Irony of Fate
+Irony of Fate` + "\t" + `
                                                     Bern`
 		if v != expected {
 			t.Fatalf("expected '%s' for title but got '%s'", expected, v)

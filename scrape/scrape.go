@@ -1428,6 +1428,13 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	if len(fieldSelection.Nodes) > 0 {
 		if e.Attr == "" {
 			if entireSubtree {
+				// Separator between text from different element children.
+				// Default to tab to distinguish from newlines in content.
+				subtreeSeparator := e.Separator
+				if subtreeSeparator == "" {
+					subtreeSeparator = "\t"
+				}
+
 				// copied from https://github.com/PuerkitoBio/goquery/blob/v1.8.0/property.go#L62
 				var buf bytes.Buffer
 				var f func(*html.Node)
@@ -1443,6 +1450,10 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 					if n.FirstChild != nil {
 						for c := n.FirstChild; c != nil; c = c.NextSibling {
 							f(c)
+							// Add separator between element siblings to preserve structure
+							if c.Type == html.ElementNode && c.NextSibling != nil {
+								buf.WriteString(subtreeSeparator)
+							}
 						}
 					}
 				}
