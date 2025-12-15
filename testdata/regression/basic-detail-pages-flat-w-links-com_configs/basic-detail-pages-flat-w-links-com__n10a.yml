@@ -14,18 +14,15 @@ scrapers:
           location:
             - selector: span.a-3x > a
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F5af81126--0
           type: date_time_tz_ranges
           location:
             - selector: span.a-3y
-              entire_subtree: true
               all_nodes: true
         - name: Fd92b94e1--0
           type: text
           location:
             - selector: span.a-3n
-              entire_subtree: true
               all_nodes: true
 records: []

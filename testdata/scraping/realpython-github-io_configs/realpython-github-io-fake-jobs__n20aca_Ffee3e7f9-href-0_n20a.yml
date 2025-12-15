@@ -13,7 +13,6 @@ scrapers:
           type: url
           location:
             - attr: href
-              entire_subtree: true
               all_nodes: true
         - name: Ffee3e7f9--0
           type: text
@@ -30,61 +29,51 @@ scrapers:
           location:
             - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.border.sidebar-module.sidebar-module-inset > a.badge.badge-light.text-muted
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F5ee88802-href-0
           type: url
           location:
             - selector: div.container.main-content > div.row > div.col-12.col-lg-4.col-md-6.mb-5 > div.border-0.card > div.card-body.m-0.mt-2.p-0 > p.card-text.small.text-muted.text-truncate > a.badge.badge-light.text-muted
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F2cb76ac--0
           type: text
           location:
             - selector: section.section > div.container > div.columns.is-multiline > div.box > h1.is-2.title
-              entire_subtree: true
               all_nodes: true
         - name: F5ee88802--0
           type: text
           location:
             - selector: div.container.main-content > div.row > div.col-12.col-lg-4.col-md-6.mb-5 > div.border-0.card > div.card-body.m-0.mt-2.p-0 > p.card-text.small.text-muted.text-truncate > a.badge.badge-light.text-muted
-              entire_subtree: true
               all_nodes: true
         - name: F70e76b46--0
           type: text
           location:
             - selector: section.section > div.container > div.columns.is-multiline > div.box > div.content > p
-              entire_subtree: true
               all_nodes: true
         - name: F70e76b46--1
           type: date_time_tz_ranges
           location:
             - selector: section.section > div.container > div.columns.is-multiline > div.box > div.content > p
-              entire_subtree: true
               all_nodes: true
         - name: Fd179bb67--0
           type: text
           location:
             - selector: title
-              entire_subtree: true
               all_nodes: true
         - name: Ff1f2f0c9--0
           type: text
           location:
             - selector: section.section > div.container > div.columns.is-multiline > div.box > h2.company.is-4.subtitle
-              entire_subtree: true
               all_nodes: true
         - name: Ff4a7b118--0
           type: text
           location:
             - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.border.sidebar-module.sidebar-module-inset > a.badge.badge-light.text-muted
-              entire_subtree: true
               all_nodes: true
         - name: Ffddfd25e--0
           type: text
           location:
             - selector: section.section > div.container > div.columns.is-multiline > div.box > div.content > p > strong
-              entire_subtree: true
               all_nodes: true
 records: []

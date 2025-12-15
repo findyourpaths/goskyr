@@ -14,31 +14,26 @@ scrapers:
           location:
             - selector: div.tags > a.tag
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F9b402b22-href-0
           type: url
           location:
             - selector: span > a
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F19e3ed34--0
           type: text
           location:
             - selector: div.tags > a.tag
-              entire_subtree: true
               all_nodes: true
         - name: F4508ef81--0
           type: text
           location:
             - selector: span > small.author
-              entire_subtree: true
               all_nodes: true
         - name: Ff659bb6c--0
           type: text
           location:
             - selector: span.text
-              entire_subtree: true
               all_nodes: true
 records: []

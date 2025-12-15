@@ -14,13 +14,11 @@ scrapers:
           location:
             - selector: div > a
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: Fa5ccda70--0
           type: text
           location:
             - selector: div
-              entire_subtree: true
               all_nodes: true
     - name: basic-detail-pages-com__F2a60128b-href-0_n10aa
       render_js: true
@@ -31,12 +29,10 @@ scrapers:
           type: text
           location:
             - selector: div.x-1.y-1 > div.x-2.y-2 > div.city
-              entire_subtree: true
               all_nodes: true
         - name: F21de3337--0
           type: text
           location:
             - selector: div.x-1.y-1 > div.x-2.y-2 > div.street
-              entire_subtree: true
               all_nodes: true
 records: []

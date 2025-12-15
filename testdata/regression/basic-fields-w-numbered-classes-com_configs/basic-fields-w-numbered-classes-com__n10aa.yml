@@ -20,7 +20,6 @@ scrapers:
           location:
             - selector: a
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F91a2c1be--0
           type: text

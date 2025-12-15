@@ -14,32 +14,27 @@ scrapers:
           location:
             - selector: div.tags > a.tag
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F9b402b22-href-0
           type: url
           location:
             - selector: span > a
               attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F19e3ed34--0
           type: text
           location:
             - selector: div.tags > a.tag
-              entire_subtree: true
               all_nodes: true
         - name: F4508ef81--0
           type: text
           location:
             - selector: span > small.author
-              entire_subtree: true
               all_nodes: true
         - name: Ff659bb6c--0
           type: text
           location:
             - selector: span.text
-              entire_subtree: true
               all_nodes: true
     - name: quotes-toscrape-com__F9b402b22-href-0_n05a
       render_js: true
@@ -50,30 +45,25 @@ scrapers:
           type: date_time_tz_ranges
           location:
             - selector: p > span.author-born-date
-              entire_subtree: true
               all_nodes: true
         - name: F50c6f8d1--0
           type: text
           location:
             - selector: div.author-description
-              entire_subtree: true
               all_nodes: true
         - name: F6395568a--0
           type: text
           location:
             - selector: h3.author-title
-              entire_subtree: true
               all_nodes: true
         - name: Fa99e1b18--0
           type: text
           location:
             - selector: p > span.author-born-location
-              entire_subtree: true
               all_nodes: true
         - name: Fd0a1d96f--0
           type: text
           location:
             - selector: p > strong
-              entire_subtree: true
               all_nodes: true
 records: []

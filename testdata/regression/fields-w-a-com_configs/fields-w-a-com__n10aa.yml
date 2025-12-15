@@ -13,25 +13,21 @@ scrapers:
           type: url
           location:
             - attr: href
-              entire_subtree: true
               all_nodes: true
         - name: F3f1f79ab-src-0
           type: url
           location:
             - selector: img.SFcrdlgo.SFcrdlgt
               attr: src
-              entire_subtree: true
               all_nodes: true
         - name: F55c24925--0
           type: text
           location:
             - selector: div.SFcrdtxt > div.SFcrdnam > strong
-              entire_subtree: true
               all_nodes: true
         - name: Fa0510f1--0
           type: text
           location:
             - selector: div.SFcrdtxt > div.SFcrdctc > strong
-              entire_subtree: true
               all_nodes: true
 records: []

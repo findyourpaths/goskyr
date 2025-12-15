@@ -415,12 +415,11 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 		// slog.Debug("in processFields()", "e.path", e.path.string())
 		// slog.Debug("in processFields()", "e.path[len(rootSelector):]", e.path[len(rootSelector):].string())
 		fLoc := scrape.ElementLocation{
-			Selector:      lp.path[len(rootSelector):].string(),
-			// Don't set ChildIndex when using EntireSubtree - they're incompatible
-			// ChildIndex:    lp.textIndex,
-			Attr:          lp.attr,
-			AllNodes:      true,
-			EntireSubtree: true,
+			Selector: lp.path[len(rootSelector):].string(),
+			// Don't set ChildIndex - it's incompatible with the default EntireSubtree behavior
+			// ChildIndex: lp.textIndex,
+			Attr: lp.attr,
+			// EntireSubtree and AllNodes default to true at runtime (see getTextString)
 		}
 		fName := lp.name
 		fType := "text"
