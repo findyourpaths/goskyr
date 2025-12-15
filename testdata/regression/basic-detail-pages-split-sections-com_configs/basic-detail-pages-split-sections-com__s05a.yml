@@ -18,14 +18,12 @@ scrapers:
             - selector: div.event-info > div > span.name
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F33c1d6a0--0
           type: text
           location:
             - selector: div.event-desc > div > span.description
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fd8135b41-href-0
           type: url
           location:
@@ -33,12 +31,10 @@ scrapers:
               attr: href
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fd8fb049e--0
           type: date_time_tz_ranges
           location:
             - selector: div.event-info > div > span.date
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
 records: []

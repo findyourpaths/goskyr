@@ -16,7 +16,6 @@ scrapers:
               attr: src
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fce5e86a-href-0
           type: url
           location:
@@ -24,7 +23,6 @@ scrapers:
               attr: href
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fd88b1752-href-0
           type: url
           location:
@@ -32,19 +30,16 @@ scrapers:
               attr: href
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F91447a94--0
           type: text
           location:
             - selector: article.product_pod > div.product_price > p.price_color
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fce5e86a--0
           type: text
           location:
             - selector: article.product_pod > h3 > a
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
 records: []

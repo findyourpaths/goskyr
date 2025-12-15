@@ -28,7 +28,7 @@ var testsByHostSlugByCategory = map[string]map[string][]maintest{
 		"basic-detail-pages-w-links-com":  []maintest{{url: "https://basic-detail-pages-w-links.com"}},
 		"basic-detail-pages-w-static-com": []maintest{{url: "https://basic-detail-pages-w-static.com"}},
 
-		"basic-detail-pages-flat-w-links-com": []maintest{{url: "https://basic-detail-pages-flat-w-links.com"}},
+		"basic-detail-pages-flat-w-links-com":   []maintest{{url: "https://basic-detail-pages-flat-w-links.com"}},
 		"basic-detail-pages-split-sections-com": []maintest{{url: "https://basic-detail-pages-split-sections.com"}},
 
 		"basic-field-com":       []maintest{{url: "https://basic-field.com"}},
@@ -39,6 +39,7 @@ var testsByHostSlugByCategory = map[string]map[string][]maintest{
 		"basic-fields-w-div-w-link-div-com": []maintest{{url: "https://basic-fields-w-div-w-link-div.com"}},
 		"basic-fields-w-link-com":           []maintest{{url: "https://basic-fields-w-link.com"}},
 		"basic-fields-w-link-div-com":       []maintest{{url: "https://basic-fields-w-link-div.com"}},
+		// "basic-fields-w-numbered-classes-com": []maintest{{url: "https://basic-fields-w-numbered-classes.com"}},
 		"basic-fields-w-style-com":          []maintest{{url: "https://basic-fields-w-style.com"}},
 		"basic-fields-w-table-com":          []maintest{{url: "https://basic-fields-w-table.com"}},
 		"basic-fields-w-table-in-table-com": []maintest{{url: "https://basic-fields-w-table-in-table.com"}},
@@ -51,15 +52,15 @@ var testsByHostSlugByCategory = map[string]map[string][]maintest{
 		"real-table-w-extra-rows-com": []maintest{{url: "https://real-table-w-extra-rows.com"}},
 	},
 
-	// "scraping": {
-	// 	"books-toscrape-com":   []maintest{{url: "https://books.toscrape.com", required: "Soumission"}},
-	// 	"quotes-toscrape-com":  []maintest{{url: "https://quotes.toscrape.com", required: "Imperfection"}},
-	// 	"realpython-github-io": []maintest{{url: "https://realpython.github.io/fake-jobs"}},
-	// 	"webscraper-io":        []maintest{{url: "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", required: "Android"}},
-	// 	"scrapethissite-com": []maintest{
-	// 		{url: "https://www.scrapethissite.com/pages/forms"},
-	// 		{url: "https://www.scrapethissite.com/pages/simple"}},
-	// },
+	"scraping": {
+		"books-toscrape-com":   []maintest{{url: "https://books.toscrape.com", required: "Soumission"}},
+		"quotes-toscrape-com":  []maintest{{url: "https://quotes.toscrape.com", required: "Imperfection"}},
+		"realpython-github-io": []maintest{{url: "https://realpython.github.io/fake-jobs"}},
+		"webscraper-io":        []maintest{{url: "https://webscraper.io/test-sites/e-commerce/allinone/computers/tablets", required: "Android"}},
+		"scrapethissite-com": []maintest{
+			{url: "https://www.scrapethissite.com/pages/forms"},
+			{url: "https://www.scrapethissite.com/pages/simple"}},
+	},
 }
 
 func sortedTestCategories() []string {

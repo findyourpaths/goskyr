@@ -1,6 +1,11 @@
 PACKAGE_NAME          := github.com/findyourpaths/goskyr
 GOLANG_CROSS_VERSION  ?= v1.22
 
+.PHONY: test
+test:
+	rm -rf /tmp/goskyr
+	time go test -v ./...
+
 .PHONY: release-dry-run
 release-dry-run:
 	@docker run \

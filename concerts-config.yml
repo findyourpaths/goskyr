@@ -58,7 +58,6 @@ scrapers:
       - name: "comment"
         location:
           selector: ".qt-the-content div"
-        can_be_empty: true
         on_detail_page: "url"
       - name: "url"
         type: "url"
@@ -124,7 +123,6 @@ scrapers:
         location:
           selector: ".node-type-event__title h2 a span"
       - name: "comment"
-        can_be_empty: true
         location:
           selector: ".location-list li"
       - name: "url"
@@ -191,7 +189,6 @@ scrapers:
       - name: "comment"
         location:
           selector: ".calendar-item__intro p"
-        can_be_empty: true
       - name: "url"
         type: "url"
         location:
@@ -401,7 +398,6 @@ scrapers:
           selector: ".event-detail__content div p"
           max_length: 200
         on_detail_page: "url"
-        can_be_empty: true
       - name: "url"
         type: "url"
         location:
@@ -439,7 +435,6 @@ scrapers:
         location:
           selector: ".concertStyleNew .concertDetails"
         on_detail_page: "url"
-        can_be_empty: true
       - name: "url"
         type: "url"
         location:

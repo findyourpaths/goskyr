@@ -264,7 +264,7 @@ type Field struct {
 	// contain a field name of a field of type 'url' that is located on the main
 	// page.
 	OnDetailPage string            `yaml:"on_detail_page,omitempty"` // applies to text, url, date
-	CanBeEmpty   bool              `yaml:"can_be_empty,omitempty"`   // applies to text, url
+	Required     bool              `yaml:"required,omitempty"`       // applies to text, url - if true, skip record when field is empty
 	Components   []DateComponent   `yaml:"components,omitempty"`     // applies to date
 	DateLocation string            `yaml:"date_location,omitempty"`  // applies to date
 	DateLanguage string            `yaml:"date_language,omitempty"`  // applies to date
@@ -596,6 +596,14 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 		r, err := GQSelection(ctx, c, s, fetch.NewSelection(sel), baseURL)
 		if err != nil {
 			slog.Warn("while scraping document got error", "baseUrl", baseURL, "err", err.Error())
+			// Include record with error for downstream processing (even if empty)
+			if r == nil {
+				r = make(output.Record)
+			}
+			r[URLFieldName] = baseURL
+			r[TitleFieldName] = gqdoc.Find("title").Text()
+			r["_error"] = err.Error()
+			rets = append(rets, r)
 			return
 		}
 		if len(r) == 0 {
@@ -1253,9 +1261,9 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 		if t == "" {
 			// if the extracted value is an empty string assign the default value
 			t = f.Default
-			if !f.CanBeEmpty && t == "" {
-				// if it's still empty and must not be empty return an error
-				return fmt.Errorf("field %s cannot be empty", f.Name)
+			if f.Required && t == "" {
+				// if it's still empty and is required, return an error
+				return fmt.Errorf("field %s is required but empty", f.Name)
 			}
 		}
 		// transform the string if required
@@ -1282,9 +1290,9 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 		if u == "" {
 			// if the extracted value is an empty string assign the default value
 			u = f.Default
-			if !f.CanBeEmpty && u == "" {
-				// if it's still empty and must not be empty return an error
-				return fmt.Errorf("field %s cannot be empty", f.Name)
+			if f.Required && u == "" {
+				// if it's still empty and is required, return an error
+				return fmt.Errorf("field %s is required but empty", f.Name)
 			}
 		}
 		// fmt.Println("in extractFieldURL()", "f.Name+URLFieldSuffix", f.Name+URLFieldSuffix, "uu", uu, "u", u)

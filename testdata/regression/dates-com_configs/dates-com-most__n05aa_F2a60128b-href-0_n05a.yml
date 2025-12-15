@@ -12,12 +12,10 @@ scrapers:
           type: url
           location:
             - attr: href
-          can_be_empty: true
         - name: F2a60128b--0
           type: date_time_tz_ranges
           location:
             - {}
-          can_be_empty: true
       render_js: true
     - name: dates-com-most__F2a60128b-href-0_05a
       url: https://dates.com/most
@@ -27,16 +25,13 @@ scrapers:
           type: text
           location:
             - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div.name
-          can_be_empty: true
         - name: F93387920--0
           type: date_time_tz_ranges
           location:
             - selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div.date
-          can_be_empty: true
         - name: Fd179bb67--0
           type: date_time_tz_ranges
           location:
             - selector: title
-          can_be_empty: true
       render_js: true
 records: []

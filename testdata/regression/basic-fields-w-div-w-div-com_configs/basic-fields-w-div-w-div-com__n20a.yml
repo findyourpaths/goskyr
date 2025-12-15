@@ -14,5 +14,4 @@ scrapers:
           location:
             - entire_subtree: true
               all_nodes: true
-          can_be_empty: true
 records: []

@@ -18,14 +18,12 @@ scrapers:
             - selector: span.a-3y
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fd92b94e1--0
           type: text
           location:
             - selector: span.a-3n
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Ff2b40e9e-href-0
           type: url
           location:
@@ -33,5 +31,4 @@ scrapers:
               attr: href
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
 records: []

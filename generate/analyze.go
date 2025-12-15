@@ -482,7 +482,8 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 			Name:             fName,
 			Type:             fType,
 			ElementLocations: []scrape.ElementLocation{fLoc},
-			CanBeEmpty:       true,
+			// Required defaults to false - fields are optional by default
+			// Validation of required fields happens downstream in the consumer
 		}
 		rs = append(rs, f)
 	}

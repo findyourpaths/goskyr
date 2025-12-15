@@ -16,14 +16,12 @@ scrapers:
               attr: href
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F9d03f032--0
           type: text
           location:
             - selector: a
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
     - name: scrapethissite-com-pages-forms__F9d03f032-href-0_n20aaaac
       render_js: true
       selector: div > section > div.container > table.table
@@ -35,82 +33,70 @@ scrapers:
             - selector: tbody > tr.team > td.pct.text-danger
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F21ad7531--0
           type: text
           location:
             - selector: tbody > tr.team > td.year
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F224fa9ed--0
           type: text
           location:
             - selector: tbody > tr.team > td.diff.text-success
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F38f7d73f--0
           type: text
           location:
             - selector: tbody > tr.team > td.wins
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F4b026715--0
           type: text
           location:
             - selector: tbody > tr.team > td.diff.text-danger
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F5b7dae5e--0
           type: text
           location:
             - selector: tbody > tr.team > td.ga
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F6bd81d7e--0
           type: text
           location:
             - selector: tbody > tr.team > td.ot-losses
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F9414709d--0
           type: text
           location:
             - selector: tbody > tr.team > td.losses
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fc40c7800--0
           type: text
           location:
             - selector: tbody > tr.team > td.name
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fc5193bfd--0
           type: text
           location:
             - selector: tbody > tr.team > td.gf
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fc670dd6f--0
           type: text
           location:
             - selector: tbody > tr > th
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fe2a1f39c--0
           type: text
           location:
             - selector: tbody > tr.team > td.pct.text-success
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
 records: []

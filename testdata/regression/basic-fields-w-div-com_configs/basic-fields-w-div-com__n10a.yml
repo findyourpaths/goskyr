@@ -16,12 +16,10 @@ scrapers:
               attr: href
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Fa5ccda70--0
           type: text
           location:
             - selector: div
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
 records: []

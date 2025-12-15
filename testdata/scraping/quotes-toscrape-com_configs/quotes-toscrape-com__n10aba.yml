@@ -16,7 +16,6 @@ scrapers:
               attr: href
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F9b402b22-href-0
           type: url
           location:
@@ -24,26 +23,22 @@ scrapers:
               attr: href
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F19e3ed34--0
           type: text
           location:
             - selector: div.tags > a.tag
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: F4508ef81--0
           type: text
           location:
             - selector: span > small.author
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
         - name: Ff659bb6c--0
           type: text
           location:
             - selector: span.text
               entire_subtree: true
               all_nodes: true
-          can_be_empty: true
 records: []
