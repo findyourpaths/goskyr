@@ -483,8 +483,8 @@ func Page(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, globalC
 
 	for hasNextPage {
 		if gqdoc == nil {
-			// slog.Debug("pageURL: %q", pageURL)
-			return nil, fmt.Errorf("failed to fetch next page (gqdoc == nil: %t)", gqdoc == nil)
+			// This shouldn't happen - fetchPage should return error if document is nil
+			return nil, fmt.Errorf("fetch returned nil document without error for URL %q (page %d)", pageURL, currentPage)
 		}
 
 		recs, err := GQDocument(ctx, c, s, gqdoc)
@@ -1143,7 +1143,10 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 	if nextPageI == 0 {
 		newDoc, _, err := fetch.GetGQDocument(cache, currentPageURL) //, &fetch.FetchOpts{Interaction: i})
 		if err != nil {
-			return false, "", nil, err
+			return false, "", nil, fmt.Errorf("fetching page %q: %w", currentPageURL, err)
+		}
+		if newDoc == nil {
+			return false, "", nil, fmt.Errorf("fetch returned nil document for URL %q (no error returned)", currentPageURL)
 		}
 		return true, currentPageURL, newDoc, nil
 	}
@@ -1169,7 +1172,10 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 				// }
 				nextPageDoc, _, err := fetch.GetGQDocument(cache, currentPageURL) //, &fetch.FetchOpts{Interaction: ia})
 				if err != nil {
-					return false, "", nil, err
+					return false, "", nil, fmt.Errorf("fetching paginated page %q (page %d): %w", currentPageURL, nextPageI, err)
+				}
+				if nextPageDoc == nil {
+					return false, "", nil, fmt.Errorf("fetch returned nil document for paginated URL %q (page %d, no error returned)", currentPageURL, nextPageI)
 				}
 				return true, currentPageURL, nextPageDoc, nil
 			}
@@ -1189,7 +1195,10 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 	if nextPageURL != "" {
 		nextPageDoc, _, err := fetch.GetGQDocument(cache, nextPageURL) //, nil)
 		if err != nil {
-			return false, "", nil, err
+			return false, "", nil, fmt.Errorf("fetching next page %q (page %d): %w", nextPageURL, nextPageI, err)
+		}
+		if nextPageDoc == nil {
+			return false, "", nil, fmt.Errorf("fetch returned nil document for next page URL %q (page %d, no error returned)", nextPageURL, nextPageI)
 		}
 		if nextPageI < c.Paginators[0].MaxPages || c.Paginators[0].MaxPages == 0 {
 			return true, nextPageURL, nextPageDoc, nil
