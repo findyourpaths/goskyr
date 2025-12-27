@@ -203,6 +203,16 @@ func ReadConfig(configPath string) (*Config, error) {
 		config.Global.UserAgent = "goskyr web scraper (github.com/findyourpaths/goskyr)"
 	}
 
+	// Initialize derived fields for all scrapers
+	for i := range config.Scrapers {
+		s := &config.Scrapers[i]
+		for j := range s.DerivedFields {
+			if err := s.DerivedFields[j].Initialize(); err != nil {
+				return nil, fmt.Errorf("initializing derived field %d in scraper %q: %w", j, s.Name, err)
+			}
+		}
+	}
+
 	// for _, s := range config.Scrapers {
 	// 	u, err := url.Parse(s.URL)
 	// 	if err != nil {
@@ -298,13 +308,15 @@ func (e *ElementLocations) UnmarshalYAML(value *yaml.Node) error {
 
 // A Filter is used to filter certain recs from the result list
 type Filter struct {
-	Field      string `yaml:"field"`
-	Type       string
-	Expression string `yaml:"exp"` // changed from 'regex' to 'exp' in version 0.5.7
-	RegexComp  *regexp.Regexp
-	DateComp   time.Time
-	DateOp     string
-	Match      bool `yaml:"match"`
+	Field           string `yaml:"field"`
+	Type            string
+	Expression      string `yaml:"exp"` // changed from 'regex' to 'exp' in version 0.5.7
+	RegexComp       *regexp.Regexp
+	DateComp        time.Time
+	DateOp          string
+	Match           bool   `yaml:"match"`
+	Condition       string `yaml:"condition,omitempty"`        // matches, not_matches, missing, missing_or_matches, exists
+	CaseInsensitive bool   `yaml:"case_insensitive,omitempty"` // for regex matching
 }
 
 // FilterMatch checks if a value matches the filter's criteria based on regex or date comparison.
@@ -324,6 +336,41 @@ func (f *Filter) FilterMatch(value interface{}) bool {
 	}
 }
 
+// FilterMatchWithCondition checks the filter against record with extended conditions.
+// Returns true if the record should be KEPT.
+func (f *Filter) FilterMatchWithCondition(rec map[string]interface{}) bool {
+	value, exists := rec[f.Field]
+
+	switch f.Condition {
+	case "missing":
+		return !exists
+	case "exists":
+		return exists
+	case "missing_or_matches":
+		if !exists {
+			return true // missing = keep
+		}
+		// Field exists, check if it matches
+		return f.RegexComp.MatchString(fmt.Sprint(value))
+	case "not_matches":
+		if !exists {
+			return true // missing fields don't match, so keep
+		}
+		return !f.RegexComp.MatchString(fmt.Sprint(value))
+	case "matches", "":
+		if !exists {
+			return false // can't match if missing
+		}
+		return f.RegexComp.MatchString(fmt.Sprint(value))
+	default:
+		// Fall back to original behavior
+		if !exists {
+			return false
+		}
+		return f.FilterMatch(value)
+	}
+}
+
 // Initialize compiles the filter's regex pattern or parses date comparison expressions.
 func (f *Filter) Initialize(fieldType string) error {
 	if fieldType == "date" {
@@ -333,7 +380,11 @@ func (f *Filter) Initialize(fieldType string) error {
 	}
 	switch f.Type {
 	case "regex":
-		regex, err := regexp.Compile(f.Expression)
+		pattern := f.Expression
+		if f.CaseInsensitive {
+			pattern = "(?i)" + pattern
+		}
+		regex, err := regexp.Compile(pattern)
 		if err != nil {
 			return err
 		}
@@ -371,6 +422,25 @@ type Paginator struct {
 	MaxPages int             `yaml:"max_pages,omitempty"`
 }
 
+// FetchConfig controls how pages are fetched (JS rendering, waits, etc.)
+type FetchConfig struct {
+	UseJavascript bool   `yaml:"use_javascript,omitempty"` // Enable headless browser
+	WaitSelector  string `yaml:"wait_selector,omitempty"`  // CSS selector to wait for
+	WaitTimeoutMs int    `yaml:"wait_timeout_ms,omitempty"` // Timeout for wait (default 30000)
+	FerretQL      string `yaml:"ferret_ql,omitempty"`      // Custom FerretQL script (advanced)
+}
+
+// Pagination configures multi-page extraction
+type Pagination struct {
+	Type           string `yaml:"type"`             // query_param, scroll, next_button
+	ParamName      string `yaml:"param_name"`       // for query_param: e.g. "start", "page"
+	StartValue     int    `yaml:"start_value"`      // starting value (usually 0)
+	Increment      int    `yaml:"increment"`        // increment per page
+	MaxPages       int    `yaml:"max_pages"`        // safety limit
+	ButtonSelector string `yaml:"button_selector"`  // for scroll/next_button types
+	WaitMs         int    `yaml:"wait_ms"`          // delay between pages (milliseconds)
+}
+
 // A Scraper contains all the necessary config parameters and structs needed
 // to extract the desired information from a website
 type Scraper struct {
@@ -385,6 +455,11 @@ type Scraper struct {
 	Fields       []Field              `yaml:"fields,omitempty"`
 	Filters      []*Filter            `yaml:"filters,omitempty"`
 	Paginators   []Paginator          `yaml:"paginators,omitempty"`
+
+	// New declarative config fields
+	Fetch         *FetchConfig   `yaml:"fetch,omitempty"`          // Fetch configuration
+	Pagination    *Pagination    `yaml:"pagination,omitempty"`     // Declarative pagination
+	DerivedFields []DerivedField `yaml:"derived_fields,omitempty"` // Template-based field derivation
 }
 
 type ValidationConfig struct {
@@ -947,6 +1022,13 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 	// check if item should be filtered
 	if !s.keepRecord(rets) {
 		return nil, nil
+	}
+
+	// Apply derived fields (template-based field parsing)
+	if len(s.DerivedFields) > 0 {
+		if err := ApplyDerivedFields(s.DerivedFields, rets); err != nil {
+			return nil, fmt.Errorf("applying derived fields: %w", err)
+		}
 	}
 
 	rets = s.removeHiddenFields(rets)
