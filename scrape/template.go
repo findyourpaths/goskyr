@@ -187,6 +187,9 @@ func parseTemplateInput(symbols []string, delimiter string, input string) (map[s
 // parseRegexInput extracts named groups from input using compiled regex
 func parseRegexInput(re *regexp.Regexp, input string) (map[string]string, error) {
 	result := make(map[string]string)
+	if re == nil {
+		return result, nil
+	}
 
 	match := re.FindStringSubmatch(input)
 	if match == nil {

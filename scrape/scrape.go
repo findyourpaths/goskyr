@@ -267,7 +267,7 @@ type DateComponent struct {
 type Field struct {
 	Name             string           `yaml:"name"`
 	Value            string           `yaml:"value,omitempty"`
-	Type             string           `yaml:"type,omitempty"`     // can currently be text, url or date
+	Type             string           `yaml:"type,omitempty"`     // can be text (default), html, url, or date_time_tz_ranges
 	ElementLocations ElementLocations `yaml:"location,omitempty"` // elements are extracted strings joined with newlines
 	Default          string           `yaml:"default,omitempty"`  // the default for a dynamic field (text or url) if no value is found
 	// If a field can be found on a detail page the following variable has to
@@ -460,6 +460,12 @@ type Scraper struct {
 	Fetch         *FetchConfig   `yaml:"fetch,omitempty"`          // Fetch configuration
 	Pagination    *Pagination    `yaml:"pagination,omitempty"`     // Declarative pagination
 	DerivedFields []DerivedField `yaml:"derived_fields,omitempty"` // Template-based field derivation
+
+	// MergeKey makes this an independent scraper (not a detail-page follower).
+	// When set, this scraper is run separately via Page() and its records are
+	// merged into the primary scraper's records by matching on this field name.
+	// The field must exist in both scrapers' output.
+	MergeKey string `yaml:"merge_key,omitempty"`
 }
 
 type ValidationConfig struct {
@@ -475,6 +481,21 @@ func (s Scraper) HostSlug() string {
 	}
 	host = host[:end]
 	return fetch.MakeURLStringSlug(host)
+}
+
+// FindByName returns a pointer to the named scraper within config.
+// Returns nil if config is nil, has no scrapers, or no scraper matches the name.
+// Exact name match only — no fallback.
+func FindByName(config *Config, scraperName string) *Scraper {
+	if config == nil || len(config.Scrapers) == 0 {
+		return nil
+	}
+	for i := range config.Scrapers {
+		if config.Scrapers[i].Name == scraperName {
+			return &config.Scrapers[i]
+		}
+	}
+	return nil
 }
 
 // Page fetches and returns all records from a webpage according to the
@@ -1334,38 +1355,14 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 	slog.Debug("scrape.extractField()", "field", f, "event", rec, "sel", sel, "baseURL", baseURL)
 	switch f.Type {
 	case "text", "": // the default, ie when type is not configured, is 'text'
-		parts := []string{}
-		if len(f.ElementLocations) == 0 {
-			slog.Debug("in scrape.extractField(), empty field.ElementLocations")
-		} else {
-			for _, p := range f.ElementLocations {
-				str, err := getTextString(&p, sel)
-				if err != nil {
-					return err
-				}
-				if str != "" {
-					parts = append(parts, str)
-				}
-			}
+		if err := extractStringField(getTextString, f, rec, sel); err != nil {
+			return err
 		}
-		t := strings.Join(parts, FieldPartSeparator)
-		if t == "" {
-			// if the extracted value is an empty string assign the default value
-			t = f.Default
-			if f.Required && t == "" {
-				// if it's still empty and is required, return an error
-				return fmt.Errorf("field %s is required but empty", f.Name)
-			}
+
+	case "html":
+		if err := extractStringField(getHTMLString, f, rec, sel); err != nil {
+			return err
 		}
-		// transform the string if required
-		for _, tr := range f.Transform {
-			var err error
-			t, err = transformString(&tr, t)
-			if err != nil {
-				return err
-			}
-		}
-		rec[f.Name] = t
 
 	case "url":
 		if len(f.ElementLocations) != 1 {
@@ -1505,6 +1502,37 @@ var SkipTag = map[string]bool{
 	"noscript": true,
 	"script":   true,
 	"style":    true,
+}
+
+// extractStringField extracts string parts from element locations using extractFn,
+// joins them, applies defaults/required checks, and runs transforms.
+func extractStringField(extractFn func(*ElementLocation, *fetch.Selection) (string, error), f *Field, rec output.Record, sel *fetch.Selection) error {
+	var parts []string
+	for _, p := range f.ElementLocations {
+		str, err := extractFn(&p, sel)
+		if err != nil {
+			return err
+		}
+		if str != "" {
+			parts = append(parts, str)
+		}
+	}
+	t := strings.Join(parts, FieldPartSeparator)
+	if t == "" {
+		t = f.Default
+		if f.Required && t == "" {
+			return fmt.Errorf("field %s is required but empty", f.Name)
+		}
+	}
+	for _, tr := range f.Transform {
+		var err error
+		t, err = transformString(&tr, t)
+		if err != nil {
+			return err
+		}
+	}
+	rec[f.Name] = t
+	return nil
 }
 
 // getTextString extracts text content or attribute values from elements matching the element
@@ -1677,6 +1705,43 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 	r := strings.Join(fieldStrings, nodeSeparator)
 	slog.Debug("getTextString(), returning", "r", r)
 	return r, nil
+}
+
+// getHTMLString extracts the inner HTML of elements matching the element location.
+// Unlike getTextString which extracts only text content, this returns the raw HTML
+// including tags. The caller (paths) is responsible for converting HTML to markdown.
+func getHTMLString(e *ElementLocation, sel *fetch.Selection) (string, error) {
+	slog.Debug("getHTMLString()", "e", e, "s", sel)
+
+	var fieldSelection *fetch.Selection
+	if e.Selector == "" {
+		fieldSelection = sel
+	} else {
+		fieldSelection = sel.Find(e.Selector)
+	}
+
+	if len(fieldSelection.Nodes) == 0 {
+		return "", nil
+	}
+
+	// Get inner HTML of the first matched element
+	htmlStr, err := fieldSelection.Html()
+	if err != nil {
+		return "", fmt.Errorf("getting inner HTML for selector %q: %w", e.Selector, err)
+	}
+
+	htmlStr = strings.TrimSpace(htmlStr)
+
+	// regex extract
+	htmlStr, err = extractStringRegex(&e.RegexExtract, htmlStr)
+	if err != nil {
+		return "", err
+	}
+
+	// shortening
+	htmlStr = utils.ShortenString(htmlStr, e.MaxLength)
+
+	return htmlStr, nil
 }
 
 // extractStringRegex applies regex pattern matching to extract a substring from a string based

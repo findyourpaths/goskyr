@@ -367,9 +367,21 @@ func (cmd *ScrapeCmd) Run(globals *Globals) error {
 	// 	return fetch.GQDocument(f, u, nil)
 	// }
 
-	if len(conf.Scrapers) > 1 {
-		if err = scrape.DetailPages(ctx, cache, conf, &conf.Scrapers[1], recs, ""); err != nil {
-			return err
+	for i := 1; i < len(conf.Scrapers); i++ {
+		s := &conf.Scrapers[i]
+		if s.MergeKey != "" {
+			// Independent scraper with merge: scrape separately and merge by key
+			recs2, err := scrape.Page(ctx, cache, conf, s, &conf.Global, true, cmd.File)
+			if err != nil {
+				return err
+			}
+			slog.Info("in ScrapeCmd.Run(), merge-key scraper", "scraper", s.Name, "records", len(recs2))
+			recs = output.MergeRecords(recs, recs2, s.MergeKey)
+		} else {
+			// Detail-page follower: follow URLs from first scraper's records
+			if err = scrape.DetailPages(ctx, cache, conf, s, recs, ""); err != nil {
+				return err
+			}
 		}
 	}
 

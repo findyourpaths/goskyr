@@ -884,6 +884,175 @@ func TestGuessYearStartBeforeReference(t *testing.T) {
 	}
 }
 
+const htmlStringRichDescription = `
+<div class="event-page">
+	<h1 class="event-title">Weekend Retreat</h1>
+	<div class="event-description">
+		<p>Join us for a <strong>transformative weekend</strong> exploring the Enneagram.</p>
+		<p>What to bring:</p>
+		<ul>
+			<li>Journal and pen</li>
+			<li>Comfortable clothing</li>
+		</ul>
+		<p>Visit <a href="https://example.com/venue">our venue</a> for directions.</p>
+		<p><img src="retreat.jpg" alt="Retreat photo">Beautiful setting.</p>
+	</div>
+	<div class="event-summary">A weekend retreat for exploring the Enneagram.</div>
+</div>`
+
+func TestGetHTMLString(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStringRichDescription))
+	if err != nil {
+		t.Fatalf("unexpected error while reading html string: %v", err)
+	}
+	e := &ElementLocation{
+		Selector: ".event-description",
+	}
+	htmlStr, err := getHTMLString(e, fetch.NewSelection(doc.Selection))
+	if err != nil {
+		t.Fatalf("unexpected error in getHTMLString: %v", err)
+	}
+	// Should contain HTML tags, not stripped text
+	if !strings.Contains(htmlStr, "<strong>") {
+		t.Fatalf("expected inner HTML to contain <strong> tag but got: %s", htmlStr)
+	}
+	if !strings.Contains(htmlStr, "<ul>") {
+		t.Fatalf("expected inner HTML to contain <ul> tag but got: %s", htmlStr)
+	}
+	if !strings.Contains(htmlStr, `href="https://example.com/venue"`) {
+		t.Fatalf("expected inner HTML to contain link href but got: %s", htmlStr)
+	}
+	if !strings.Contains(htmlStr, "<img") {
+		t.Fatalf("expected inner HTML to contain <img> tag but got: %s", htmlStr)
+	}
+}
+
+func TestGetHTMLStringEmpty(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStringRichDescription))
+	if err != nil {
+		t.Fatalf("unexpected error while reading html string: %v", err)
+	}
+	e := &ElementLocation{
+		Selector: ".nonexistent",
+	}
+	htmlStr, err := getHTMLString(e, fetch.NewSelection(doc.Selection))
+	if err != nil {
+		t.Fatalf("unexpected error in getHTMLString: %v", err)
+	}
+	if htmlStr != "" {
+		t.Fatalf("expected empty string for nonexistent selector but got: %s", htmlStr)
+	}
+}
+
+func TestGetHTMLStringPlainText(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStringRichDescription))
+	if err != nil {
+		t.Fatalf("unexpected error while reading html string: %v", err)
+	}
+	e := &ElementLocation{
+		Selector: ".event-summary",
+	}
+	htmlStr, err := getHTMLString(e, fetch.NewSelection(doc.Selection))
+	if err != nil {
+		t.Fatalf("unexpected error in getHTMLString: %v", err)
+	}
+	expected := "A weekend retreat for exploring the Enneagram."
+	if htmlStr != expected {
+		t.Fatalf("expected %q but got %q", expected, htmlStr)
+	}
+}
+
+func TestExtractFieldHTML(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStringRichDescription))
+	if err != nil {
+		t.Fatalf("unexpected error while reading html string: %v", err)
+	}
+	f := &Field{
+		Name: "description",
+		Type: "html",
+		ElementLocations: []ElementLocation{
+			{
+				Selector: ".event-description",
+			},
+		},
+	}
+	rec := output.Record{}
+	ctx := context.Background()
+	err = extractField(ctx, f, rec, fetch.NewSelection(doc.Selection), "", 0)
+	if err != nil {
+		t.Fatalf("unexpected error while extracting html field: %v", err)
+	}
+	v, ok := rec["description"]
+	if !ok {
+		t.Fatal("record doesn't contain the expected description field")
+	}
+	vStr := v.(string)
+	// HTML field should return raw HTML, not plain text
+	if !strings.Contains(vStr, "<strong>") {
+		t.Fatalf("expected HTML with <strong> tag but got: %s", vStr)
+	}
+	if !strings.Contains(vStr, "<li>") {
+		t.Fatalf("expected HTML with <li> tag but got: %s", vStr)
+	}
+}
+
+func TestExtractFieldHTMLvsText(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStringRichDescription))
+	if err != nil {
+		t.Fatalf("unexpected error while reading html string: %v", err)
+	}
+	ctx := context.Background()
+
+	// Extract as "html"
+	htmlField := &Field{
+		Name: "desc_html",
+		Type: "html",
+		ElementLocations: []ElementLocation{
+			{Selector: ".event-description"},
+		},
+	}
+	htmlRec := output.Record{}
+	err = extractField(ctx, htmlField, htmlRec, fetch.NewSelection(doc.Selection), "", 0)
+	if err != nil {
+		t.Fatalf("unexpected error extracting html field: %v", err)
+	}
+
+	// Extract as "text"
+	textField := &Field{
+		Name: "desc_text",
+		Type: "text",
+		ElementLocations: []ElementLocation{
+			{Selector: ".event-description"},
+		},
+	}
+	textRec := output.Record{}
+	err = extractField(ctx, textField, textRec, fetch.NewSelection(doc.Selection), "", 0)
+	if err != nil {
+		t.Fatalf("unexpected error extracting text field: %v", err)
+	}
+
+	htmlVal := htmlRec["desc_html"].(string)
+	textVal := textRec["desc_text"].(string)
+
+	// HTML should contain tags
+	if !strings.Contains(htmlVal, "<strong>") {
+		t.Fatalf("html extraction should contain <strong> tag but got: %s", htmlVal)
+	}
+
+	// Text should NOT contain tags
+	if strings.Contains(textVal, "<strong>") {
+		t.Fatalf("text extraction should not contain <strong> tag but got: %s", textVal)
+	}
+
+	// Both should contain the actual text content
+	if !strings.Contains(htmlVal, "transformative weekend") {
+		t.Fatalf("html extraction should contain text content but got: %s", htmlVal)
+	}
+	if !strings.Contains(textVal, "transformative weekend") {
+		t.Fatalf("text extraction should contain text content but got: %s", textVal)
+	}
+}
+
 func TestScrapeIMDB(t *testing.T) {
 
 }
