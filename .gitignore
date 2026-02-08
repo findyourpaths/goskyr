@@ -16,6 +16,7 @@
 
 # IDE directories
 .idea/
+.claude/
 
 # Output files
 out.*
@@ -65,3 +66,28 @@ user.bazelrc
 *-old
 *-new
 .aider*
+
+# Built binary
+/goskyr
+
+# Go workspace (local dev only)
+go.work
+go.work.sum
+
+# Emacs
+.emacs*
+\#*\#
+
+# LLM workflow ephemeral files
+branch_*_git.sh
+branch_*_plan.md
+git_*.sh
+git.sh
+prompt_*.md
+
+# Backup/dated files
+*_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]
+[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]
+
+# Observability trace output
+**/o11y/
