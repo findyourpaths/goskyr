@@ -424,10 +424,11 @@ type Paginator struct {
 
 // FetchConfig controls how pages are fetched (JS rendering, waits, etc.)
 type FetchConfig struct {
-	UseJavascript bool   `yaml:"use_javascript,omitempty"` // Enable headless browser
-	WaitSelector  string `yaml:"wait_selector,omitempty"`  // CSS selector to wait for
-	WaitTimeoutMs int    `yaml:"wait_timeout_ms,omitempty"` // Timeout for wait (default 30000)
-	FerretQL      string `yaml:"ferret_ql,omitempty"`      // Custom FerretQL script (advanced)
+	UseJavascript          bool   `yaml:"use_javascript,omitempty"`           // Enable headless browser
+	WaitSelector           string `yaml:"wait_selector,omitempty"`            // CSS selector to wait for
+	WaitTimeoutMs          int    `yaml:"wait_timeout_ms,omitempty"`          // Timeout for wait (default 30000)
+	FerretQL               string `yaml:"ferret_ql,omitempty"`                // Custom FerretQL script (advanced)
+	InfiniteScrollSelector string `yaml:"infinite_scroll_selector,omitempty"` // CSS selector for "Load More" button (Rod clicks it repeatedly)
 }
 
 // Pagination configures multi-page extraction
