@@ -666,8 +666,25 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 	// fmt.Println("in scrape.GQDocument()", "len(gqdoc.Selection.Find(s.Selector).Nodes)", len(gqdoc.Selection.Find(s.Selector).Nodes))
 
 	found := gqdoc.Document.Selection
+
+	// If the document URL has a fragment, scope to the element with that ID.
+	// This ensures cross-type traversal URLs targeting a specific element
+	// (e.g., a speaker popup) extract from that element, not the first match.
+	if gqdoc.Url != nil && gqdoc.Url.Fragment != "" {
+		fragSel := gqdoc.Document.Find("#" + gqdoc.Url.Fragment)
+		if fragSel.Length() > 0 {
+			found = fragSel
+			slog.Debug("in scrape.GQDocument(), scoped to URL fragment", "fragment", gqdoc.Url.Fragment)
+		}
+	}
+
 	if s.Selector != "" {
-		found = found.Find(s.Selector).Filter(s.Selector)
+		// Filter checks the current elements; Find searches descendants.
+		// Both are needed when scoped to a fragment element that itself
+		// matches the selector.
+		selfMatch := found.Filter(s.Selector)
+		descMatch := found.Find(s.Selector)
+		found = selfMatch.AddSelection(descMatch)
 		if DebugGQFind && len(found.Nodes) == 0 {
 			fmt.Printf("Trying to scrape from %q\n", s.URL)
 			fmt.Printf("Found no nodes for original selector: %q\n", s.Selector)
