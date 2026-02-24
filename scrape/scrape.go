@@ -428,6 +428,7 @@ type FetchConfig struct {
 	WaitSelector           string `yaml:"wait_selector,omitempty"`            // CSS selector to wait for
 	WaitTimeoutMs          int    `yaml:"wait_timeout_ms,omitempty"`          // Timeout for wait (default 30000)
 	FerretQL               string `yaml:"ferret_ql,omitempty"`                // Custom FerretQL script (advanced)
+	Script                 string `yaml:"script,omitempty"`                   // JavaScript to run after page load (Rod only, runs before scraping)
 	InfiniteScrollSelector string `yaml:"infinite_scroll_selector,omitempty"` // CSS selector for "Load More" button (Rod clicks it repeatedly)
 }
 
