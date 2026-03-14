@@ -232,16 +232,18 @@ type RegexConfig struct {
 
 // ElementLocation is used to find a specific string in a html document
 type ElementLocation struct {
-	Selector      string      `yaml:"selector,omitempty"`
-	JsonSelector  string      `yaml:"json_selector,omitempty"`
-	ChildIndex    int         `yaml:"child_index,omitempty"`
-	RegexExtract  RegexConfig `yaml:"regex_extract,omitempty"`
-	Attr          string      `yaml:"attr,omitempty"`
-	MaxLength     int         `yaml:"max_length,omitempty"`
-	EntireSubtree bool        `yaml:"entire_subtree,omitempty"`
-	AllNodes      bool        `yaml:"all_nodes,omitempty"`
-	Separator     string      `yaml:"separator,omitempty"`      // Intra-node sibling separator (default: \x1F)
-	NodeSeparator string      `yaml:"node_separator,omitempty"` // Inter-node separator (default: \x1E)
+	Selector       string      `yaml:"selector,omitempty"`
+	JsonSelector   string      `yaml:"json_selector,omitempty"`
+	ChildIndex     int         `yaml:"child_index,omitempty"`
+	RegexExtract   RegexConfig `yaml:"regex_extract,omitempty"`
+	Attr           string      `yaml:"attr,omitempty"`
+	MaxLength      int         `yaml:"max_length,omitempty"`
+	EntireSubtree  bool        `yaml:"entire_subtree,omitempty"`
+	AllNodes       bool        `yaml:"all_nodes,omitempty"`
+	Separator      string      `yaml:"separator,omitempty"`       // Intra-node sibling separator (default: \x1F)
+	NodeSeparator  string      `yaml:"node_separator,omitempty"`  // Inter-node separator (default: \x1E)
+	StripTags      bool        `yaml:"strip_tags,omitempty"`      // Only insert separators between block-level elements
+	CollapseSpaces bool        `yaml:"collapse_spaces,omitempty"` // Collapse runs of 2+ spaces to single space
 }
 
 // TransformConfig is used to replace an existing substring with some other
@@ -273,14 +275,16 @@ type Field struct {
 	// If a field can be found on a detail page the following variable has to
 	// contain a field name of a field of type 'url' that is located on the main
 	// page.
-	OnDetailPage string            `yaml:"on_detail_page,omitempty"` // applies to text, url, date
-	Required     bool              `yaml:"required,omitempty"`       // applies to text, url - if true, skip record when field is empty
-	Components   []DateComponent   `yaml:"components,omitempty"`     // applies to date
-	DateLocation string            `yaml:"date_location,omitempty"`  // applies to date
-	DateLanguage string            `yaml:"date_language,omitempty"`  // applies to date
-	Hide         bool              `yaml:"hide,omitempty"`           // applies to text, url, date
-	GuessYear    bool              `yaml:"guess_year,omitempty"`     // applies to date
-	Transform    []TransformConfig `yaml:"transform,omitempty"`      // applies to text
+	OnDetailPage   string            `yaml:"on_detail_page,omitempty"` // applies to text, url, date
+	Required       bool              `yaml:"required,omitempty"`       // applies to text, url - if true, skip record when field is empty
+	Components     []DateComponent   `yaml:"components,omitempty"`     // applies to date
+	DateLocation   string            `yaml:"date_location,omitempty"`  // applies to date
+	DateLanguage   string            `yaml:"date_language,omitempty"`  // applies to date
+	Hide           bool              `yaml:"hide,omitempty"`           // applies to text, url, date
+	GuessYear      bool              `yaml:"guess_year,omitempty"`     // applies to date
+	Transform      []TransformConfig `yaml:"transform,omitempty"`      // applies to text
+	StripTags      bool              `yaml:"strip_tags,omitempty"`     // Only insert separators between block-level elements
+	CollapseSpaces bool              `yaml:"collapse_spaces,omitempty"` // Collapse runs of 2+ spaces to single space
 }
 
 type ElementLocations []ElementLocation
@@ -1523,12 +1527,36 @@ var SkipTag = map[string]bool{
 	"style":    true,
 }
 
+// blockElements contains HTML block-level elements. When strip_tags is enabled,
+// separators are only inserted between block-level siblings, not inline elements
+// like <span>, <a>, <strong>, etc. This prevents Word-pasted HTML from fragmenting
+// numbers across spans (e.g., <span>2</span><span>5</span> → "25" not "2 5").
+var blockElements = map[string]bool{
+	"address": true, "article": true, "aside": true, "blockquote": true,
+	"details": true, "dialog": true, "dd": true, "div": true, "dl": true,
+	"dt": true, "fieldset": true, "figcaption": true, "figure": true,
+	"footer": true, "form": true, "h1": true, "h2": true, "h3": true,
+	"h4": true, "h5": true, "h6": true, "header": true, "hgroup": true,
+	"hr": true, "li": true, "main": true, "nav": true, "ol": true,
+	"p": true, "pre": true, "section": true, "table": true, "tbody": true,
+	"td": true, "tfoot": true, "th": true, "thead": true, "tr": true,
+	"ul": true,
+}
+
 // extractStringField extracts string parts from element locations using extractFn,
 // joins them, applies defaults/required checks, and runs transforms.
 func extractStringField(extractFn func(*ElementLocation, *fetch.Selection) (string, error), f *Field, rec output.Record, sel *fetch.Selection) error {
 	var parts []string
-	for _, p := range f.ElementLocations {
-		str, err := extractFn(&p, sel)
+	for i := range f.ElementLocations {
+		p := &f.ElementLocations[i]
+		// Propagate field-level flags to each element location
+		if f.StripTags {
+			p.StripTags = true
+		}
+		if f.CollapseSpaces {
+			p.CollapseSpaces = true
+		}
+		str, err := extractFn(p, sel)
 		if err != nil {
 			return err
 		}
@@ -1550,9 +1578,17 @@ func extractStringField(extractFn func(*ElementLocation, *fetch.Selection) (stri
 			return err
 		}
 	}
+	// Collapse spaces: normalize NBSP to space, then collapse runs of 2+ spaces
+	if f.CollapseSpaces {
+		t = strings.ReplaceAll(t, "\u00a0", " ")
+		t = collapseSpacesRE.ReplaceAllString(t, " ")
+		t = strings.TrimSpace(t)
+	}
 	rec[f.Name] = t
 	return nil
 }
+
+var collapseSpacesRE = regexp.MustCompile(`[ ]{2,}`)
 
 // getTextString extracts text content or attribute values from elements matching the element
 // location, applying regex extraction and length limits.
@@ -1599,6 +1635,7 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 				}
 
 				// copied from https://github.com/PuerkitoBio/goquery/blob/v1.8.0/property.go#L62
+				stripTags := e.StripTags
 				var buf bytes.Buffer
 				var f func(*html.Node)
 				f = func(n *html.Node) {
@@ -1613,9 +1650,13 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 					if n.FirstChild != nil {
 						for c := n.FirstChild; c != nil; c = c.NextSibling {
 							f(c)
-							// Add separator between element siblings to preserve structure
+							// Add separator between element siblings to preserve structure.
+							// When strip_tags is enabled, only separate block-level elements,
+							// not inline elements (span, a, strong, em, etc.).
 							if c.Type == html.ElementNode && c.NextSibling != nil {
-								buf.WriteString(subtreeSeparator)
+								if !stripTags || blockElements[c.Data] {
+									buf.WriteString(subtreeSeparator)
+								}
 							}
 						}
 					}
