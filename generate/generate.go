@@ -28,6 +28,11 @@ var DoPruning = true
 // exponential explosion on pages with very deep/complex DOM trees
 const MaxRecursionDepth = 10
 
+// MaxAbsoluteDepth is the maximum rootSelector path length (DOM nesting depth)
+// before single-cluster depth-collapse is disabled. Prevents infinite loops on
+// pages where every level has exactly one cluster.
+const MaxAbsoluteDepth = 50
+
 // addStrategyPrefix adds the strategy prefix ('n' or 's') to the appropriate ID field.
 // For detail pages (Field != ""), it modifies SubID. Otherwise it modifies ID.
 func addStrategyPrefix(configID *scrape.ConfigID, prefix string) {
@@ -209,7 +214,8 @@ func shouldUseSequentialStrategy(gqdoc *fetch.Document, rootSel string, fields [
 
 // ConfigOptions contains configuration parameters for scraper generation.
 type ConfigOptions struct {
-	Batch bool
+	Batch           bool
+	CompactConfigID bool
 	// CacheInputDir             string
 	// CacheOutputDir            string
 	ConfigOutputParentDir      string
@@ -241,6 +247,7 @@ func InitOpts(opts ConfigOptions) (ConfigOptions, error) {
 	if err != nil {
 		return opts, fmt.Errorf("error parsing input URL %q: %v", opts.URL, err)
 	}
+	opts.configID = opts.configID.WithCompact(opts.CompactConfigID)
 	opts.configID.Slug = fetch.MakeURLStringSlug(opts.URL)
 	// prefix := fetch.MakeURLStringSlug(u.Host)
 
@@ -697,8 +704,18 @@ func expandAllPossibleConfigsWithDepth(ctx context.Context, cache fetch.Cache, e
 			nextOpts.configID.ID += string(lastID)
 		}
 		nextLPs := clusters[clusterID]
-		nextRootSel := clusters[clusterID][0].path[0 : len(rootSelector)+1]
-		rs, err = expandAllPossibleConfigsWithDepth(ctx, cache, exsCache, gqdoc, nextOpts, clusterID, nextLPs, nextRootSel, pagProps, rs, depth+1)
+		nextRootSel := clonePath(clusters[clusterID][0].path[0 : len(rootSelector)+1])
+		// When there is exactly 1 cluster and 1 record, the recursion is
+		// just traversing a single-path DOM nesting (e.g., body > div > div > ...).
+		// Don't increment depth for these pass-through levels so that deeply
+		// nested pages (22+ levels) don't exhaust MaxRecursionDepth before
+		// reaching the actual repeating element.
+		// Safety: use rootSelector length as absolute bound to prevent infinite loops.
+		nextDepth := depth + 1
+		if len(clusterIDs) == 1 && len(recs) <= 1 && len(nextRootSel) < MaxAbsoluteDepth {
+			nextDepth = depth
+		}
+		rs, err = expandAllPossibleConfigsWithDepth(ctx, cache, exsCache, gqdoc, nextOpts, clusterID, nextLPs, nextRootSel, pagProps, rs, nextDepth)
 		if err != nil {
 			status = "failed_to_expand"
 			return nil, err
@@ -1256,7 +1273,7 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 	// 	gqdocs = append(gqdocs, gqdoc)
 	// }
 
-	_, r, err := joinGQDocuments(gqdocs) // ./opts, us, gqdocsByURL)
+	_, r, err := JoinGQDocuments(gqdocs) // ./opts, us, gqdocsByURL)
 	return r, err
 }
 
@@ -1289,7 +1306,10 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 
 // joinGQDocuments concatenates multiple HTML documents into a single document wrapped in an
 // <htmls> container element.
-func joinGQDocuments(gqdocs []*fetch.Document) (string, *fetch.Document, error) {
+// JoinGQDocuments concatenates multiple HTML documents into a single document wrapped in an
+// <htmls> container element. Used by goskyr internally for detail page pattern discovery,
+// and by external tools (inspect discover --detail-urls) for the same purpose.
+func JoinGQDocuments(gqdocs []*fetch.Document) (string, *fetch.Document, error) {
 	rs := strings.Builder{}
 	rs.WriteString("<htmls>\n")
 
@@ -1300,7 +1320,15 @@ func joinGQDocuments(gqdocs []*fetch.Document) (string, *fetch.Document, error) 
 			slog.Warn("in generate.joinGQDocuments(), skipping empty gqdoc")
 			continue
 		}
-		str, err := goquery.OuterHtml(gqdoc.Document.Children())
+		// Extract body content only — NOT the full <html> document.
+		// Wrapping full <html> documents inside <htmls> causes the HTML5 parser
+		// to restructure the DOM (nested <html>/<body> tags are parse errors),
+		// which loses inner elements and breaks CSS queries.
+		body := gqdoc.Document.Find("body")
+		if body.Length() == 0 {
+			body = gqdoc.Document.Selection
+		}
+		str, err := body.Html()
 		if err != nil {
 			return "", nil, err
 		}

@@ -9,7 +9,6 @@ import (
 
 	"github.com/agnivade/levenshtein"
 	"github.com/findyourpaths/goskyr/scrape"
-	"github.com/findyourpaths/goskyr/utils"
 	"golang.org/x/net/html"
 )
 
@@ -43,20 +42,65 @@ func (n node) string() string {
 	return r
 }
 
-// equals checks if two nodes are equal by comparing tag names, classes, and pseudo-classes.
-func (n node) equals(n2 node) bool {
-	if n.tagName == n2.tagName {
-		if utils.SliceEquals(n.classes, n2.classes) {
-			if utils.SliceEquals(n.pseudoClasses, n2.pseudoClasses) {
-				return true
-			}
+// structuralMatch returns whether two nodes represent the same structural element
+// (same tag, overlapping classes) and a merged node with only the shared classes.
+// This enables selector generalization across concatenated detail pages where the
+// same structural element has varying modifier classes (e.g., event_listing_category-*).
+// Returns (false, node{}) if tags differ or classes are completely disjoint.
+func (n node) structuralMatch(n2 node) (bool, node) {
+	if n.tagName != n2.tagName {
+		return false, node{}
+	}
+	sharedClasses := intersectStrings(n.classes, n2.classes)
+	// Both have no classes — same structural element
+	if len(n.classes) == 0 && len(n2.classes) == 0 {
+		return true, node{tagName: n.tagName, pseudoClasses: intersectStrings(n.pseudoClasses, n2.pseudoClasses)}
+	}
+	// Require that the shared classes cover a majority of at least one
+	// input list — this prevents merging genuinely different elements
+	// (e.g., header vs footer) that happen to share a single utility class.
+	if len(sharedClasses) == 0 {
+		return false, node{}
+	}
+	if 2*len(sharedClasses) <= len(n.classes) && 2*len(sharedClasses) <= len(n2.classes) {
+		return false, node{} // Overlap is minority of both lists — structurally different
+	}
+	return true, node{
+		tagName:       n.tagName,
+		classes:       sharedClasses,
+		pseudoClasses: intersectStrings(n.pseudoClasses, n2.pseudoClasses),
+	}
+}
+
+// intersectStrings returns elements present in both slices, preserving order from a.
+func intersectStrings(a, b []string) []string {
+	if len(a) == 0 || len(b) == 0 {
+		return nil
+	}
+	bSet := make(map[string]bool, len(b))
+	for _, s := range b {
+		bSet[s] = true
+	}
+	var result []string
+	for _, s := range a {
+		if bSet[s] {
+			result = append(result, s)
 		}
 	}
-	return false
+	return result
 }
 
 // path represents a DOM path from the root to a specific element as a sequence of nodes.
 type path []node
+
+func clonePath(p path) path {
+	return append(path(nil), p...)
+}
+
+func appendPath(p path, n node) path {
+	out := clonePath(p)
+	return append(out, n)
+}
 
 // last returns a pointer to the last node in the path.
 func (p path) last() *node {
@@ -332,16 +376,13 @@ func getTagMetadata(tagName string, z *html.Tokenizer, siblingNodes []node) (map
 	}
 	var pCls []string // pseudo classes
 	// only add nth-child if there has been another node before at the same
-	// level (sibling node) with same tag and the same classes
+	// level (sibling node) with same tag and structurally matching classes
+	thisNode := node{tagName: tagName, classes: cls}
 	for i := 0; i < len(siblingNodes); i++ {
-		childNode := siblingNodes[i]
-		if childNode.tagName == tagName {
-			if utils.SliceEquals(childNode.classes, cls) {
-				pCls = []string{fmt.Sprintf("nth-child(%d)", len(siblingNodes)+1)}
-				break
-			}
+		if matched, _ := siblingNodes[i].structuralMatch(thisNode); matched {
+			pCls = []string{fmt.Sprintf("nth-child(%d)", len(siblingNodes)+1)}
+			break
 		}
-
 	}
 	return attrs, cls, pCls
 }

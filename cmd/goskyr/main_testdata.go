@@ -49,7 +49,8 @@ var testsByHostSlugByCategory = map[string]map[string][]maintest{
 		// 	{url: "https://dates.com/all"},
 		// 	{url: "https://dates.com/most"}},
 		"fields-w-a-com":              []maintest{{url: "https://fields-w-a.com"}},
-		"real-table-w-extra-rows-com": []maintest{{url: "https://real-table-w-extra-rows.com"}},
+		"real-table-w-extra-rows-com":  []maintest{{url: "https://real-table-w-extra-rows.com"}},
+		"varying-post-classes-com":     []maintest{{url: "https://varying-post-classes.com"}},
 	},
 
 	"scraping": {

@@ -3,9 +3,11 @@ module github.com/findyourpaths/goskyr
 go 1.25.0
 
 require (
+	github.com/JohannesKaufmann/html-to-markdown/v2 v2.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/alecthomas/kong v1.6.1
+	github.com/andybalholm/cascadia v1.3.3
 	github.com/antchfx/jsonquery v1.3.6
 	github.com/chromedp/cdproto v0.0.0-20250113203156-3ff4b409e0d4
 	github.com/chromedp/chromedp v0.11.2
@@ -19,7 +21,7 @@ require (
 	github.com/prometheus/client_golang v1.23.1
 	github.com/rivo/tview v0.0.0-20241227133733-17b7edb88c57
 	github.com/samber/lo v1.49.1
-	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
+	github.com/sergi/go-diff v1.4.0
 	go.opentelemetry.io/contrib/detectors/gcp v1.36.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.38.0
@@ -38,7 +40,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.29.0 // indirect
-	github.com/andybalholm/cascadia v1.3.3 // indirect
+	github.com/JohannesKaufmann/dom v0.2.0 // indirect
 	github.com/antchfx/xpath v1.3.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

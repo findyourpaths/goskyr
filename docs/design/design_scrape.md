@@ -533,6 +533,35 @@ scrapers:
         max_pages: 5
 ```
 
+## Text Normalization
+
+### `HTMLToMarkdown()` — HTML to Markdown Conversion
+
+Converts raw HTML to cleaned markdown text. This is the single source of truth for text representation — used by:
+- **pageMarkdown** in paths (spec offset verification, `find-text`, `page-content`)
+- **goskyr field extraction** when `field_type: "markdown"` is specified
+- **paths pipeline** via `markdown.TextFromHTML()` which delegates here
+
+Processing steps:
+1. Convert HTML to markdown via `htmltomarkdown.ConvertString`
+2. Replace invalid UTF-8 with space
+3. Normalize whitespace variants to ASCII space (`\u00A0`, `\u2007`, `\u202F`)
+4. Strip trailing spaces before newlines
+5. Remove horizontal rules (`* * *`)
+6. Remove blockquote markers
+7. Remove backslash-newlines
+8. Double all newlines (intra-block → `\n\n`, inter-block → `\n\n\n\n`)
+9. Cap consecutive newlines at 3
+10. Trim leading/trailing whitespace
+
+Unicode characters (curly quotes, accented characters, em-dashes, etc.) are **preserved as-is** in the output. The `expect draft` tool in paths handles typography differences (e.g., ASCII `"` vs curly `\u201c`) at search time via rune-level matching, without modifying the stored text.
+
+### Cached `.md` Files
+
+`GetWebPageMarkdown` in paths caches the `HTMLToMarkdown` output as `.md` files alongside the `.data` HTML files in `extract.repo/web/`. On first access, HTML is converted and cached; subsequent accesses read the cached `.md` directly.
+
+**If `HTMLToMarkdown` processing changes**, cached `.md` files must be deleted to force regeneration. Spec byte offsets are verified against the cached `.md`, so stale caches cause offset mismatches.
+
 ## Execution Pipeline
 
 ### Main Entry Points

@@ -1232,23 +1232,20 @@ func squashLocationManager(locations []*locationProps, minOcc int) []*locationPr
 
 ### Path Distance
 
-Used for clustering related fields:
+Used for clustering related fields (Levenshtein distance on selector strings):
 
 ```go
 func (p path) distance(p2 path) float64 {
-    commonLen := min(len(p), len(p2))
-    diffCount := 0
-
-    for i := 0; i < commonLen; i++ {
-        if !p[i].equals(p2[i]) {
-            diffCount++
-        }
-    }
-
-    diffCount += abs(len(p) - len(p2))  // Length difference
-    return float64(diffCount)
+    return float64(levenshtein.ComputeDistance(p.string(), p2.string()))
 }
 ```
+
+### Structural Matching
+
+Nodes are compared using `structuralMatch` which merges via class intersection
+rather than requiring exact class equality. This enables selector generalization
+across concatenated detail pages. A majority-overlap threshold prevents merging
+genuinely different elements (e.g., header vs footer) that share only a utility class.
 
 ### Date Anchor Algorithm (Sequential Scraping)
 

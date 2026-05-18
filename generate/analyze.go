@@ -13,7 +13,6 @@ import (
 	"github.com/findyourpaths/goskyr/observability"
 	"github.com/findyourpaths/goskyr/output"
 	"github.com/findyourpaths/goskyr/scrape"
-	"github.com/findyourpaths/goskyr/utils"
 	"github.com/findyourpaths/phil/datetime"
 	"github.com/kr/pretty"
 	"github.com/samber/lo"
@@ -207,11 +206,14 @@ func findSharedRootSelector(ctx context.Context, gqdoc *fetch.Document, lps []*l
 			slog.Debug("in findSharedRootSelector(), all", "j", j, "lp", lp.DebugString())
 		}
 	}
+	// Walk DOM paths in lockstep, merging nodes via class intersection.
+	// mergedPath accumulates the shared structural path with intersected classes.
+	var mergedPath path
 	for i = 0; ; i++ {
 		if DoDebug {
 			slog.Debug("in findSharedRootSelector()", "i", i)
 		}
-		var n node
+		var merged node
 		var lp *locationProps
 		for j, lp = range lps {
 			if DoDebug {
@@ -220,42 +222,30 @@ func findSharedRootSelector(ctx context.Context, gqdoc *fetch.Document, lps []*l
 			if i+1 == len(lp.path) {
 				status = "end"
 				if DoDebug {
-					slog.Debug("in findSharedRootSelector(), returning end", "lp.path[:i].string()", lp.path[:i].string())
+					slog.Debug("in findSharedRootSelector(), returning end", "mergedPath", mergedPath.string())
 				}
-				retPath = pullBackRootSelector(ctx, lp.path[:i], gqdoc, lp.count)
+				retPath = pullBackRootSelector(ctx, mergedPath, gqdoc, lp.count)
 				return retPath
 			}
 
-			// if lp.isText && i == len(lp.path) {
-			// 	slog.Debug("in findSharedRootSelector(), returning 2", "lp.path[:i].string()", lp.path[:i].string())
-			// 	return lp.path[:i]
-			// }
-			// if !lp.isText && i == len(lp.path)-1 {
-			// 	slog.Debug("in findSharedRootSelector(), returning 2", "lp.path[:i].string()", lp.path[:i].string())
-			// 	return lp.path[:i]
-			// }
-
 			if j == 0 {
-				n = lp.path[i]
+				merged = lp.path[i]
 			} else {
-				// Look for divergence and if found, return what we have so far.
-				if !n.equals(lp.path[i]) {
+				// Structural match: same tag + overlapping classes → merge via intersection.
+				matched, m := merged.structuralMatch(lp.path[i])
+				if !matched {
 					status = "divergence"
 					if DoDebug {
-						slog.Debug("in findSharedRootSelector(), found divergence, returning", "lp.path[:i].string()", lp.path[:i].string())
+						slog.Debug("in findSharedRootSelector(), found divergence, returning", "mergedPath", mergedPath.string())
 					}
-					retPath = pullBackRootSelector(ctx, lp.path[:i], gqdoc, lp.count)
+					retPath = pullBackRootSelector(ctx, mergedPath, gqdoc, lp.count)
 					return retPath
 				}
+				merged = m
 			}
 		}
+		mergedPath = append(mergedPath, merged)
 	}
-	status = "nil"
-	if DoDebug {
-		slog.Debug("in findSharedRootSelector(), returning nil")
-	}
-	retPath = []node{}
-	return retPath
 }
 
 // pullBackRootSelector adjusts the root selector by pulling back to a parent element if the
@@ -498,6 +488,13 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 // based on their similarity. The tricky question is 'when are two
 // locationProps close enough to be merged into one?'
 func squashLocationManager(l locationManager, minOcc int) locationManager {
+	// Pre-compute: for each path (ignoring nth-child), count total occurrences.
+	// This handles patterns that repeat across parallel subtrees (e.g., event cards
+	// inside multiple profile pages in a concatenated document). The per-parent
+	// nth-child index may be small (1-5) but the total count across the document
+	// is large (80+). We strip nth-child when the total count >= minOcc.
+	pathCounts := countPathsIgnoringNthChild(l)
+
 	squashed := locationManager{}
 	for i := len(l) - 1; i >= 0; i-- {
 		lp := l[i]
@@ -509,32 +506,62 @@ func squashLocationManager(l locationManager, minOcc int) locationManager {
 			}
 		}
 		if !updated {
-			stripNthChild(lp, minOcc)
+			stripNthChild(lp, minOcc, pathCounts)
 			squashed = append(squashed, lp)
 		}
 	}
 	return squashed
 }
 
-// stripNthChild tries to find the index in a locationProps path under which
-// we need to strip the nth-child pseudo class. We need to strip that pseudo
-// class because at a later point we want to find a common base path between
-// different paths but if all paths' base paths look differently (because their
-// nodes have different nth-child pseudo classes) there won't be a common
-// base path.
-func stripNthChild(lps *locationProps, minOcc int) {
+// countPathsIgnoringNthChild counts how many locationProps share the same path
+// when all nth-child pseudo classes are removed. This gives the total document-wide
+// occurrence count for each structural pattern.
+func countPathsIgnoringNthChild(l locationManager) map[string]int {
+	counts := map[string]int{}
+	for _, lp := range l {
+		key := pathStringWithoutNthChild(lp.path)
+		counts[key]++
+	}
+	return counts
+}
+
+// pathStringWithoutNthChild returns the path string with all nth-child removed.
+func pathStringWithoutNthChild(p path) string {
+	var parts []string
+	for _, n := range p {
+		s := n.tagName
+		for _, c := range n.classes {
+			s += "." + c
+		}
+		parts = append(parts, s)
+	}
+	return strings.Join(parts, " > ")
+}
+
+// stripNthChild removes nth-child pseudo classes from path segments that represent
+// repeating patterns. Uses two criteria (either sufficient):
+//  1. The nth-child INDEX is >= minOcc (original heuristic: high index = many siblings)
+//  2. The total document-wide count of this path (ignoring nth-child) is >= minOcc
+//     (handles patterns in parallel subtrees, e.g., event cards across concatenated pages)
+func stripNthChild(lps *locationProps, minOcc int, pathCounts map[string]int) {
+	// Check if this entire path pattern repeats >= minOcc times across the document.
+	// If so, strip ALL nth-child pseudo classes — the pattern is clearly repeating.
+	totalCount := pathCounts[pathStringWithoutNthChild(lps.path)]
+	if totalCount >= minOcc {
+		for i := range lps.path {
+			if len(lps.path[i].pseudoClasses) > 0 {
+				lps.path[i].pseudoClasses = []string{}
+				if lps.iStrip == 0 {
+					lps.iStrip = i
+				}
+			}
+		}
+		return
+	}
+
+	// Original heuristic: strip nth-child where the index >= minOcc.
 	iStrip := 0
-	// every node in lp.path with index < than iStrip needs no be stripped
-	// of its pseudo classes. iStrip changes during the execution of
-	// this function.
-	// A bit arbitrary (and probably not always correct) but
-	// for now we assume that iStrip cannot be len(lp.path)-1
-	// not correct for https://huxleysneuewelt.com/shows
-	// but needed for http://www.bar-laparenthese.ch/
-	// Therefore by default we substract 1 but in a certain case
-	// we substract 2
 	sub := 1
-	// when minOcc is too small we'd risk stripping the wrong nth-child pseudo classes
 	if minOcc < 6 {
 		sub = 2
 	}
@@ -542,12 +569,10 @@ func stripNthChild(lps *locationProps, minOcc int) {
 		if i < iStrip {
 			lps.path[i].pseudoClasses = []string{}
 		} else if len(lps.path[i].pseudoClasses) > 0 {
-			// nth-child(x)
 			ncIndex, _ := strconv.Atoi(strings.Replace(strings.Split(lps.path[i].pseudoClasses[0], "(")[1], ")", "", 1))
 			if ncIndex >= minOcc {
 				lps.path[i].pseudoClasses = []string{}
 				iStrip = i
-				// we need to pass iStrip to the locationProps too to be used by checkAndUpdateLocProps
 				lps.iStrip = iStrip
 			}
 		}
@@ -606,31 +631,31 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 			continue
 		}
 
-		// We require an identical set of classes to merge.
-		if len(on.classes) != len(new.path[i].classes) {
-			return false // Different number of classes, so they can't be identical.
+		// Strip known auto-generated CMS classes (post-NNNNN, fl-builder-content-NNNN),
+		// then merge via class intersection. This handles both WordPress per-page IDs
+		// and arbitrary varying classes (e.g., event_listing_category-*) by keeping
+		// only the classes shared across all pages at this structural position.
+		oldFiltered := filterAutoGeneratedClasses(on.classes)
+		newFiltered := filterAutoGeneratedClasses(new.path[i].classes)
+
+		if len(oldFiltered) == 0 && len(newFiltered) == 0 {
+			newPath = append(newPath, newNode)
+			continue
 		}
 
-		if len(on.classes) > 0 {
-			// Verify that the set of classes is the same.
-			ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
-			if len(ovClasses) != len(on.classes) {
-				return false // The classes are not an identical set.
-			}
+		// Intersect class lists: keep only classes shared between old and new.
+		// Require that the shared classes cover a majority of at least one
+		// input list — this prevents merging genuinely different elements
+		// (e.g., header vs footer) that happen to share a single utility class.
+		sharedClasses := intersectStrings(oldFiltered, newFiltered)
+		if len(sharedClasses) == 0 {
+			return false
 		}
-
-		// If we reach here, the classes are identical (or both empty).
-		newNode.classes = on.classes // Use the original classes since they match.
+		if 2*len(sharedClasses) <= len(oldFiltered) && 2*len(sharedClasses) <= len(newFiltered) {
+			return false // Overlap is minority of both lists — structurally different
+		}
+		newNode.classes = sharedClasses
 		newPath = append(newPath, newNode)
-
-		// ovClasses := utils.IntersectionSlices(on.classes, new.path[i].classes)
-		// // If nodes have more than 0 classes, there has to be at least 1 overlapping class.
-		// if len(ovClasses) > 0 {
-		// 	newNode.classes = ovClasses
-		// 	newPath = append(newPath, newNode)
-		// } else {
-		// 	return false // No overlapping classes, no overlap
-		// }
 	}
 
 	// slog.Debug("in checkAndUpdateLocProps, incrementing")
@@ -639,6 +664,36 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 	old.count++
 	old.examples = append(old.examples, new.examples...)
 	return true
+}
+
+// autoGeneratedClassRE matches CMS-generated per-page CSS classes that vary across
+// pages of the same template. Stripping these before comparison allows goskyr to
+// merge location props from different pages that share the same structural template.
+//
+// Patterns matched:
+//   - WordPress: post-123, postid-456, page-id-789, attachment-789
+//   - WooCommerce: product_cat-*, product_tag-*, product-type-*
+//   - Beaver Builder: fl-builder-content-1234 (template content IDs)
+//   - Generic: *-id-123, *-post-123, any class that is ONLY digits
+var autoGeneratedClassRE = regexp.MustCompile(
+	`^(?:` +
+		`post-\d+` + `|` + // WordPress post-NNNNN
+		`postid-\d+` + `|` + // WordPress postid-NNNNN
+		`page-id-\d+` + `|` + // WordPress page-id-NNNNN
+		`attachment-\d+` + `|` + // WordPress attachment-NNNNN
+		`fl-builder-content-\d+` + `|` + // Beaver Builder content IDs
+		`\d+` + // Pure numeric classes
+		`)$`)
+
+// filterAutoGeneratedClasses returns classes with CMS-generated per-page classes removed.
+func filterAutoGeneratedClasses(classes []string) []string {
+	var filtered []string
+	for _, c := range classes {
+		if !autoGeneratedClassRE.MatchString(c) {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
 }
 
 // filterBelowMinCount removes location properties with count below the minimum threshold.
@@ -737,22 +792,44 @@ func findClusters(ctx context.Context, lps []*locationProps, rootSelector path) 
 
 	newLen := len(rootSelector) + 1
 	slog.Debug("in findClusters()", "newLen", newLen)
+
+	// Group fields by structural match at the cluster position (rootSelector+1).
+	// Fields whose nodes at this depth have the same tag and overlapping classes
+	// are grouped together. This prevents category-specific classes from splitting
+	// one logical cluster into many per-category clusters.
+	type clusterGroup struct {
+		merged node
+		lps    []*locationProps
+	}
+	var groups []clusterGroup
+
 	for _, lp := range lps {
 		slog.Debug("in findClusters()", "lp", lp.DebugString())
-		// Check whether we reached the end.
-		// If our new root selector is longer or equal to the length of this path, return.
 		if newLen > len(lp.path) {
 			continue
-			// return locationPropsByPath
 		}
-		lpStr := lp.path[0:newLen].string()
-		rets[lpStr] = append(rets[lpStr], lp)
-		i := newLen - 1
-		slog.Debug("in findClusters(), lp path node", "i", i, "lp.path.node", lp.path[i])
-		slog.Debug("in findClusters(), added lp", "lpStr", lpStr)
+		clusterNode := lp.path[newLen-1]
+
+		// Find an existing group this node structurally matches
+		matched := false
+		for gi := range groups {
+			if ok, m := groups[gi].merged.structuralMatch(clusterNode); ok {
+				groups[gi].merged = m
+				groups[gi].lps = append(groups[gi].lps, lp)
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			groups = append(groups, clusterGroup{merged: clusterNode, lps: []*locationProps{lp}})
+		}
 	}
-	for pStr, pByP := range rets {
-		slog.Debug("in findClusters()", "pStr", pStr, "len(pByP)", len(pByP))
+
+	// Build the return map keyed by the final merged selector string
+	for _, g := range groups {
+		key := appendPath(rootSelector, g.merged).string()
+		rets[key] = g.lps
+		slog.Debug("in findClusters()", "key", key, "len(lps)", len(g.lps))
 	}
 	return rets
 }

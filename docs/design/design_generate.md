@@ -457,24 +457,25 @@ func squashLocationManager(locations, minOcc) {
 
 ### Path Distance
 
-Used for clustering related fields:
+Used for clustering related fields (Levenshtein distance on selector strings):
 
 ```go
 func (p path) distance(p2 path) float64 {
-    // Count how many nodes differ between paths
-    commonLen = min(len(p), len(p2))
-    diffCount = 0
-
-    for i in 0..commonLen:
-        if !p[i].equals(p2[i]):
-            diffCount++
-
-    diffCount += abs(len(p) - len(p2))  // Length difference
-    return float64(diffCount)
+    return float64(levenshtein.ComputeDistance(p.string(), p2.string()))
 }
 ```
 
 Fields with small distances are likely from the same record structure.
+
+### Structural Matching
+
+Nodes are compared using `structuralMatch` which merges via class intersection
+rather than requiring exact class equality. This enables selector generalization
+across concatenated detail pages where the same structural element has varying
+modifier classes (e.g., `event_listing_category-wisdom` vs `event_listing_category-growth`).
+
+A majority-overlap threshold prevents merging genuinely different elements
+(e.g., header vs footer) that share only a single utility class.
 
 ## Integration with Scrape Package
 

@@ -255,7 +255,7 @@ go build -o goskyr main.go
 
 **Shared standards** (parent level):
 - [go_style.md](../docs/go/go_style.md) - Go coding conventions
-- [llm_workflow.md](../docs/llm/llm_workflow.md) - LLM collaboration patterns
+- [WORKFLOW.md](../docs/WORKFLOW.md) - LLM collaboration patterns
 - [architecture_fcis.md](../docs/architecture/architecture_fcis.md) - Architecture patterns
 
 **Project-specific**:

@@ -2,6 +2,7 @@ package scrape
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/output"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -101,6 +103,83 @@ const (
 				&#8211; ABGESAGT</span> </a>
 	</h2>`
 )
+
+func TestConfigIDStringDefaultPreservesExistingFormat(t *testing.T) {
+	tests := []struct {
+		name string
+		cid  ConfigID
+		want string
+	}{
+		{name: "empty", cid: ConfigID{}, want: ""},
+		{name: "slug only", cid: ConfigID{Slug: "example-com"}, want: "example-com"},
+		{name: "id only", cid: ConfigID{ID: "n5"}, want: "__n5"},
+		{name: "field only", cid: ConfigID{Field: "Fabc-href-0"}, want: "__Fabc-href-0"},
+		{name: "subid only", cid: ConfigID{SubID: "s1"}, want: "__s1"},
+		{name: "slug id", cid: ConfigID{Slug: "example-com", ID: "n5"}, want: "example-com__n5"},
+		{name: "full", cid: ConfigID{Slug: "example-com", ID: "n5", Field: "Fabc-href-0", SubID: "s1"}, want: "example-com__n5_Fabc-href-0_s1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.cid.String(); got != tt.want {
+				t.Fatalf("ConfigID.String() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCompactConfigIDString(t *testing.T) {
+	tests := []struct {
+		name string
+		cid  ConfigID
+		want string
+	}{
+		{name: "id", cid: ConfigID{Slug: "long-url-slug", ID: "n10a"}.WithCompact(true), want: "n10a"},
+		{name: "id subid", cid: ConfigID{Slug: "long-url-slug", ID: "n10a", SubID: "n10aa"}.WithCompact(true), want: "n10a-n10aa"},
+		{name: "field lowercased", cid: ConfigID{Slug: "long-url-slug", ID: "n10a", Field: "F2a60128b-href-0", SubID: "n10aaa"}.WithCompact(true), want: "n10a-f2a60128b-href-0-n10aaa"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.cid.String(); got != tt.want {
+				t.Fatalf("compact ConfigID.String() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCompactConfigIDStringIsValidScraperName(t *testing.T) {
+	re := regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
+	tests := []ConfigID{
+		{Slug: "long-url-slug", ID: "n5"},
+		{Slug: "long-url-slug", ID: "n10a", SubID: "n10aa"},
+		{Slug: "long-url-slug", ID: "n10a", Field: "F2a60128b-href-0", SubID: "n10aaa"},
+	}
+
+	for _, cid := range tests {
+		got := cid.WithCompact(true).String()
+		if !re.MatchString(got) {
+			t.Fatalf("compact ConfigID.String() = %q, want ValidSourceScraperName-compatible shape", got)
+		}
+	}
+}
+
+func TestConfigIDCompactDoesNotSerializeToYAML(t *testing.T) {
+	cid := ConfigID{Slug: "example-com", ID: "n5", Field: "Fabc-href-0", SubID: "s1"}
+	want := "slug: example-com\nid: n5\nfield: Fabc-href-0\nsubid: s1\n"
+	for _, cid := range []ConfigID{cid, cid.WithCompact(true), cid.WithCompact(false)} {
+		got, err := yaml.Marshal(cid)
+		if err != nil {
+			t.Fatalf("yaml.Marshal(ConfigID) failed: %v", err)
+		}
+		if strings.Contains(string(got), "compact") {
+			t.Fatalf("ConfigID YAML leaked compact field: %q", string(got))
+		}
+		if string(got) != want {
+			t.Fatalf("ConfigID YAML = %q, want %q", string(got), want)
+		}
+	}
+}
 
 func TestFilterRecordMatchTrue(t *testing.T) {
 	rec := output.Record{"title": "Jacob Collier - Concert"}
@@ -962,6 +1041,46 @@ func TestGetHTMLStringPlainText(t *testing.T) {
 	}
 }
 
+// TestGetHTMLStringMultipleNodes verifies that getHTMLString returns inner HTML
+// from ALL matched elements, not just the first. This is a regression test for a
+// bug where goquery's .Html() returned only the first element, causing pages with
+// an empty leading <p></p> (e.g., WordPress block editor artifacts) to lose all
+// body content from subsequent <p> tags.
+func TestGetHTMLStringMultipleNodes(t *testing.T) {
+	html := `<div class="wrapper">
+		<div class="content">
+			<p></p>
+			<p>First paragraph with <strong>bold</strong> text.</p>
+			<p>Second paragraph.</p>
+		</div>
+	</div>`
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	e := &ElementLocation{
+		Selector: "div.content p",
+	}
+	result, err := getHTMLString(e, fetch.NewSelection(doc.Selection))
+	if err != nil {
+		t.Fatalf("unexpected error in getHTMLString: %v", err)
+	}
+	// Empty <p> should be skipped; both content paragraphs should be present.
+	if !strings.Contains(result, "First paragraph") {
+		t.Fatalf("expected result to contain 'First paragraph' but got: %s", result)
+	}
+	if !strings.Contains(result, "Second paragraph") {
+		t.Fatalf("expected result to contain 'Second paragraph' but got: %s", result)
+	}
+	if !strings.Contains(result, "<strong>bold</strong>") {
+		t.Fatalf("expected result to preserve HTML tags but got: %s", result)
+	}
+	// Parts should be joined with HTMLNodeSeparator for downstream HTML-to-markdown conversion
+	if !strings.Contains(result, HTMLNodeSeparator) {
+		t.Fatalf("expected %q between parts but got: %q", HTMLNodeSeparator, result)
+	}
+}
+
 func TestExtractFieldHTML(t *testing.T) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStringRichDescription))
 	if err != nil {
@@ -1050,6 +1169,260 @@ func TestExtractFieldHTMLvsText(t *testing.T) {
 	}
 	if !strings.Contains(textVal, "transformative weekend") {
 		t.Fatalf("text extraction should contain text content but got: %s", textVal)
+	}
+}
+
+const htmlNestedFields = `
+<div class="event-card">
+	<h3 class="title">Weekend Workshop</h3>
+	<span class="date">2026-04-17</span>
+	<span class="cost">$295</span>
+	<a class="detail-link" href="/event/workshop-1">Details</a>
+	<a class="register-link" href="https://eventbrite.com/e/123">Register</a>
+	<div class="contact">
+		<span class="contact-name">Alice Smith</span>
+		<a class="contact-email" href="mailto:alice@example.com">alice@example.com</a>
+		<span class="contact-phone">555-1234</span>
+	</div>
+</div>`
+
+func TestExtractSubfields_SingleMap(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlNestedFields))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	fields := []Field{
+		{Name: "raw_url", ElementLocations: ElementLocations{{Selector: "a.detail-link", Attr: "href"}}},
+		{Name: "role", Value: "detail"},
+	}
+	ctx := context.Background()
+	result := extractSubfields(ctx, fields, fetch.NewSelection(doc.Selection), "https://example.com")
+	if result["raw_url"] != "/event/workshop-1" {
+		t.Errorf("raw_url = %q, want /event/workshop-1", result["raw_url"])
+	}
+	if result["role"] != "detail" {
+		t.Errorf("role = %q, want detail", result["role"])
+	}
+}
+
+func TestExtractSubfields_NestedMap(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlNestedFields))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// 3-level nesting: names → items → raw_text
+	fields := []Field{
+		{Name: "items", Fields: []Field{
+			{Name: "raw_text", ElementLocations: ElementLocations{{Selector: "h3.title"}}},
+		}},
+	}
+	ctx := context.Background()
+	result := extractSubfields(ctx, fields, fetch.NewSelection(doc.Selection), "")
+	items, ok := result["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("items should be map[string]any, got %T", result["items"])
+	}
+	if items["raw_text"] != "Weekend Workshop" {
+		t.Errorf("items.raw_text = %q, want Weekend Workshop", items["raw_text"])
+	}
+}
+
+func TestMergeNestedField_SingleToSlice(t *testing.T) {
+	rec := output.Record{}
+
+	// First link
+	mergeNestedField(rec, "links", map[string]any{"raw_url": "url1", "role": "detail"})
+	if _, ok := rec["links"].(map[string]any); !ok {
+		t.Fatalf("after first merge, links should be map, got %T", rec["links"])
+	}
+
+	// Second link — should convert to slice
+	mergeNestedField(rec, "links", map[string]any{"raw_url": "url2", "role": "registration"})
+	slice, ok := rec["links"].([]any)
+	if !ok {
+		t.Fatalf("after second merge, links should be []any, got %T", rec["links"])
+	}
+	if len(slice) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(slice))
+	}
+	m1 := slice[0].(map[string]any)
+	m2 := slice[1].(map[string]any)
+	if m1["role"] != "detail" || m2["role"] != "registration" {
+		t.Errorf("roles: %q, %q — want detail, registration", m1["role"], m2["role"])
+	}
+}
+
+func TestExtractSubfields_ConstantOnly(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlNestedFields))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	fields := []Field{
+		{Name: "role", Value: "detail"},
+	}
+	ctx := context.Background()
+	result := extractSubfields(ctx, fields, fetch.NewSelection(doc.Selection), "")
+	if result["role"] != "detail" {
+		t.Errorf("role = %q, want detail", result["role"])
+	}
+}
+
+// TestExtractSubfields_MultiSubfield verifies that a parent field with multiple
+// dynamic subfields (text + email from different selectors) produces a map
+// containing all subfield values.
+func TestExtractSubfields_MultiSubfield(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlNestedFields))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	fields := []Field{
+		{Name: "contact", Fields: []Field{
+			{Name: "name", ElementLocations: ElementLocations{{Selector: "span.contact-name"}}},
+			{Name: "email", ElementLocations: ElementLocations{{Selector: "a.contact-email"}}},
+			{Name: "phone", ElementLocations: ElementLocations{{Selector: "span.contact-phone"}}},
+		}},
+	}
+	ctx := context.Background()
+	result := extractSubfields(ctx, fields, fetch.NewSelection(doc.Selection), "")
+	contact, ok := result["contact"].(map[string]any)
+	if !ok {
+		t.Fatalf("contact should be map[string]any, got %T", result["contact"])
+	}
+	if contact["name"] != "Alice Smith" {
+		t.Errorf("contact.name = %q, want Alice Smith", contact["name"])
+	}
+	if contact["email"] != "alice@example.com" {
+		t.Errorf("contact.email = %q, want alice@example.com", contact["email"])
+	}
+	if contact["phone"] != "555-1234" {
+		t.Errorf("contact.phone = %q, want 555-1234", contact["phone"])
+	}
+}
+
+// TestExtractSubfields_ConstantValue verifies that a Field with Value set
+// (no CSS selector) produces a constant string in the output map.
+func TestExtractSubfields_ConstantValue(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlNestedFields))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	fields := []Field{
+		{Name: "link", Fields: []Field{
+			{Name: "raw_url", ElementLocations: ElementLocations{{Selector: "a.detail-link", Attr: "href"}}},
+			{Name: "role", Value: "detail"},
+			{Name: "source", Value: "scraper"},
+		}},
+	}
+	ctx := context.Background()
+	result := extractSubfields(ctx, fields, fetch.NewSelection(doc.Selection), "")
+	link, ok := result["link"].(map[string]any)
+	if !ok {
+		t.Fatalf("link should be map[string]any, got %T", result["link"])
+	}
+	if link["raw_url"] != "/event/workshop-1" {
+		t.Errorf("link.raw_url = %q, want /event/workshop-1", link["raw_url"])
+	}
+	if link["role"] != "detail" {
+		t.Errorf("link.role = %q, want detail", link["role"])
+	}
+	if link["source"] != "scraper" {
+		t.Errorf("link.source = %q, want scraper", link["source"])
+	}
+}
+
+// TestExtractSubfields_MultipleSameNameEntries verifies that two Fields with
+// the same name produce a slice of maps (via mergeNestedField).
+func TestExtractSubfields_MultipleSameNameEntries(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlNestedFields))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	fields := []Field{
+		{Name: "links", Fields: []Field{
+			{Name: "raw_url", ElementLocations: ElementLocations{{Selector: "a.detail-link", Attr: "href"}}},
+			{Name: "role", Value: "detail"},
+		}},
+		{Name: "links", Fields: []Field{
+			{Name: "raw_url", ElementLocations: ElementLocations{{Selector: "a.register-link", Attr: "href"}}},
+			{Name: "role", Value: "registration"},
+		}},
+	}
+	ctx := context.Background()
+	result := extractSubfields(ctx, fields, fetch.NewSelection(doc.Selection), "")
+	slice, ok := result["links"].([]any)
+	if !ok {
+		t.Fatalf("links should be []any after two same-name entries, got %T", result["links"])
+	}
+	if len(slice) != 2 {
+		t.Fatalf("expected 2 link entries, got %d", len(slice))
+	}
+	link1 := slice[0].(map[string]any)
+	link2 := slice[1].(map[string]any)
+	if link1["raw_url"] != "/event/workshop-1" {
+		t.Errorf("link1.raw_url = %q, want /event/workshop-1", link1["raw_url"])
+	}
+	if link1["role"] != "detail" {
+		t.Errorf("link1.role = %q, want detail", link1["role"])
+	}
+	if link2["raw_url"] != "https://eventbrite.com/e/123" {
+		t.Errorf("link2.raw_url = %q, want https://eventbrite.com/e/123", link2["raw_url"])
+	}
+	if link2["role"] != "registration" {
+		t.Errorf("link2.role = %q, want registration", link2["role"])
+	}
+}
+
+// TestExtractSubfields_ThreeLevelNesting verifies 3-level deep nesting:
+// names → items → raw_text, where a Field has Fields that themselves have Fields.
+func TestExtractSubfields_ThreeLevelNesting(t *testing.T) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlNestedFields))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	fields := []Field{
+		{Name: "names", Fields: []Field{
+			{Name: "items", Fields: []Field{
+				{Name: "raw_text", ElementLocations: ElementLocations{{Selector: "h3.title"}}},
+			}},
+		}},
+	}
+	ctx := context.Background()
+	result := extractSubfields(ctx, fields, fetch.NewSelection(doc.Selection), "")
+
+	names, ok := result["names"].(map[string]any)
+	if !ok {
+		t.Fatalf("names should be map[string]any, got %T", result["names"])
+	}
+	items, ok := names["items"].(map[string]any)
+	if !ok {
+		t.Fatalf("names.items should be map[string]any, got %T", names["items"])
+	}
+	if items["raw_text"] != "Weekend Workshop" {
+		t.Errorf("names.items.raw_text = %q, want Weekend Workshop", items["raw_text"])
+	}
+}
+
+// TestMergeNestedField_ThirdAppend verifies that mergeNestedField correctly
+// appends a third map to an existing slice (not just the single→slice conversion).
+func TestMergeNestedField_ThirdAppend(t *testing.T) {
+	rec := output.Record{}
+
+	mergeNestedField(rec, "links", map[string]any{"url": "url1"})
+	mergeNestedField(rec, "links", map[string]any{"url": "url2"})
+	mergeNestedField(rec, "links", map[string]any{"url": "url3"})
+
+	slice, ok := rec["links"].([]any)
+	if !ok {
+		t.Fatalf("after three merges, links should be []any, got %T", rec["links"])
+	}
+	if len(slice) != 3 {
+		t.Fatalf("expected 3 items, got %d", len(slice))
+	}
+	for i, want := range []string{"url1", "url2", "url3"} {
+		m := slice[i].(map[string]any)
+		if m["url"] != want {
+			t.Errorf("slice[%d].url = %q, want %q", i, m["url"], want)
+		}
 	}
 }
 

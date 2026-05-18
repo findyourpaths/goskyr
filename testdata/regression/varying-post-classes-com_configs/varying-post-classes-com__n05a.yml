@@ -1,0 +1,29 @@
+id:
+    slug: varying-post-classes-com
+    id: n05a
+    field: ""
+    subid: ""
+scrapers:
+    - name: varying-post-classes-com__n05a
+      render_js: true
+      selector: body > div.site-wrapper > div.content-area > div.product-grid > div.product-card
+      url: https://varying-post-classes.com
+      fields:
+        - name: Fe33df48-href-0
+          type: url
+          location:
+            - selector: h3.product-title > a
+              attr: href
+        - name: F150223e4--0
+          type: date_time_tz_ranges
+          location:
+            - selector: div.product-meta > span.product-date
+        - name: Fe33df48--0
+          type: text
+          location:
+            - selector: h3.product-title > a
+        - name: Ff5acc092--0
+          type: text
+          location:
+            - selector: div.product-meta > span.product-presenter
+records: []

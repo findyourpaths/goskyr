@@ -16,7 +16,9 @@ import (
 	"strings"
 	"time"
 
+	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/andybalholm/cascadia"
 	"github.com/antchfx/jsonquery"
 	"github.com/findyourpaths/goskyr/date"
 	"github.com/findyourpaths/goskyr/fetch"
@@ -54,9 +56,20 @@ const (
 	GroupSeparator = "\x1d"
 )
 
-// FieldPartSeparator is used to join multiple parts when extracting field values.
-// Using newline preserves text structure and helps with date parsing.
-var FieldPartSeparator = "\n"
+// FieldPartSeparator joins text extracted from multiple ElementLocations for text fields.
+// Triple-newline marks an element boundary: HTMLToMarkdown guarantees max \n\n
+// within a single element, so \n\n\n unambiguously signals "different elements."
+// Downstream consumers split on \n\n\n to recover per-element items.
+var FieldPartSeparator = "\n\n\n"
+
+// HTMLPartSeparator joins text extracted from multiple ElementLocations for html/markdown fields.
+// Uses <br> so the separator survives HTML-to-markdown conversion (plain \n\n\n would be
+// collapsed as whitespace by the HTML parser).
+const HTMLPartSeparator = "<br>"
+
+// HTMLNodeSeparator joins inner HTML from multiple matched nodes within one ElementLocation.
+// Uses <br> so paragraph breaks survive HTML-to-markdown conversion.
+const HTMLNodeSeparator = "<br>"
 
 func init() {
 	utils.WriteStringFile("/tmp/goskyr/main/scrape_Page_log.txt", "")
@@ -86,11 +99,23 @@ type ConfigID struct {
 	ID    string
 	Field string
 	SubID string
+
+	compact bool
+}
+
+// WithCompact returns a copy of cid whose String form omits URL-derived slug provenance.
+func (cid ConfigID) WithCompact(v bool) ConfigID {
+	cid.compact = v
+	return cid
 }
 
 // String converts a ConfigID to its string representation by joining its components
 // with underscores, creating a hierarchical identifier.
 func (cid ConfigID) String() string {
+	if cid.compact {
+		return compactConfigIDString(cid)
+	}
+
 	// slog.Debug(fmt.Sprintf("ConfigID.String(): cid %#v\n", cid))
 	// fmt.Printf("ConfigID.String(): cid %#v\n", cid)
 	rb := strings.Builder{}
@@ -120,6 +145,20 @@ func (cid ConfigID) String() string {
 	// slog.Debug(fmt.Sprintf("ConfigID.String() returning %q\n", r))
 	// fmt.Printf("ConfigID.String() returning %q\n", r)
 	return r
+}
+
+func compactConfigIDString(cid ConfigID) string {
+	parts := []string{}
+	if cid.ID != "" {
+		parts = append(parts, cid.ID)
+	}
+	if cid.Field != "" {
+		parts = append(parts, cid.Field)
+	}
+	if cid.SubID != "" {
+		parts = append(parts, cid.SubID)
+	}
+	return strings.ToLower(strings.Join(parts, "-"))
 }
 
 // Copy creates a deep copy of the Config including all records.
@@ -244,6 +283,7 @@ type ElementLocation struct {
 	NodeSeparator  string      `yaml:"node_separator,omitempty"`  // Inter-node separator (default: \x1E)
 	StripTags      bool        `yaml:"strip_tags,omitempty"`      // Only insert separators between block-level elements
 	CollapseSpaces bool        `yaml:"collapse_spaces,omitempty"` // Collapse runs of 2+ spaces to single space
+	UntilSelector  string      `yaml:"until_selector,omitempty"`  // Stop extracting text when hitting a child matching this CSS selector
 }
 
 // TransformConfig is used to replace an existing substring with some other
@@ -266,24 +306,36 @@ type DateComponent struct {
 // A Field contains all the information necessary to scrape
 // a dynamic field from a website, ie a field who's value changes
 // for each record.
+//
+// A Field with Fields (subfields) produces nested output:
+//   - name: links
+//     fields:
+//   - name: raw_url
+//     location: [...]
+//   - name: role
+//     value: detail
+//
+// Output: {"links": {"raw_url": "https://...", "role": "detail"}}
+// Multiple same-name Fields produce a slice: {"links": [map1, map2]}
 type Field struct {
 	Name             string           `yaml:"name"`
 	Value            string           `yaml:"value,omitempty"`
 	Type             string           `yaml:"type,omitempty"`     // can be text (default), html, url, or date_time_tz_ranges
+	Fields           []Field          `yaml:"fields,omitempty"`   // subfields — produces nested map output
 	ElementLocations ElementLocations `yaml:"location,omitempty"` // elements are extracted strings joined with newlines
 	Default          string           `yaml:"default,omitempty"`  // the default for a dynamic field (text or url) if no value is found
 	// If a field can be found on a detail page the following variable has to
 	// contain a field name of a field of type 'url' that is located on the main
 	// page.
-	OnDetailPage   string            `yaml:"on_detail_page,omitempty"` // applies to text, url, date
-	Required       bool              `yaml:"required,omitempty"`       // applies to text, url - if true, skip record when field is empty
-	Components     []DateComponent   `yaml:"components,omitempty"`     // applies to date
-	DateLocation   string            `yaml:"date_location,omitempty"`  // applies to date
-	DateLanguage   string            `yaml:"date_language,omitempty"`  // applies to date
-	Hide           bool              `yaml:"hide,omitempty"`           // applies to text, url, date
-	GuessYear      bool              `yaml:"guess_year,omitempty"`     // applies to date
-	Transform      []TransformConfig `yaml:"transform,omitempty"`      // applies to text
-	StripTags      bool              `yaml:"strip_tags,omitempty"`     // Only insert separators between block-level elements
+	OnDetailPage   string            `yaml:"on_detail_page,omitempty"`  // applies to text, url, date
+	Required       bool              `yaml:"required,omitempty"`        // applies to text, url - if true, skip record when field is empty
+	Components     []DateComponent   `yaml:"components,omitempty"`      // applies to date
+	DateLocation   string            `yaml:"date_location,omitempty"`   // applies to date
+	DateLanguage   string            `yaml:"date_language,omitempty"`   // applies to date
+	Hide           bool              `yaml:"hide,omitempty"`            // applies to text, url, date
+	GuessYear      bool              `yaml:"guess_year,omitempty"`      // applies to date
+	Transform      []TransformConfig `yaml:"transform,omitempty"`       // applies to text
+	StripTags      bool              `yaml:"strip_tags,omitempty"`      // Only insert separators between block-level elements
 	CollapseSpaces bool              `yaml:"collapse_spaces,omitempty"` // Collapse runs of 2+ spaces to single space
 }
 
@@ -438,13 +490,13 @@ type FetchConfig struct {
 
 // Pagination configures multi-page extraction
 type Pagination struct {
-	Type           string `yaml:"type"`             // query_param, scroll, next_button
-	ParamName      string `yaml:"param_name"`       // for query_param: e.g. "start", "page"
-	StartValue     int    `yaml:"start_value"`      // starting value (usually 0)
-	Increment      int    `yaml:"increment"`        // increment per page
-	MaxPages       int    `yaml:"max_pages"`        // safety limit
-	ButtonSelector string `yaml:"button_selector"`  // for scroll/next_button types
-	WaitMs         int    `yaml:"wait_ms"`          // delay between pages (milliseconds)
+	Type           string `yaml:"type"`            // query_param, scroll, next_button
+	ParamName      string `yaml:"param_name"`      // for query_param: e.g. "start", "page"
+	StartValue     int    `yaml:"start_value"`     // starting value (usually 0)
+	Increment      int    `yaml:"increment"`       // increment per page
+	MaxPages       int    `yaml:"max_pages"`       // safety limit
+	ButtonSelector string `yaml:"button_selector"` // for scroll/next_button types
+	WaitMs         int    `yaml:"wait_ms"`         // delay between pages (milliseconds)
 }
 
 // A Scraper contains all the necessary config parameters and structs needed
@@ -575,23 +627,37 @@ func Page(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, globalC
 	hasNextPage := true
 	currentPage := 0
 	var gqdoc *fetch.Document
+	// Track visited URLs to prevent cycles (e.g., "Previous" link back to page 1).
+	// Normalize via url.Parse to canonicalize path (trailing slash) and query.
+	normURL := func(raw string) string {
+		parsed, err := url.Parse(raw)
+		if err != nil {
+			return raw
+		}
+		parsed.Path = strings.TrimRight(parsed.Path, "/")
+		return parsed.String()
+	}
+	visited := map[string]bool{normURL(u): true}
 
-	// fmt.Println("fetching", "u", u)
 	hasNextPage, pageURL, gqdoc, err := s.fetchPage(cache, nil, currentPage, u, globalConfig.UserAgent, s.Interaction)
 	if err != nil {
-		// slog.Debug("pageURL: %q", pageURL)
 		return nil, fmt.Errorf("failed to fetch next page %q: %w", u, err)
 	}
 
 	for hasNextPage {
 		if gqdoc == nil {
-			// This shouldn't happen - fetchPage should return error if document is nil
 			return nil, fmt.Errorf("fetch returned nil document without error for URL %q (page %d)", pageURL, currentPage)
 		}
 
 		recs, err := GQDocument(ctx, c, s, gqdoc)
 		if err != nil {
 			return nil, err
+		}
+		// Set Aurl to the actual page URL from the pagination loop.
+		// GQDocument uses s.URL (the scraper's base URL), which is wrong
+		// for paginated pages.
+		for _, r := range recs {
+			r[URLFieldName] = pageURL
 		}
 		rs = append(rs, recs...)
 
@@ -600,6 +666,11 @@ func Page(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, globalC
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch next page: %w", err)
 		}
+		if hasNextPage && visited[normURL(pageURL)] {
+			slog.Debug("pagination loop: already visited URL, stopping", "url", pageURL, "page", currentPage)
+			break
+		}
+		visited[normURL(pageURL)] = true
 	}
 
 	s.guessYear(rs, time.Now())
@@ -665,10 +736,6 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 	// recElts := strings.Split(s.Item, " > ")
 	// gqdoc.Document.Find(strings.Join(itemElts[0:len(itemElts)-1], " > ")).Each(func(i int, sel *cache.Selection) {
 	slog.Debug("in scrape.GQDocument()", "s.Selector", s.Selector)
-	slog.Debug("in scrape.GQDocument()", "len(doc.Find(s.Selector).Nodes)", len(gqdoc.Find(s.Selector).Nodes))
-	// fmt.Println("in scrape.GQDocument()", "s.Selector", s.Selector)
-	// fmt.Println("in scrape.GQDocument()", "len(gqdoc.Find(s.Selector).Nodes)", len(gqdoc.Find(s.Selector).Nodes))
-	// fmt.Println("in scrape.GQDocument()", "len(gqdoc.Selection.Find(s.Selector).Nodes)", len(gqdoc.Selection.Find(s.Selector).Nodes))
 
 	found := gqdoc.Document.Selection
 
@@ -684,9 +751,6 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 	}
 
 	if s.Selector != "" {
-		// Filter checks the current elements; Find searches descendants.
-		// Both are needed when scoped to a fragment element that itself
-		// matches the selector.
 		selfMatch := found.Filter(s.Selector)
 		descMatch := found.Find(s.Selector)
 		found = selfMatch.AddSelection(descMatch)
@@ -710,7 +774,6 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 
 	found.Each(func(i int, sel *goquery.Selection) {
 		count = i + 1
-		// fmt.Println("in scrape.GQDocument()", "i", i) //, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		slog.Debug("in scrape.GQDocument()", "i", i, "sel.Nodes", printHTMLNodes(sel.Nodes))
 		r, err := GQSelection(ctx, c, s, fetch.NewSelection(sel), baseURL)
 		if err != nil {
@@ -1029,23 +1092,33 @@ func GQSelection(ctx context.Context, c *Config, s *Scraper, sel *fetch.Selectio
 	sort.Slice(fs, func(i, j int) bool { return fs[i].Type == "url" })
 	for _, f := range fs {
 		slog.Debug("in scrape.GQSelection(), looking at field", "f.Name", f.Name)
-		// if f.Value != "" {
-		// 	if !rawDyn {
-		// 		// add static fields
-		// 		rs[f.Name] = f.Value
-		// 	}
-		// 	continue
-		// }
+
+		// Constant value — no DOM extraction needed.
+		if f.Value != "" {
+			rets[f.Name] = f.Value
+			continue
+		}
+
+		// Nested field — extract subfields into a map, merge into record.
+		// When a subfield's selector matches multiple DOM elements, goskyr joins
+		// values with \x1e. Split these into separate sub-entities so each gets
+		// its own map (e.g., two instructor <a> tags → two Link maps).
+		if len(f.Fields) > 0 {
+			subMap := extractSubfields(ctx, f.Fields, sel, baseURL)
+			if len(subMap) > 0 {
+				for _, m := range splitSubMapBySeparator(subMap) {
+					mergeNestedField(rets, f.Name, m)
+				}
+			}
+			continue
+		}
+
 		slog.Debug("in scrape.GQSelection(), before extract", "f", f)
 
 		// handle all dynamic fields on the main page
 		if f.OnDetailPage == "" {
 			var err error
-			// if rawDyn {
-			// err = extractRawField(&f, rs, sel)
-			// } else {
 			err = extractField(ctx, &f, rets, sel, baseURL, 0)
-			// }
 			if err != nil {
 				return nil, fmt.Errorf("error while parsing field %s: %v. Skipping rs %v.", f.Name, err, rets)
 			}
@@ -1284,11 +1357,28 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 	if c.RenderJs {
 		// check if node c.Paginator.Location.Selector is present in doc
 		pag := c.Paginators[0]
+		if strings.EqualFold(strings.TrimSpace(pag.Location.Attr), "href") {
+			baseURL := getBaseURL(currentPageURL, gqdoc)
+			_, nextPageUU, err := GetTextStringAndURL(&pag.Location, fetch.NewSelection(gqdoc.Document.Selection), baseURL)
+			nextPageURL := nextPageUU.String()
+			if err != nil {
+				return false, "", nil, err
+			}
+			if nextPageURL != "" {
+				nextPageDoc, _, err := fetch.GetGQDocument(cache, nextPageURL)
+				if err != nil {
+					return false, "", nil, fmt.Errorf("fetching paginated page %q (page %d): %w", nextPageURL, nextPageI, err)
+				}
+				if nextPageDoc == nil {
+					return false, "", nil, fmt.Errorf("fetch returned nil document for paginated URL %q (page %d, no error returned)", nextPageURL, nextPageI)
+				}
+				return true, nextPageURL, nextPageDoc, nil
+			}
+			return false, "", nil, nil
+		}
 		pagSelector := gqdoc.Find(pag.Location.Selector)
-		fmt.Println("pagSelector", pagSelector)
 		if len(pagSelector.Nodes) > 0 {
 			if nextPageI < pag.MaxPages || pag.MaxPages == 0 {
-				fmt.Println("pag.Location.Selector", pag.Location.Selector)
 				// ia := []*fetch.Interaction{
 				// 	{
 				// 		Selector: pag.Location.Selector,
@@ -1312,8 +1402,6 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 	baseURL := getBaseURL(currentPageURL, gqdoc)
 	_, nextPageUU, err := GetTextStringAndURL(&c.Paginators[0].Location, fetch.NewSelection(gqdoc.Document.Selection), baseURL)
 	nextPageURL := nextPageUU.String()
-	fmt.Println("in scrape.fetchPage()", "baseURL", baseURL)
-	fmt.Println("in scrape.fetchPage()", "nextPageURL", nextPageURL)
 
 	if err != nil {
 		return false, "", nil, err
@@ -1334,6 +1422,17 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 	return false, "", nil, nil
 }
 
+func addOrReplaceQueryParam(rawURL string, paramName string, paramValue string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+	q := u.Query()
+	q.Set(paramName, paramValue)
+	u.RawQuery = q.Encode()
+	return u.String(), nil
+}
+
 var URLFieldName = "Aurl"
 var URLFieldSuffix = "__" + URLFieldName
 var TitleFieldName = "Atitle"
@@ -1341,8 +1440,101 @@ var TitleFieldSuffix = "__" + TitleFieldName
 var DateTimeFieldSuffix = "__" + DateTimeFieldName
 var DateTimeFieldName = "Pdate_time_tz_ranges"
 
-var DateRE = regexp.MustCompile(`(?i)\b(2024|2025|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b`)
+var DateRE = regexp.MustCompile(`(?i)\b(20\d{2}|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b`)
 var yearRE = regexp.MustCompile(`(?i)\b(20[0-9][0-9])\b`)
+
+// extractSubfields extracts each subfield into a flat map.
+// Subfields with Value set produce constants. Subfields with Fields recurse.
+// Subfields with Location extract from the DOM.
+func extractSubfields(ctx context.Context, fields []Field, sel *fetch.Selection, baseURL string) map[string]any {
+	result := output.Record{}
+	for _, sf := range fields {
+		if sf.Value != "" {
+			result[sf.Name] = sf.Value
+			continue
+		}
+		if len(sf.Fields) > 0 {
+			sub := extractSubfields(ctx, sf.Fields, sel, baseURL)
+			if len(sub) > 0 {
+				mergeNestedField(result, sf.Name, sub)
+			}
+			continue
+		}
+		if sf.OnDetailPage == "" {
+			if err := extractField(ctx, &sf, result, sel, baseURL, 0); err != nil {
+				slog.Debug("extractSubfields: field extraction failed", "field", sf.Name, "err", err)
+			}
+		}
+	}
+	return result
+}
+
+// splitSubMapBySeparator splits a nested map into multiple maps when a URL-type
+// value contains \x1e (record separator). This handles the case where a subfield's
+// CSS selector matches multiple DOM elements (e.g., two instructor <a> tags).
+// Only splits when the map contains URL keys — text-only maps (schedule, descriptions)
+// keep their \x1e as content separators (converted to \n by cleanMapSeparators).
+// Returns the original map in a single-element slice when no splitting is needed.
+func splitSubMapBySeparator(m map[string]any) []map[string]any {
+	// Only split when a URL-type key has \x1e — indicates separate entities.
+	// Text-only maps with \x1e represent multi-line content, not separate entities.
+	hasURLKey := false
+	maxParts := 1
+	for k, v := range m {
+		isURL := strings.HasSuffix(k, "url") || strings.HasSuffix(k, "href")
+		if s, ok := v.(string); ok && isURL {
+			if n := strings.Count(s, "\x1e") + 1; n > maxParts {
+				maxParts = n
+				hasURLKey = true
+			}
+		}
+	}
+	if maxParts == 1 || !hasURLKey {
+		return []map[string]any{m}
+	}
+	result := make([]map[string]any, maxParts)
+	for i := range result {
+		result[i] = make(map[string]any, len(m))
+	}
+	for k, v := range m {
+		s, ok := v.(string)
+		if !ok {
+			for i := range result {
+				result[i][k] = v
+			}
+			continue
+		}
+		parts := strings.Split(s, "\x1e")
+		for i := range result {
+			if i < len(parts) {
+				result[i][k] = parts[i]
+			} else {
+				// Repeat last value for constants (e.g., role="profile" applies to all)
+				result[i][k] = parts[len(parts)-1]
+			}
+		}
+	}
+	return result
+}
+
+// mergeNestedField adds a nested map to the record under the given key.
+// If the key already exists (multiple same-name entries), converts to a slice.
+func mergeNestedField(rec output.Record, key string, subMap map[string]any) {
+	existing, exists := rec[key]
+	if !exists {
+		rec[key] = subMap
+		return
+	}
+	// Convert to slice: existing single map + new map, or append to existing slice.
+	switch v := existing.(type) {
+	case map[string]any:
+		rec[key] = []any{v, subMap}
+	case []any:
+		rec[key] = append(v, subMap)
+	default:
+		rec[key] = subMap // overwrite unexpected type
+	}
+}
 
 func DebugDateTime(args ...any) { slog.Debug(args[0].(string), args[1:]...) }
 
@@ -1378,12 +1570,17 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 	slog.Debug("scrape.extractField()", "field", f, "event", rec, "sel", sel, "baseURL", baseURL)
 	switch f.Type {
 	case "text", "": // the default, ie when type is not configured, is 'text'
-		if err := extractStringField(getTextString, f, rec, sel); err != nil {
+		if err := extractStringField(getTextString, f, rec, sel, FieldPartSeparator); err != nil {
 			return err
 		}
 
 	case "html":
-		if err := extractStringField(getHTMLString, f, rec, sel); err != nil {
+		if err := extractStringField(getHTMLString, f, rec, sel, HTMLPartSeparator); err != nil {
+			return err
+		}
+
+	case "markdown":
+		if err := extractStringField(getMarkdownString, f, rec, sel, HTMLPartSeparator); err != nil {
 			return err
 		}
 
@@ -1410,7 +1607,6 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 		rec[f.Name+URLFieldSuffix] = u
 
 	case "date_time_tz_ranges":
-		// fmt.Println("case date_time_tz_ranges")
 		if len(f.ElementLocations) != 1 {
 			return fmt.Errorf("a field of type 'date_time_tz_ranges' must exactly have one location, found %d", len(f.ElementLocations))
 		}
@@ -1426,10 +1622,9 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 			str := v.(string)
 			DebugDateTime("looking at non-date-time field", "baseYear", baseYear, "k", k, "v", v, "strings.HasSuffix(k, URLFieldSuffix)", strings.HasSuffix(k, URLFieldSuffix))
 			if strings.HasSuffix(k, URLFieldSuffix) {
-				// if match := DateRE.FindString(str); match == "" {
-				// 	continue
-				// }
-				// debugDateTime("matched dateRE")
+				if match := DateRE.FindString(str); match == "" {
+					continue
+				}
 				dt := datetime.NewDateTimeForNow()
 				dt.TimeZone = datetime.NewTimeZone(f.DateLocation, "", "")
 				rngs, err := datetime.Parse(dt, "", str)
@@ -1459,18 +1654,25 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 			baseYear = 2024
 			DebugDateTime("after setting to now", "baseYear", baseYear)
 		}
-		DebugDateTime("parsing datetime with", "baseYear", baseYear, "str", str)
+		// Limit input to datetime.Parse — long concatenated text (e.g., from
+		// multi-page detail discovery) causes the parser to hang. The first
+		// occurrence of a date is always near the start.
+		parseStr := str
+		if len(parseStr) > 500 {
+			parseStr = parseStr[:500]
+		}
+		DebugDateTime("parsing datetime with", "baseYear", baseYear, "str", parseStr)
 		dt := datetime.NewDateTimeForNow()
 		dt.Date.Year = baseYear
 		dt.TimeZone = datetime.NewTimeZone(f.DateLocation, "", "")
-		rngs, err := datetime.Parse(dt, "", str)
+		rngs, err := datetime.Parse(dt, "", parseStr)
 		// fmt.Printf("rngs.Items[0]: %#v\n", rngs.Items[0])
 		// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 		if err != nil {
 			DebugDateTime("parse error", "err", err)
 			break
 		}
-		if datetime.HasStartMonthAndDay(rngs) {
+		if rngs != nil && len(rngs.Items) > 0 && rngs.Items[0] != nil && datetime.HasStartMonthAndDay(rngs) {
 			DebugDateTime("parsed", "rngs", rngs)
 			// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 			// start := rngs.Items[0].Start
@@ -1533,6 +1735,7 @@ var SkipTag = map[string]bool{
 // numbers across spans (e.g., <span>2</span><span>5</span> → "25" not "2 5").
 var blockElements = map[string]bool{
 	"address": true, "article": true, "aside": true, "blockquote": true,
+	"br":      true,
 	"details": true, "dialog": true, "dd": true, "div": true, "dl": true,
 	"dt": true, "fieldset": true, "figcaption": true, "figure": true,
 	"footer": true, "form": true, "h1": true, "h2": true, "h3": true,
@@ -1544,8 +1747,8 @@ var blockElements = map[string]bool{
 }
 
 // extractStringField extracts string parts from element locations using extractFn,
-// joins them, applies defaults/required checks, and runs transforms.
-func extractStringField(extractFn func(*ElementLocation, *fetch.Selection) (string, error), f *Field, rec output.Record, sel *fetch.Selection) error {
+// joins them with partSep, applies defaults/required checks, and runs transforms.
+func extractStringField(extractFn func(*ElementLocation, *fetch.Selection) (string, error), f *Field, rec output.Record, sel *fetch.Selection, partSep string) error {
 	var parts []string
 	for i := range f.ElementLocations {
 		p := &f.ElementLocations[i]
@@ -1564,7 +1767,7 @@ func extractStringField(extractFn func(*ElementLocation, *fetch.Selection) (stri
 			parts = append(parts, str)
 		}
 	}
-	t := strings.Join(parts, FieldPartSeparator)
+	t := strings.Join(parts, partSep)
 	if t == "" {
 		t = f.Default
 		if f.Required && t == "" {
@@ -1578,12 +1781,11 @@ func extractStringField(extractFn func(*ElementLocation, *fetch.Selection) (stri
 			return err
 		}
 	}
-	// Collapse spaces: normalize NBSP to space, then collapse runs of 2+ spaces
-	if f.CollapseSpaces {
-		t = strings.ReplaceAll(t, "\u00a0", " ")
-		t = collapseSpacesRE.ReplaceAllString(t, " ")
-		t = strings.TrimSpace(t)
-	}
+	// Always collapse spaces: normalize NBSP to space, then collapse runs of 2+ spaces.
+	// No valid use case for preserving runs of whitespace in extracted text.
+	t = strings.ReplaceAll(t, "\u00a0", " ")
+	t = collapseSpacesRE.ReplaceAllString(t, " ")
+	t = strings.TrimSpace(t)
 	rec[f.Name] = t
 	return nil
 }
@@ -1628,19 +1830,44 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 		if e.Attr == "" {
 			if entireSubtree {
 				// Separator between text from different element children.
-				// Default to ASCII Unit Separator (never appears in HTML content).
+				// strip_tags mode uses newline (matches pageMarkdown block boundaries).
+				// Normal mode uses ASCII Unit Separator (never appears in HTML content).
 				subtreeSeparator := e.Separator
 				if subtreeSeparator == "" {
-					subtreeSeparator = UnitSeparator
+					if e.StripTags {
+						subtreeSeparator = "\n"
+					} else {
+						subtreeSeparator = UnitSeparator
+					}
 				}
 
 				// copied from https://github.com/PuerkitoBio/goquery/blob/v1.8.0/property.go#L62
 				stripTags := e.StripTags
+
+				// Compile until_selector once if set.
+				var untilMatcher cascadia.Sel
+				if e.UntilSelector != "" {
+					var err error
+					untilMatcher, err = cascadia.Parse(e.UntilSelector)
+					if err != nil {
+						return "", fmt.Errorf("invalid until_selector %q: %w", e.UntilSelector, err)
+					}
+				}
+
 				var buf bytes.Buffer
+				stopped := false
 				var f func(*html.Node)
 				f = func(n *html.Node) {
+					if stopped {
+						return
+					}
 					// Skip the text in-between <style></style> tags.
 					if n.Type == html.ElementNode && SkipTag[n.Data] {
+						return
+					}
+					// Stop at until_selector match.
+					if untilMatcher != nil && n.Type == html.ElementNode && untilMatcher.Match(n) {
+						stopped = true
 						return
 					}
 					if n.Type == html.TextNode {
@@ -1649,10 +1876,14 @@ func getTextString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 					}
 					if n.FirstChild != nil {
 						for c := n.FirstChild; c != nil; c = c.NextSibling {
+							if stopped {
+								break
+							}
 							f(c)
 							// Add separator between element siblings to preserve structure.
-							// When strip_tags is enabled, only separate block-level elements,
-							// not inline elements (span, a, strong, em, etc.).
+							// When strip_tags is enabled, only separate block-level elements
+							// (not inline: span, a, strong, em). Use \n to match pageMarkdown.
+							// In normal mode, use \x1f (unit separator for multi-value fields).
 							if c.Type == html.ElementNode && c.NextSibling != nil {
 								if !stripTags || blockElements[c.Data] {
 									buf.WriteString(subtreeSeparator)
@@ -1784,15 +2015,28 @@ func getHTMLString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 		return "", nil
 	}
 
-	// Get inner HTML of the first matched element
-	htmlStr, err := fieldSelection.Html()
-	if err != nil {
-		return "", fmt.Errorf("getting inner HTML for selector %q: %w", e.Selector, err)
-	}
-
-	htmlStr = strings.TrimSpace(htmlStr)
+	// Get inner HTML of ALL matched elements, concatenated with record separator.
+	// goquery's .Html() only returns the first element; we need all of them
+	// (e.g., multiple <p> tags matching "div.col-7 p").
+	// Get inner HTML of ALL matched elements, joined with <br><br> so that
+	// downstream HTML-to-markdown conversion produces paragraph breaks.
+	// goquery's .Html() only returns the first element; we need all of them
+	// (e.g., multiple <p> tags matching "div.col-7 p").
+	var parts []string
+	fieldSelection.Selection.Each(func(_ int, s *goquery.Selection) {
+		h, err := s.Html()
+		if err != nil {
+			return
+		}
+		h = strings.TrimSpace(h)
+		if h != "" {
+			parts = append(parts, h)
+		}
+	})
+	htmlStr := strings.Join(parts, HTMLNodeSeparator)
 
 	// regex extract
+	var err error
 	htmlStr, err = extractStringRegex(&e.RegexExtract, htmlStr)
 	if err != nil {
 		return "", err
@@ -1803,6 +2047,55 @@ func getHTMLString(e *ElementLocation, sel *fetch.Selection) (string, error) {
 
 	return htmlStr, nil
 }
+
+// getMarkdownString extracts inner HTML and converts to markdown.
+// Uses the same html-to-markdown library as pageMarkdown (paths/internal/entity/markdown)
+// to ensure spec offsets and goskyr extraction produce identical text.
+func getMarkdownString(e *ElementLocation, sel *fetch.Selection) (string, error) {
+	htmlStr, err := getHTMLString(e, sel)
+	if err != nil || htmlStr == "" {
+		return htmlStr, err
+	}
+	return HTMLToMarkdown(htmlStr)
+}
+
+// HTMLToMarkdown converts an HTML string to cleaned markdown text.
+// Post-processing matches paths/internal/entity/markdown.TextFromHTML exactly:
+//   - Strips backslash line-break markers (\\\n → \n)
+//   - Doubles single newlines to paragraph breaks
+//   - Collapses 3+ newlines to 2
+//   - Strips blockquotes and horizontal rules
+//   - Normalizes whitespace
+func HTMLToMarkdown(htmlStr string) (string, error) {
+	r, err := htmltomarkdown.ConvertString(htmlStr)
+	if err != nil {
+		return "", fmt.Errorf("html-to-markdown conversion failed: %w", err)
+	}
+	r = strings.ToValidUTF8(r, " ")
+	r = strings.ReplaceAll(r, "\u00A0", " ")
+	r = strings.ReplaceAll(r, "\u2007", " ")
+	r = strings.ReplaceAll(r, "\u202F", " ")
+	r = spaceBeforeNewlineRE.ReplaceAllString(r, "\n")
+	r = strings.ReplaceAll(r, "* * *\n", "\n")
+	r = blockquoteRE.ReplaceAllString(r, "")
+	r = strings.ReplaceAll(r, "\\\n", "\n")
+	// Double all newlines. The html-to-markdown library uses:
+	//   \n   = within a list (li items)
+	//   \n\n = between block elements (div, p, h1, etc.)
+	// After doubling:
+	//   \n   → \n\n  (intra-block paragraph break)
+	//   \n\n → \n\n\n\n (inter-block boundary)
+	r = strings.ReplaceAll(r, "\n", "\n\n")
+	// Cap at \n\n\n: preserves the block boundary signal (\n\n\n)
+	// while collapsing any longer runs.
+	r = excessiveNewlinesRE.ReplaceAllString(r, "\n\n\n")
+	r = strings.TrimSpace(r)
+	return r, nil
+}
+
+var spaceBeforeNewlineRE = regexp.MustCompile(`  \n`)
+var blockquoteRE = regexp.MustCompile(`(?m)^> ?`)
+var excessiveNewlinesRE = regexp.MustCompile(`\n{4,}`)
 
 // extractStringRegex applies regex pattern matching to extract a substring from a string based
 // on the regex configuration.
