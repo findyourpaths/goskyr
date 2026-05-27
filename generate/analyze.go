@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/observability"
@@ -430,7 +431,12 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 
 				slog.Debug("in processFields(), parsing field value with datetime", "ex", ex)
 				// fmt.Printf("ex: %#v\n", ex)
-				rngs, err := datetime.Parse(datetime.NewDateTimeForNow(), "", ex)
+				now := datetime.NewDateTimeForNow()
+				rngs, err := datetime.Parse(ex, datetime.ParseOptions{
+					MinDateTime:     now,
+					DefaultLocation: time.Local,
+					DefaultYear:     now.Date.Year,
+				})
 				if err != nil {
 					exsCache[ex] = ""
 					slog.Warn("parse error", "err", err)

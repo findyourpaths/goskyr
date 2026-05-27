@@ -1627,7 +1627,12 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 				}
 				dt := datetime.NewDateTimeForNow()
 				dt.TimeZone = datetime.NewTimeZone(f.DateLocation, "", "")
-				rngs, err := datetime.Parse(dt, "", str)
+				rngs, err := datetime.Parse(str, datetime.ParseOptions{
+					MinDateTime:     dt,
+					DateMode:        philDateMode(f.DateLocation),
+					DefaultLocation: philDefaultLocation(f.DateLocation),
+					DefaultYear:     dt.Date.Year,
+				})
 				if err != nil {
 					continue
 				}
@@ -1665,7 +1670,12 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 		dt := datetime.NewDateTimeForNow()
 		dt.Date.Year = baseYear
 		dt.TimeZone = datetime.NewTimeZone(f.DateLocation, "", "")
-		rngs, err := datetime.Parse(dt, "", parseStr)
+		rngs, err := datetime.Parse(parseStr, datetime.ParseOptions{
+			MinDateTime:     dt,
+			DateMode:        philDateMode(f.DateLocation),
+			DefaultLocation: philDefaultLocation(f.DateLocation),
+			DefaultYear:     baseYear,
+		})
 		// fmt.Printf("rngs.Items[0]: %#v\n", rngs.Items[0])
 		// fmt.Printf("rngs.Items[0].Start: %#v\n", rngs.Items[0].Start)
 		if err != nil {
@@ -1694,6 +1704,27 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 		return fmt.Errorf("field type '%s' does not exist", f.Type)
 	}
 	return nil
+}
+
+func philDefaultLocation(name string) *time.Location {
+	if name == "" {
+		return nil
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return nil
+	}
+	return loc
+}
+
+func philDateMode(locationName string) string {
+	if locationName == "" {
+		return ""
+	}
+	if datetime.DateMode(datetime.NewTimeZone(locationName, "", "")) == datetime.DateModeNorthAmerican {
+		return datetime.DateModeNorthAmerican
+	}
+	return datetime.DateModeRest
 }
 
 // GetTextStringAndURL extracts text or attribute value from an element and resolves it as a URL
