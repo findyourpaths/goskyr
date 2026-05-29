@@ -6,6 +6,22 @@
 
 ---
 
+## Branching
+
+**Commit straight to `main`. Do not create feature branches in this repo.**
+
+The paths project consumes this library via:
+- **Local**: paths uses a Go workspace (`/Users/wag/Dropbox/Projects/go_<worktree>.work`) listing `./goskyr` — local paths builds use your sibling worktree.
+- **CI**: paths' `go.mod` pins a pseudo-version (e.g. `v0.5.43-0.<ts>-<sha>`). `go mod download` resolves it from `origin/main` via `proxy.golang.org` (or direct, with `GOPRIVATE=github.com/findyourpaths/*`). If the pinned SHA is not reachable on `origin/main`, the build fails with `unknown revision`.
+
+When a paths change depends on a goskyr change: push goskyr to `origin/main` FIRST, then run `make bump-libs` in paths to update the pseudo-version pin, then commit `go.mod`/`go.sum` and push paths. `/gitsh` enforces this order.
+
+**Also bump goskyr's own `go.mod` when migrating to a new phil API.** goskyr's `go.mod` independently pins phil; paths' Docker build runs `cd /app/goskyr && GOWORK=off go install ./...`, exercising goskyr's pin (not paths'). After changing goskyr code to use a new phil API, run `GOPRIVATE=github.com/findyourpaths/* go get github.com/findyourpaths/phil@main && go mod tidy` here in goskyr before committing.
+
+For exploratory work, use a local branch as scratch space, then rebase to `main` before the dependent paths change ships. See `../docs/WORKFLOW.md` §9 "Cross-Repo Discipline".
+
+---
+
 ## Project Overview
 
 **Goskyr** is a web scraper designed to extract **list-like structured data** from web pages.
