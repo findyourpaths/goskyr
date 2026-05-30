@@ -13,25 +13,20 @@ scrapers:
           type: text
           location:
             - selector: div.country-info > strong
-              all_nodes: true
         - name: F4b66d070--0
           type: text
           location:
             - selector: div.country-info > span.country-area
-              all_nodes: true
         - name: F53eebc28--0
           type: text
           location:
             - selector: div.country-info > span.country-population
-              all_nodes: true
         - name: F9a2a5663--0
           type: text
           location:
             - selector: div.country-info > span.country-capital
-              all_nodes: true
         - name: Ffd69cf0e--2
           type: text
           location:
             - selector: h3.country-name
-              all_nodes: true
 records: []

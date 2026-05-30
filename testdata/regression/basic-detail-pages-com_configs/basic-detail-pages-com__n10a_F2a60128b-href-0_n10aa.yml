@@ -14,25 +14,17 @@ scrapers:
           location:
             - selector: div > a
               attr: href
-              all_nodes: true
         - name: Fa5ccda70--0
           type: text
           location:
             - selector: div
-              all_nodes: true
     - name: basic-detail-pages-com__F2a60128b-href-0_n10aa
       render_js: true
-      selector: div.x-0.y-0
+      selector: div.x-0.y-0 > div.x-1.y-1 > div.x-2.y-2 > div.city
       url: https://basic-detail-pages.com
       fields:
         - name: F14fd4c6e--0
           type: text
           location:
-            - selector: div.x-1.y-1 > div.x-2.y-2 > div.city
-              all_nodes: true
-        - name: F21de3337--0
-          type: text
-          location:
-            - selector: div.x-1.y-1 > div.x-2.y-2 > div.street
-              all_nodes: true
+            - {}
 records: []

@@ -12,6 +12,5 @@ scrapers:
         - name: Fa5ccda70--0
           type: text
           location:
-            - entire_subtree: true
-              all_nodes: true
+            - {}
 records: []

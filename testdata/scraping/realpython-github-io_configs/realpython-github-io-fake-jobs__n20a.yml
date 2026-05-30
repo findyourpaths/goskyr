@@ -14,25 +14,20 @@ scrapers:
           location:
             - selector: footer.card-footer > a.card-footer-item
               attr: href
-              all_nodes: true
-        - name: F1647d85c--0
+        - name: F485a0681--0
           type: text
           location:
-            - selector: div.media > div.media-content > h2.is-5.title
-              all_nodes: true
-        - name: Fbf7d68fd--0
+            - selector: div.media > div.media-content > h3.subtitle.is-6.company
+        - name: F91a74a92--0
           type: text
           location:
-            - selector: div.media > div.media-content > h3.company.is-6.subtitle
-              all_nodes: true
+            - selector: div.media > div.media-content > h2.title.is-5
         - name: Fec2ce28c--0
           type: text
           location:
             - selector: div.content > p.location
-              all_nodes: true
         - name: Ffee3e7f9--0
           type: text
           location:
             - selector: footer.card-footer > a.card-footer-item
-              all_nodes: true
 records: []

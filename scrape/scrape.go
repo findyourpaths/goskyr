@@ -1365,6 +1365,9 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 				return false, "", nil, err
 			}
 			if nextPageURL != "" {
+				if pag.MaxPages > 0 && nextPageI >= pag.MaxPages {
+					return false, "", nil, nil
+				}
 				nextPageDoc, _, err := fetch.GetGQDocument(cache, nextPageURL)
 				if err != nil {
 					return false, "", nil, fmt.Errorf("fetching paginated page %q (page %d): %w", nextPageURL, nextPageI, err)
@@ -1400,13 +1403,17 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 	}
 
 	baseURL := getBaseURL(currentPageURL, gqdoc)
-	_, nextPageUU, err := GetTextStringAndURL(&c.Paginators[0].Location, fetch.NewSelection(gqdoc.Document.Selection), baseURL)
+	pag := c.Paginators[0]
+	_, nextPageUU, err := GetTextStringAndURL(&pag.Location, fetch.NewSelection(gqdoc.Document.Selection), baseURL)
 	nextPageURL := nextPageUU.String()
 
 	if err != nil {
 		return false, "", nil, err
 	}
 	if nextPageURL != "" {
+		if pag.MaxPages > 0 && nextPageI >= pag.MaxPages {
+			return false, "", nil, nil
+		}
 		nextPageDoc, _, err := fetch.GetGQDocument(cache, nextPageURL) //, nil)
 		if err != nil {
 			return false, "", nil, fmt.Errorf("fetching next page %q (page %d): %w", nextPageURL, nextPageI, err)
@@ -1414,9 +1421,7 @@ func (c *Scraper) fetchPage(cache fetch.Cache, gqdoc *fetch.Document, nextPageI 
 		if nextPageDoc == nil {
 			return false, "", nil, fmt.Errorf("fetch returned nil document for next page URL %q (page %d, no error returned)", nextPageURL, nextPageI)
 		}
-		if nextPageI < c.Paginators[0].MaxPages || c.Paginators[0].MaxPages == 0 {
-			return true, nextPageURL, nextPageDoc, nil
-		}
+		return true, nextPageURL, nextPageDoc, nil
 	}
 
 	return false, "", nil, nil

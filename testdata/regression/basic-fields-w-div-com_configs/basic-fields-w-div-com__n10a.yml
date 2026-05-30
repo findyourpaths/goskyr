@@ -14,10 +14,8 @@ scrapers:
           location:
             - selector: a
               attr: href
-              all_nodes: true
         - name: Fa5ccda70--0
           type: text
           location:
             - selector: div
-              all_nodes: true
 records: []

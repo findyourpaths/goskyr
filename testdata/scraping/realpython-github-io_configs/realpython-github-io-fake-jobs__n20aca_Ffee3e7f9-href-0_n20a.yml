@@ -13,67 +13,51 @@ scrapers:
           type: url
           location:
             - attr: href
-              all_nodes: true
         - name: Ffee3e7f9--0
           type: text
           location:
-            - entire_subtree: true
-              all_nodes: true
+            - {}
     - name: realpython-github-io-fake-jobs__Ffee3e7f9-href-0_n20a
       render_js: true
       selector: ""
       url: https://realpython.github.io/fake-jobs
       fields:
-        - name: Ff4a7b118-href-0
+        - name: Ffb99dd94-href-0
           type: url
           location:
-            - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.border.sidebar-module.sidebar-module-inset > a.badge.badge-light.text-muted
+            - selector: div.container.main-content > div.row > div.col-12.col-md-6.col-lg-4.mb-5 > div.card.border-0 > div.card-body.m-0.p-0.mt-2 > p.card-text.text-muted.text-truncate.small > a.badge.badge-light.text-muted
               attr: href
-              all_nodes: true
-        - name: F5ee88802-href-0
+        - name: F8fe11020-href-0
           type: url
           location:
-            - selector: div.container.main-content > div.row > div.col-12.col-lg-4.col-md-6.mb-5 > div.border-0.card > div.card-body.m-0.mt-2.p-0 > p.card-text.small.text-muted.text-truncate > a.badge.badge-light.text-muted
+            - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.sidebar-module.sidebar-module-inset.border > a.badge.badge-light.text-muted
               attr: href
-              all_nodes: true
-        - name: F2cb76ac--0
+        - name: F2cd6660e--0
           type: text
           location:
-            - selector: section.section > div.container > div.columns.is-multiline > div.box > h1.is-2.title
-              all_nodes: true
-        - name: F5ee88802--0
-          type: text
-          location:
-            - selector: div.container.main-content > div.row > div.col-12.col-lg-4.col-md-6.mb-5 > div.border-0.card > div.card-body.m-0.mt-2.p-0 > p.card-text.small.text-muted.text-truncate > a.badge.badge-light.text-muted
-              all_nodes: true
+            - selector: section.section > div.container > div.columns.is-multiline > div.box > h2.subtitle.is-4.company
         - name: F70e76b46--0
           type: text
           location:
             - selector: section.section > div.container > div.columns.is-multiline > div.box > div.content > p
-              all_nodes: true
         - name: F70e76b46--1
           type: date_time_tz_ranges
           location:
             - selector: section.section > div.container > div.columns.is-multiline > div.box > div.content > p
-              all_nodes: true
-        - name: Fd179bb67--0
+        - name: F8fe11020--0
           type: text
           location:
-            - selector: title
-              all_nodes: true
-        - name: Ff1f2f0c9--0
+            - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.sidebar-module.sidebar-module-inset.border > a.badge.badge-light.text-muted
+        - name: Fdee84f4f--0
           type: text
           location:
-            - selector: section.section > div.container > div.columns.is-multiline > div.box > h2.company.is-4.subtitle
-              all_nodes: true
-        - name: Ff4a7b118--0
+            - selector: section.section > div.container > div.columns.is-multiline > div.box > h1.title.is-2
+        - name: Ffb99dd94--0
           type: text
           location:
-            - selector: div.container.main-content > div.row > div.col-12.col-lg-4 > div.row > div.col-12 > div.border.sidebar-module.sidebar-module-inset > a.badge.badge-light.text-muted
-              all_nodes: true
+            - selector: div.container.main-content > div.row > div.col-12.col-md-6.col-lg-4.mb-5 > div.card.border-0 > div.card-body.m-0.p-0.mt-2 > p.card-text.text-muted.text-truncate.small > a.badge.badge-light.text-muted
         - name: Ffddfd25e--0
           type: text
           location:
             - selector: section.section > div.container > div.columns.is-multiline > div.box > div.content > p > strong
-              all_nodes: true
 records: []

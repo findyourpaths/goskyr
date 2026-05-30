@@ -2,6 +2,7 @@ package scrape
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -12,6 +13,54 @@ import (
 	"github.com/findyourpaths/goskyr/output"
 	"gopkg.in/yaml.v3"
 )
+
+func TestPagePaginatorMaxPagesDoesNotFetchBeyondLimit(t *testing.T) {
+	t.Parallel()
+	cache := fetch.NewMemoryCache(nil)
+	cache.Set("https://example.com/page-1", testHTTPResponse(`<html><body>
+<article><h2>First</h2></article>
+<a class="next" href="/page-2">Next</a>
+</body></html>`))
+	cfg := &Config{
+		Scrapers: []Scraper{
+			{
+				Name:     "list",
+				URL:      "https://example.com/page-1",
+				Selector: "article",
+				Paginators: []Paginator{
+					{
+						Location: ElementLocation{Selector: "a.next", Attr: "href"},
+						MaxPages: 1,
+					},
+				},
+				Fields: []Field{
+					{
+						Name: "title",
+						Type: "text",
+						ElementLocations: ElementLocations{
+							{Selector: "h2"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	recs, err := Page(context.Background(), cache, cfg, &cfg.Scrapers[0], &cfg.Global, true, "")
+	if err != nil {
+		t.Fatalf("Page: %v", err)
+	}
+	if len(recs) != 1 {
+		t.Fatalf("records len = %d, want 1", len(recs))
+	}
+	if recs[0]["title"] != "First" {
+		t.Fatalf("record title = %q, want First", recs[0]["title"])
+	}
+}
+
+func testHTTPResponse(body string) []byte {
+	return []byte(fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: %d\r\n\r\n%s", len(body), body))
+}
 
 const (
 	htmlString = `
@@ -396,10 +445,9 @@ func TestExtractFieldTextEntireSubtree(t *testing.T) {
 		// ASCII Unit Separator (\x1f) between sibling elements in entire_subtree mode
 		// ASCII Record Separator (\x1e) between multiple matched nodes
 		// Note: \x1f appears after each element sibling (including the last one before \x1e)
-		expected := "Final Story\x1f" + `
-                                                    Aargau` + "\x1f\x1e" + `Moment Of Madness` + "\x1f" + `
-                                                    Basel` + "\x1f\x1e" + `Irony of Fate` + "\x1f" + `
-                                                    Bern` + "\x1f"
+		// extractStringField always collapses runs of 2+ spaces to one, so the HTML's
+		// inter-element indentation reduces to a single space after the newline.
+		expected := "Final Story\x1f\n Aargau\x1f\x1eMoment Of Madness\x1f\n Basel\x1f\x1eIrony of Fate\x1f\n Bern\x1f"
 		if v != expected {
 			t.Fatalf("expected '%s' for title but got '%s'", expected, v)
 		}
