@@ -3,7 +3,6 @@ package observability
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/attribute"
@@ -49,18 +48,26 @@ func NewInstruments(meter metric.Meter, prefix string) (*instruments, error) {
 
 func Add(ctx context.Context, ic metric.Int64Counter, incr int64, kvs ...attribute.KeyValue) {
 	if ic != nil {
-		ic.Add(ctx, 1, metric.WithAttributes(lo.Filter(kvs, KeepNonVarAttributes)...))
+		ic.Add(ctx, incr, metric.WithAttributes(lo.Filter(kvs, keepMetricAttribute)...))
 	}
 	span := trace.SpanFromContext(ctx)
 	if span != nil {
 		span.SetAttributes(kvs...)
-		// if span.IsRecording() {
-		// 	span.AddEvent("From", trace.WithAttributes(kvs...))
-		// }
 	}
 }
 
-func KeepNonVarAttributes(kv attribute.KeyValue, i int) bool {
-	key := string(kv.Key)
-	return !strings.HasPrefix(key, "arg.") && !strings.HasPrefix(key, "int.") && !strings.HasPrefix(key, "ret.")
+// metricAttrKeys allowlists the bounded-cardinality attribute keys goskyr emits
+// as metric labels. A metric label is one time series per distinct value, so an
+// unbounded value (a per-record dump, a formatted payload, a per-call id) pins
+// the SDK's in-memory series store and OOMs long runs. Only these keys reach the
+// counters; every attribute still populates the active span, so tracing detail
+// is unchanged. New attributes are span-only by default — add a key here only
+// once it is known low-cardinality.
+var metricAttrKeys = map[string]bool{
+	"source": true,
+	"status": true,
+}
+
+func keepMetricAttribute(kv attribute.KeyValue, _ int) bool {
+	return metricAttrKeys[string(kv.Key)]
 }
