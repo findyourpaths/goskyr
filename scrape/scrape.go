@@ -673,7 +673,7 @@ func Page(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, globalC
 		visited[normURL(pageURL)] = true
 	}
 
-	s.guessYear(rs, time.Now())
+	s.guessYear(rs, guessYearRef(ctx))
 
 	slog.Debug("in scrape.Page()", "len(rs)", len(rs), "rs.TotalFields()", rs.TotalFields())
 	return rs, nil
@@ -767,7 +767,7 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 		if err != nil {
 			return nil, err
 		}
-		s.guessYear(rets, time.Now())
+		s.guessYear(rets, guessYearRef(ctx))
 		slog.Debug("in scrape.GQDocument() sequential", "len(rets)", len(rets), "rets.TotalFields()", rets.TotalFields())
 		return rets, nil
 	}
@@ -871,8 +871,8 @@ func isDescendantOfAny(n *html.Node, ancestors map[*html.Node]bool) bool {
 // scrapeSequential implements the sequential extraction strategy by chunking elements based on
 // date boundaries and extracting fields from each chunk to build records.
 func scrapeSequential(ctx context.Context, c *Config, s *Scraper, parentSel *goquery.Selection, baseURL string, gqdoc *fetch.Document) (output.Records, error) {
-	slog.Info("scrapeSequential()")
-	defer slog.Info("scrapeSequential() returning")
+	slog.Debug("scrapeSequential()")
+	defer slog.Debug("scrapeSequential() returning")
 
 	// First pass: initial chunking by date boundaries
 	var initialChunks [][]*goquery.Selection
@@ -898,7 +898,7 @@ func scrapeSequential(ctx context.Context, c *Config, s *Scraper, parentSel *goq
 		slog.Debug("scrapeSequential() saved final initial chunk", "len", len(currentChunk))
 	}
 
-	slog.Info("scrapeSequential() found initial chunks", "count", len(initialChunks))
+	slog.Debug("scrapeSequential() found initial chunks", "count", len(initialChunks))
 
 	// Second pass: split chunks that contain multiple date-bearing sections
 	// This handles the case where dates are in section A and descriptions in section B
@@ -942,7 +942,7 @@ func scrapeSequential(ctx context.Context, c *Config, s *Scraper, parentSel *goq
 		}
 	}
 
-	slog.Info("scrapeSequential() found chunks after split", "count", len(chunks))
+	slog.Debug("scrapeSequential() found chunks after split", "count", len(chunks))
 
 	var ctaSelector string
 	if s.Validation != nil {
@@ -989,7 +989,7 @@ func scrapeSequential(ctx context.Context, c *Config, s *Scraper, parentSel *goq
 				}
 				// If we successfully extracted this field, stop trying other elements
 				if r[field.Name] != nil && r[field.Name] != "" {
-					slog.Info("scrapeSequential() successfully extracted field", "chunkIdx", chunkIdx, "field", field.Name, "value", r[field.Name])
+					slog.Debug("scrapeSequential() successfully extracted field", "chunkIdx", chunkIdx, "field", field.Name, "value", r[field.Name])
 					break
 				}
 			}
@@ -1006,7 +1006,7 @@ func scrapeSequential(ctx context.Context, c *Config, s *Scraper, parentSel *goq
 		slog.Debug("scrapeSequential() added record", "chunkIdx", chunkIdx, "totalRecords", len(rets))
 	}
 
-	slog.Info("scrapeSequential() completed", "totalRecords", len(rets))
+	slog.Debug("scrapeSequential() completed", "totalRecords", len(rets))
 	return rets, nil
 }
 
@@ -1547,6 +1547,53 @@ func DebugDateTime(args ...any) { slog.Debug(args[0].(string), args[1:]...) }
 
 // extractField extracts a single field's value from an HTML selection and stores it in the record,
 // handling different field types (text, url, date) and applying transformations.
+// refTimeKey carries a fixed reference time for date extraction through the
+// context so year-less dates resolve deterministically (e.g. to the page's
+// fetch time) instead of wall-clock. paths injects it via WithRefTime;
+// standalone/CLI callers do not and fall back to wall-clock plus a fixed legacy
+// year, keeping goskyr's own golden tests deterministic.
+type refTimeKey struct{}
+
+// WithRefTime returns ctx carrying t as the date-extraction reference time.
+func WithRefTime(ctx context.Context, t time.Time) context.Context {
+	return context.WithValue(ctx, refTimeKey{}, t)
+}
+
+func refTimeFromContext(ctx context.Context) (time.Time, bool) {
+	t, ok := ctx.Value(refTimeKey{}).(time.Time)
+	return t, ok && !t.IsZero()
+}
+
+// newReferenceDateTime builds the phil reference DateTime fed to Parse as
+// MinDateTime: the injected reference time when present (deterministic),
+// otherwise wall-clock (legacy standalone behavior).
+func newReferenceDateTime(ctx context.Context) *datetime.DateTime {
+	if t, ok := refTimeFromContext(ctx); ok {
+		return datetime.NewDateTimeForTime(t)
+	}
+	return datetime.NewDateTimeForNow()
+}
+
+// referenceYear is the fallback year for year-less dates: the injected
+// reference time's year, or wall-clock when none is set (standalone/CLI use).
+// Tests that need a deterministic year-less result inject WithRefTime rather
+// than relying on this wall-clock fallback.
+func referenceYear(ctx context.Context) int {
+	if t, ok := refTimeFromContext(ctx); ok {
+		return t.Year()
+	}
+	return time.Now().Year()
+}
+
+// guessYearRef is the reference time guessYear compares record dates against:
+// the injected reference time, or wall-clock when none is set.
+func guessYearRef(ctx context.Context) time.Time {
+	if t, ok := refTimeFromContext(ctx); ok {
+		return t
+	}
+	return time.Now()
+}
+
 func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.Selection, baseURL string, baseYear int) error {
 	// // Tracing
 	// _, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.ExtractField()"))
@@ -1623,14 +1670,23 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 		}
 
 		// First check if the url encodes a parseable datetime with year, and use the year if so.
-		for k, v := range rec {
+		// Iterate sorted keys, never map order: the first parseable URL field wins
+		// baseYear, and the chosen year changes the rendered datetime range, which
+		// downstream sourcegen commits and re-verifies byte-identically.
+		recKeys := make([]string, 0, len(rec))
+		for k := range rec {
+			recKeys = append(recKeys, k)
+		}
+		sort.Strings(recKeys)
+		for _, k := range recKeys {
+			v := rec[k]
 			str := v.(string)
 			DebugDateTime("looking at non-date-time field", "baseYear", baseYear, "k", k, "v", v, "strings.HasSuffix(k, URLFieldSuffix)", strings.HasSuffix(k, URLFieldSuffix))
 			if strings.HasSuffix(k, URLFieldSuffix) {
 				if match := DateRE.FindString(str); match == "" {
 					continue
 				}
-				dt := datetime.NewDateTimeForNow()
+				dt := newReferenceDateTime(ctx)
 				dt.TimeZone = datetime.NewTimeZone(f.DateLocation, "", "")
 				rngs, err := datetime.Parse(str, datetime.ParseOptions{
 					MinDateTime:     dt,
@@ -1645,12 +1701,12 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 					for _, rng := range rngs.Items {
 						if rng.Start.Date.Year != 0 {
 							baseYear = rng.Start.Date.Year
-							slog.Warn("found", "baseYear", baseYear)
+							DebugDateTime("found", "baseYear", baseYear)
 							break
 						}
 						if rng.End != nil && rng.End.Date.Year != 0 {
 							baseYear = rng.End.Date.Year
-							slog.Warn("found", "baseYear", baseYear)
+							DebugDateTime("found", "baseYear", baseYear)
 							break
 						}
 					}
@@ -1660,9 +1716,8 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 		}
 		// Then use the current year if none is provided.
 		if baseYear == 0 {
-			// baseYear = time.Now().Year()
-			baseYear = 2024
-			DebugDateTime("after setting to now", "baseYear", baseYear)
+			baseYear = referenceYear(ctx)
+			DebugDateTime("after setting reference year", "baseYear", baseYear)
 		}
 		// Limit input to datetime.Parse — long concatenated text (e.g., from
 		// multi-page detail discovery) causes the parser to hang. The first
@@ -1672,7 +1727,7 @@ func extractField(ctx context.Context, f *Field, rec output.Record, sel *fetch.S
 			parseStr = parseStr[:500]
 		}
 		DebugDateTime("parsing datetime with", "baseYear", baseYear, "str", parseStr)
-		dt := datetime.NewDateTimeForNow()
+		dt := newReferenceDateTime(ctx)
 		dt.Date.Year = baseYear
 		dt.TimeZone = datetime.NewTimeZone(f.DateLocation, "", "")
 		rngs, err := datetime.Parse(parseStr, datetime.ParseOptions{

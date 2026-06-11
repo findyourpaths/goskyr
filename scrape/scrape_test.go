@@ -708,6 +708,45 @@ func TestExtractFieldDate(t *testing.T) {
 	}
 }
 
+func TestExtractFieldDate_RefTimeDrivesYearlessYear(t *testing.T) {
+	// A year-less date resolves its year from the injected reference time, not
+	// wall-clock or the legacy 2024 fallback — so committed extraction is
+	// deterministic and replay-stable (paths-tri1).
+	const html = `<a class="event-date">10 March 20:00</a>`
+	f := &Field{
+		Name:             "date",
+		Type:             "date_time_tz_ranges",
+		ElementLocations: []ElementLocation{{Selector: "a.event-date"}},
+		DateLocation:     "Europe/Berlin",
+	}
+	parsedYear := func(refYear int) int {
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+		if err != nil {
+			t.Fatalf("read html: %v", err)
+		}
+		rec := output.Record{}
+		ctx := WithRefTime(context.Background(), time.Date(refYear, 1, 1, 0, 0, 0, 0, time.UTC))
+		if err := extractField(ctx, f, rec, fetch.NewSelection(doc.Selection), "", 0); err != nil {
+			t.Fatalf("extractField: %v", err)
+		}
+		v, ok := rec["date"+DateTimeFieldSuffix].(string)
+		if !ok {
+			t.Fatalf("missing date field, rec=%#v", rec)
+		}
+		parsed, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			t.Fatalf("parse %q: %v", v, err)
+		}
+		return parsed.Year()
+	}
+	if y := parsedYear(2030); y != 2030 {
+		t.Errorf("refTime year 2030 → parsed year %d, want 2030", y)
+	}
+	if y := parsedYear(2020); y != 2020 {
+		t.Errorf("refTime year 2020 → parsed year %d, want 2020", y)
+	}
+}
+
 // func TestExtractFieldDateWithoutYear1(t *testing.T) {
 // 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlString5))
 // 	if err != nil {

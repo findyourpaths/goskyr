@@ -211,8 +211,7 @@ type pageResult struct {
 
 func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
 	// func Pages(cache fetch.Cache, us []string, reqFn func(req *client.Request)) ([]*goquery.Document, []error) {
-	// ALWAYS log this critical info for debugging hangs
-	slog.Info("[GOSKYR FETCH] GetGQDocuments called",
+	slog.Debug("[GOSKYR FETCH] GetGQDocuments called",
 		"synchronized", Synchronized,
 		"url_count", len(us))
 	for i, u := range us {
@@ -244,7 +243,7 @@ func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
 		// go func() {
 		fn := func() {
 			start := time.Now()
-			slog.Info("[GOSKYR FETCH] Starting fetch",
+			slog.Debug("[GOSKYR FETCH] Starting fetch",
 				"index", i,
 				"url", u)
 			gqdoc, _, err := GetGQDocument(cache, u)
@@ -261,7 +260,7 @@ func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
 				results <- &pageResult{index: i, err: err}
 				return
 			}
-			slog.Info("[GOSKYR FETCH] Successfully fetched",
+			slog.Debug("[GOSKYR FETCH] Successfully fetched",
 				"index", i,
 				"url", u,
 				"elapsed_ms", elapsed.Milliseconds())
