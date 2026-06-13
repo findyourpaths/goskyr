@@ -368,6 +368,41 @@ var datetimeWeekdays = "sun|sunday|mon|monday|tue|tues|tuesday|wed|weds|wednesda
 var datetimeMonths = "jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december"
 var datetimeFieldRE = regexp.MustCompile(`(?i)\b(?:(?:19|20)\d{2}|` + datetimeMonths + `|` + datetimeWeekdays + `)\b`)
 
+var datetimeTokenRE = regexp.MustCompile(`(?i)^(?:` + datetimeMonths + `|` + datetimeWeekdays + `|am|pm|noon|midnight|from|to|at|until|through|utc|gmt|est|edt|cst|cdt|mst|mdt|pst|pdt|bst|cet|cest|sast|ist|aest|aedt)$`)
+
+// dateDominatedText reports whether date-ish tokens (numbers, month and
+// weekday names, meridiems, timezone abbreviations, range connectives)
+// account for at least half of the value's alphanumeric content. An event
+// title that merely embeds a date span ("Workshop Name | Singapore |
+// July 7 - 10, 2026") parses as a datetime, but the column is a text column:
+// a schedule row is mostly date text, a title is mostly words.
+func dateDominatedText(s string) bool {
+	totalAlnum, dateAlnum := 0, 0
+	for _, tok := range strings.Fields(strings.ToLower(s)) {
+		var alnum strings.Builder
+		hasDigit := false
+		for _, r := range tok {
+			if r >= '0' && r <= '9' {
+				hasDigit = true
+			}
+			if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+				alnum.WriteRune(r)
+			}
+		}
+		if alnum.Len() == 0 {
+			continue
+		}
+		totalAlnum += alnum.Len()
+		if hasDigit || datetimeTokenRE.MatchString(alnum.String()) {
+			dateAlnum += alnum.Len()
+		}
+	}
+	if totalAlnum == 0 {
+		return false
+	}
+	return dateAlnum*2 >= totalAlnum
+}
+
 // processFields converts discovered location properties into scrape field definitions by determining
 // field types (text, url, date) and constructing relative selectors from the root.
 func processFields(ctx context.Context, exsCache map[string]string, lps []*locationProps, rootSelector path) []scrape.Field {
@@ -426,6 +461,11 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 
 				if !datetimeFieldRE.MatchString(ex) {
 					slog.Debug("in processFields(), no datetimes match in field", "ex", ex)
+					continue
+				}
+
+				if !dateDominatedText(ex) {
+					slog.Debug("in processFields(), field value is mostly non-date text", "ex", ex)
 					continue
 				}
 

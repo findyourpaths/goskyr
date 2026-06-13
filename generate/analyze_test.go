@@ -222,3 +222,28 @@ func TestFindClustersDoesNotMutateRootBackedFieldPaths(t *testing.T) {
 		t.Fatalf("recursive root = %q, want %q", got, cardKey)
 	}
 }
+
+func TestDateDominatedText(t *testing.T) {
+	cases := []struct {
+		text string
+		want bool
+	}{
+		// Schedule rows: mostly date text.
+		{text: "Saturday, June 27, 2026 | 6 pm - 9 pm", want: true},
+		{text: "17:00 PM – 21:00 PM (SAST)", want: true},
+		{text: "Begins: Friday, 03-Jul-2026", want: true},
+		{text: "2026-08-29 @10:00 AM - 2026-08-30@05:00 PM", want: true},
+		{text: "Monday, June 15, 2026 6:00 - 7:30 pm CST", want: true},
+		// Titles and prose that merely embed a date: mostly words.
+		{text: "Development by Design | Singapore | July 7 - 10, 2026", want: false},
+		{text: "Type, Teach, Transform through the 27 Enneagram Subtypes | Virtual | July 17-24, 2026", want: false},
+		{text: "The Art of Enneagram Typing and Training | VIRTUAL | August 17 - 28, 2026", want: false},
+		{text: "Join us on Saturday, June 27 for a wonderful workshop about the nine personality types and their wings", want: false},
+		{text: "", want: false},
+	}
+	for _, tc := range cases {
+		if got := dateDominatedText(tc.text); got != tc.want {
+			t.Errorf("dateDominatedText(%q) = %v, want %v", tc.text, got, tc.want)
+		}
+	}
+}
