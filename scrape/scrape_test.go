@@ -14,6 +14,32 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestResolveLazyImageSourcesPrefersRealURLOverDataPlaceholder(t *testing.T) {
+	t.Parallel()
+	const html = `<html><body>
+		<img id="lazy" src="data:image/gif;base64,R0lGODlh" data-sek-src="https://example.com/real.jpg">
+		<img id="real" src="https://example.com/already.jpg" data-sek-src="https://example.com/other.jpg">
+		<img id="inline" src="data:image/png;base64,AAAA">
+		<img id="missing" data-src="https://example.com/fromdatasrc.jpg">
+	</body></html>`
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	resolveLazyImageSources(doc)
+	for _, tc := range []struct{ id, want string }{
+		{"lazy", "https://example.com/real.jpg"},    // data: placeholder resolves to lazy attr
+		{"real", "https://example.com/already.jpg"}, // real src untouched
+		{"inline", "data:image/png;base64,AAAA"},    // data: src with no lazy fallback untouched
+		{"missing", "https://example.com/fromdatasrc.jpg"}, // absent src filled from lazy attr
+	} {
+		got, _ := doc.Find("#" + tc.id).Attr("src")
+		if got != tc.want {
+			t.Errorf("img#%s src = %q, want %q", tc.id, got, tc.want)
+		}
+	}
+}
+
 func TestPagePaginatorMaxPagesDoesNotFetchBeyondLimit(t *testing.T) {
 	t.Parallel()
 	cache := fetch.NewMemoryCache(nil)

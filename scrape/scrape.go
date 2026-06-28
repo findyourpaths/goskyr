@@ -685,6 +685,40 @@ func Page(ctx context.Context, cache fetch.Cache, c *Config, s *Scraper, globalC
 // only on the location are returned (ignore regex_extract??). And only those
 // of dynamic fields, ie fields that don't have a predefined value and that are
 // present on the main page (not detail pages). This is used by the ML feature generation.
+// lazyImageSrcAttrs name the attributes lazy-load scripts populate with the real
+// image URL while the live `src` holds a placeholder (commonly a 1x1 data: GIF)
+// until the script swaps it in at render time. Ordered by resolution priority.
+var lazyImageSrcAttrs = []string{"data-orig-src", "data-sek-src", "data-src", "data-lazy-src"}
+
+// resolveLazyImageSources rewrites each <img> whose src is absent or a data:
+// placeholder to the real URL carried in a lazy-load attribute, so a scraper
+// reading `attr: src` extracts the URL a browser would render rather than the
+// placeholder. This keeps extraction deterministic and reproducible from cached
+// raw HTML: without it a snapshot taken from a rendered DOM (real URL) cannot be
+// reproduced from cached pre-render HTML (placeholder). The walk is in document
+// order and a no-op for pages with no lazy-load placeholders.
+func resolveLazyImageSources(doc *goquery.Document) {
+	if doc == nil {
+		return
+	}
+	doc.Find("img").Each(func(_ int, img *goquery.Selection) {
+		if src, ok := img.Attr("src"); ok && src != "" && !strings.HasPrefix(src, "data:") {
+			return
+		}
+		for _, attr := range lazyImageSrcAttrs {
+			real, ok := img.Attr(attr)
+			if !ok {
+				continue
+			}
+			real = strings.TrimSpace(real)
+			if real != "" && !strings.HasPrefix(real, "data:") {
+				img.SetAttr("src", real)
+				return
+			}
+		}
+	})
+}
+
 func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Document) (output.Records, error) {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/scrape").Start(ctx, fmt.Sprintf("scrape.GQDocument(%q, %q)", c.ID.String(), s.Selector))
@@ -736,6 +770,8 @@ func GQDocument(ctx context.Context, c *Config, s *Scraper, gqdoc *fetch.Documen
 	// recElts := strings.Split(s.Item, " > ")
 	// gqdoc.Document.Find(strings.Join(itemElts[0:len(itemElts)-1], " > ")).Each(func(i int, sel *cache.Selection) {
 	slog.Debug("in scrape.GQDocument()", "s.Selector", s.Selector)
+
+	resolveLazyImageSources(gqdoc.Document)
 
 	found := gqdoc.Document.Selection
 
