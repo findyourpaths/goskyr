@@ -22,7 +22,12 @@ type locationProps struct {
 	color     tcell.Color
 	distance  float64
 	name      string
-	iStrip    int // this is needed for the squashLocationManager function
+	// iStrip is the highest path index whose nth-child is wildcarded:
+	// checkAndUpdateLocProps ignores pseudo-class mismatches at indexes
+	// <= iStrip when merging, and requires exact matches above it. -1
+	// wildcards nothing; 0 is both the zero value and "index 0 wildcarded"
+	// (harmless for the html/body roots that never carry nth-child).
+	iStrip int
 	isText    bool
 }
 

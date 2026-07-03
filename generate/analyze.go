@@ -531,8 +531,13 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 }
 
 // squashLocationManager merges different locationProps into one
-// based on their similarity. The tricky question is 'when are two
-// locationProps close enough to be merged into one?'
+// based on their similarity, producing two candidate families per repeating
+// pattern: the fully nth-child-stripped selector (one field spanning every
+// sibling position) and, when the pattern repeats often enough, a positional
+// variant that preserves only the leaf-most nth-child (one field per sibling
+// position — e.g. the date that is always the card's second paragraph). The
+// tricky question is 'when are two locationProps close enough to be merged
+// into one?'
 func squashLocationManager(l locationManager, minOcc int) locationManager {
 	// Pre-compute: for each path (ignoring nth-child), count total occurrences.
 	// This handles patterns that repeat across parallel subtrees (e.g., event cards
@@ -542,21 +547,17 @@ func squashLocationManager(l locationManager, minOcc int) locationManager {
 	pathCounts := countPathsIgnoringNthChild(l)
 
 	squashed := locationManager{}
+	positional := locationManager{}
 	for i := len(l) - 1; i >= 0; i-- {
 		lp := l[i]
-		updated := false
-		for _, sp := range squashed {
-			updated = checkAndUpdateLocProps(sp, lp)
-			if updated {
-				break
-			}
+		if variant := positionalNthChildVariant(lp, minOcc, pathCounts); variant != nil {
+			positional = mergeLocationProp(positional, variant)
 		}
-		if !updated {
-			stripNthChild(lp, minOcc, pathCounts)
-			squashed = append(squashed, lp)
-		}
+		stripped := cloneLocationProps(lp)
+		stripNthChild(stripped, minOcc, pathCounts)
+		squashed = mergeLocationProp(squashed, stripped)
 	}
-	return squashed
+	return append(squashed, positional...)
 }
 
 // countPathsIgnoringNthChild counts how many locationProps share the same path
@@ -582,6 +583,69 @@ func pathStringWithoutNthChild(p path) string {
 		parts = append(parts, s)
 	}
 	return strings.Join(parts, " > ")
+}
+
+// mergeLocationProp merges lp into the first matching entry of l
+// (checkAndUpdateLocProps), appending it as a new entry when none matches.
+func mergeLocationProp(l locationManager, lp *locationProps) locationManager {
+	for _, existing := range l {
+		if checkAndUpdateLocProps(existing, lp) {
+			return l
+		}
+	}
+	return append(l, lp)
+}
+
+// positionalNthChildVariant returns the positional candidate for a repeating
+// pattern: a clone that preserves only the leaf-most nth-child (the sibling
+// position that distinguishes fields within one repeated item) and wildcards
+// every outer position. Returns nil when the pattern does not repeat >= minOcc
+// times or carries no nth-child at all.
+func positionalNthChildVariant(lp *locationProps, minOcc int, pathCounts map[string]int) *locationProps {
+	if lp == nil || pathCounts[pathStringWithoutNthChild(lp.path)] < minOcc {
+		return nil
+	}
+	preserveIndex := -1
+	for i := len(lp.path) - 1; i >= 0; i-- {
+		n := lp.path[i]
+		if len(n.pseudoClasses) == 0 {
+			continue
+		}
+		preserveIndex = i
+		break
+	}
+	if preserveIndex == -1 {
+		return nil
+	}
+	variant := cloneLocationProps(lp)
+	for j := range variant.path {
+		if j != preserveIndex {
+			variant.path[j].pseudoClasses = nil
+		}
+	}
+	variant.iStrip = preservedNthChildIStrip(preserveIndex)
+	return variant
+}
+
+func cloneLocationProps(lp *locationProps) *locationProps {
+	if lp == nil {
+		return nil
+	}
+	out := *lp
+	out.path = clonePath(lp.path)
+	out.examples = append([]string(nil), lp.examples...)
+	return &out
+}
+
+// preservedNthChildIStrip maps a preserved path index to the iStrip value that
+// wildcards every position below it: checkAndUpdateLocProps ignores
+// pseudo-class mismatches at indexes <= iStrip when merging, so preserving
+// index i means iStrip = i-1 (and -1 when i is 0, wildcarding nothing).
+func preservedNthChildIStrip(preserved int) int {
+	if preserved == 0 {
+		return -1
+	}
+	return preserved - 1
 }
 
 // stripNthChild removes nth-child pseudo classes from path segments that represent

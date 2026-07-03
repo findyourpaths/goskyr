@@ -2,6 +2,7 @@ package generate
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -220,6 +221,43 @@ func TestFindClustersDoesNotMutateRootBackedFieldPaths(t *testing.T) {
 	}
 	if got := clonePath(clusters[cardKey][0].path[:len(rootSelector)+1]).string(); got != cardKey {
 		t.Fatalf("recursive root = %q, want %q", got, cardKey)
+	}
+}
+
+func TestSquashLocationManagerPreservesPositionalSiblingAlternatives(t *testing.T) {
+	lps := locationManager{}
+	for record := 1; record <= 2; record++ {
+		for paragraph := 1; paragraph <= 3; paragraph++ {
+			lps = append(lps, &locationProps{
+				textIndex: 0,
+				path: path{
+					{tagName: "body"},
+					{tagName: "div", classes: []string{"card"}, pseudoClasses: []string{fmt.Sprintf("nth-child(%d)", record)}},
+					{tagName: "p", pseudoClasses: []string{fmt.Sprintf("nth-child(%d)", paragraph)}},
+				},
+				count:    1,
+				examples: []string{fmt.Sprintf("record %d paragraph %d", record, paragraph)},
+			})
+		}
+	}
+
+	got := squashLocationManager(lps, 2)
+	countByPath := map[string]int{}
+	for _, lp := range got {
+		countByPath[lp.path.string()] = lp.count
+	}
+
+	if countByPath["body > div.card > p"] != 6 {
+		t.Fatalf("broad p count = %d, want 6; got %#v", countByPath["body > div.card > p"], countByPath)
+	}
+	for paragraph := 1; paragraph <= 3; paragraph++ {
+		selector := fmt.Sprintf("body > div.card > p:nth-child(%d)", paragraph)
+		if countByPath[selector] != 2 {
+			t.Fatalf("%s count = %d, want 2; got %#v", selector, countByPath[selector], countByPath)
+		}
+	}
+	if countByPath["body > div.card:nth-child(1) > p"] != 0 {
+		t.Fatalf("record-position variant survived; got %#v", countByPath)
 	}
 }
 
