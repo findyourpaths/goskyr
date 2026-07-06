@@ -48,8 +48,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgryski/trifles v0.0.0-20230903005119-f50d829f2e54 h1:SG7nF6SRlWhcT7cNTs5R6Hk4V2lcmLz2NsG2VnInyNo=
 github.com/dgryski/trifles v0.0.0-20230903005119-f50d829f2e54/go.mod h1:if7Fbed8SFyPtHLHbg49SI7NAdJiC5WIA09pe59rfAA=
-github.com/findyourpaths/phil v0.0.0-20260527184630-a27ccaf4325f h1:S0tSEp6MQtGuaqBGcmbC4g6F2h3fD2haMIezO5nJUMo=
-github.com/findyourpaths/phil v0.0.0-20260527184630-a27ccaf4325f/go.mod h1:gEUvMhfGFYZVELSjbG6X8/HEXPC9eGmgnExYMoTKW4c=
+github.com/findyourpaths/phil v0.0.0-20260703192849-fc68df83f1a8 h1:JSD67PrvVsNLOSG18KRw3kb5wrDbJvUoTq6x1/7uyRs=
+github.com/findyourpaths/phil v0.0.0-20260703192849-fc68df83f1a8/go.mod h1:gEUvMhfGFYZVELSjbG6X8/HEXPC9eGmgnExYMoTKW4c=
 github.com/gdamore/encoding v1.0.1 h1:YzKZckdBL6jVt2Gc+5p82qhrGiqMdG/eNs6Wy0u3Uhw=
 github.com/gdamore/encoding v1.0.1/go.mod h1:0Z0cMFinngz9kS1QfMjCP8TY7em3bZYeeklsSDPivEo=
 github.com/gdamore/tcell/v2 v2.8.1 h1:KPNxyqclpWpWQlPLx6Xui1pMk8S+7+R37h3g07997NU=

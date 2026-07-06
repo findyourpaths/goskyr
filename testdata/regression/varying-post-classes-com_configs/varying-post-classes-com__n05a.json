@@ -1,0 +1,52 @@
+[
+  {
+    "Atitle": "Events",
+    "Aurl": "https://varying-post-classes.com",
+    "F150223e4--0": "May 10, 2026",
+    "F150223e4--0__Pdate_time_tz_ranges": "2026-05-10",
+    "Fe33df48--0": "Workshop A",
+    "Fe33df48-href-0": "/product/workshop-a/",
+    "Fe33df48-href-0__Aurl": "https://varying-post-classes.com/product/workshop-a/",
+    "Ff5acc092--0": "Alice Smith"
+  },
+  {
+    "Atitle": "Events",
+    "Aurl": "https://varying-post-classes.com",
+    "F150223e4--0": "June 15, 2026",
+    "F150223e4--0__Pdate_time_tz_ranges": "2026-06-15",
+    "Fe33df48--0": "Workshop B",
+    "Fe33df48-href-0": "/product/workshop-b/",
+    "Fe33df48-href-0__Aurl": "https://varying-post-classes.com/product/workshop-b/",
+    "Ff5acc092--0": "Bob Jones"
+  },
+  {
+    "Atitle": "Events",
+    "Aurl": "https://varying-post-classes.com",
+    "F150223e4--0": "July 20, 2026",
+    "F150223e4--0__Pdate_time_tz_ranges": "2026-07-20",
+    "Fe33df48--0": "Workshop C",
+    "Fe33df48-href-0": "/product/workshop-c/",
+    "Fe33df48-href-0__Aurl": "https://varying-post-classes.com/product/workshop-c/",
+    "Ff5acc092--0": "Carol Lee"
+  },
+  {
+    "Atitle": "Events",
+    "Aurl": "https://varying-post-classes.com",
+    "F150223e4--0": "August 5, 2026",
+    "F150223e4--0__Pdate_time_tz_ranges": "2026-08-05",
+    "Fe33df48--0": "Workshop D",
+    "Fe33df48-href-0": "/product/workshop-d/",
+    "Fe33df48-href-0__Aurl": "https://varying-post-classes.com/product/workshop-d/",
+    "Ff5acc092--0": "Dan Park"
+  },
+  {
+    "Atitle": "Events",
+    "Aurl": "https://varying-post-classes.com",
+    "F150223e4--0": "September 12, 2026",
+    "F150223e4--0__Pdate_time_tz_ranges": "2026-09-12",
+    "Fe33df48--0": "Workshop E",
+    "Fe33df48-href-0": "/product/workshop-e/",
+    "Fe33df48-href-0__Aurl": "https://varying-post-classes.com/product/workshop-e/",
+    "Ff5acc092--0": "Eve Brown"
+  }
+]
