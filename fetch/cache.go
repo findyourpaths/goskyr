@@ -31,10 +31,6 @@ var ShowCaching = false
 
 // var ShowCaching = true
 
-var Synchronized = true
-
-// var Synchronized = false
-
 // A Cache interface is used by the Transport to store and retrieve responses.
 type Cache interface {
 	// Get returns the []byte representation of a cached response and a bool
@@ -209,10 +205,15 @@ type pageResult struct {
 	err   error
 }
 
-func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
+// GetGQDocuments fetches every URL in us through cache. When synchronized is
+// true each fetch runs sequentially in list order (deterministic logging and
+// cache access); when false each runs in its own goroutine. The caller passes
+// the value explicitly so one caller's choice cannot leak into another's — there
+// is no package-global fetch mode.
+func GetGQDocuments(cache Cache, us []string, synchronized bool) ([]*Document, []error) {
 	// func Pages(cache fetch.Cache, us []string, reqFn func(req *client.Request)) ([]*goquery.Document, []error) {
 	slog.Debug("[GOSKYR FETCH] GetGQDocuments called",
-		"synchronized", Synchronized,
+		"synchronized", synchronized,
 		"url_count", len(us))
 	for i, u := range us {
 		if u != "" {
@@ -270,7 +271,7 @@ func GetGQDocuments(cache Cache, us []string) ([]*Document, []error) {
 			results <- &pageResult{index: i, gqdoc: gqdoc}
 		}
 
-		if Synchronized {
+		if synchronized {
 			slog.Debug("[GOSKYR FETCH] Executing SEQUENTIALLY",
 				"index", i,
 				"synchronized", true)

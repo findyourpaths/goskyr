@@ -1255,7 +1255,7 @@ func joinPageJoinsGQDocuments(cache fetch.Cache, opts ConfigOptions, pjs []*page
 	// }
 
 	// Concatenate all of the detail pages pointed to by the field with this name in the parent pages.
-	gqdocs, errs := fetch.GetGQDocuments(cache, us)
+	gqdocs, errs := fetch.GetGQDocuments(cache, us, true)
 	if errs != nil {
 		for _, err := range errs {
 			slog.Error("in generate.joinPageJoinsGQDocuments()", "err", err)
