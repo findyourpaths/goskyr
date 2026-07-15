@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -126,7 +128,13 @@ func analyzePage(ctx context.Context, opts ConfigOptions, htmlStr string, minOcc
 
 	slog.Debug("in analyzePage()", "opts.OnlyVaryingFields", opts.OnlyVaryingFields)
 	if opts.OnlyVaryingFields {
-		a.LocMan = filterStaticFields(a.LocMan)
+		var evidenceMatched []bool
+		a.LocMan, evidenceMatched = filterStaticFieldsWithEvidence(a.LocMan, opts.StaticFieldEvidence)
+		for i, matched := range evidenceMatched {
+			if matched && i < len(opts.staticFieldEvidenceMatched) {
+				opts.staticFieldEvidenceMatched[i] = true
+			}
+		}
 		a.PagMan = filterStaticFields(a.PagMan)
 		for i, lp := range a.LocMan {
 			retLocMans = append(retLocMans, lp.DebugString())
@@ -441,7 +449,7 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 		// slog.Debug("in processFields()", "e.path", e.path.string())
 		// slog.Debug("in processFields()", "e.path[len(rootSelector):]", e.path[len(rootSelector):].string())
 		fLoc := scrape.ElementLocation{
-			Selector: lp.path[len(rootSelector):].string(),
+			Selector: relativeLocationSelector(lp, rootSelector),
 			// Don't set ChildIndex - it's incompatible with the default EntireSubtree behavior
 			// ChildIndex: lp.textIndex,
 			Attr: lp.attr,
@@ -528,6 +536,24 @@ func processFields(ctx context.Context, exsCache map[string]string, lps []*locat
 	// }
 	slog.Debug("processFields() returning", "len(rs)", len(rs))
 	return rs
+}
+
+func relativeLocationSelector(lp *locationProps, rootSelector path) string {
+	paths := make([]path, 0, 1+len(lp.alternativePaths))
+	paths = append(paths, lp.path)
+	paths = append(paths, lp.alternativePaths...)
+	selectors := make([]string, 0, len(paths))
+	seen := map[string]bool{}
+	for _, locationPath := range paths {
+		selector := locationPath[len(rootSelector):].string()
+		if seen[selector] {
+			continue
+		}
+		seen[selector] = true
+		selectors = append(selectors, selector)
+	}
+	sort.Strings(selectors)
+	return strings.Join(selectors, ", ")
 }
 
 // squashLocationManager merges different locationProps into one
@@ -633,6 +659,10 @@ func cloneLocationProps(lp *locationProps) *locationProps {
 	}
 	out := *lp
 	out.path = clonePath(lp.path)
+	out.alternativePaths = make([]path, 0, len(lp.alternativePaths))
+	for _, alternativePath := range lp.alternativePaths {
+		out.alternativePaths = append(out.alternativePaths, clonePath(alternativePath))
+	}
 	out.examples = append([]string(nil), lp.examples...)
 	return &out
 }
@@ -706,8 +736,19 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 		return false
 	}
 	if len(old.path) != len(new.path) {
-		// slog.Debug("in checkAndUpdateLocProps, len(old.path) != len(new.path), returning false", "len(old.path)", len(old.path), "len(new.path)", len(new.path))
-		return false
+		shortPath, longPath, ok := mergeOptionalPicturePaths(old.path, new.path)
+		if !ok {
+			return false
+		}
+		old.path = shortPath
+		old.alternativePaths = mergeAlternativePath(old.alternativePaths, longPath)
+		for _, alternativePath := range new.alternativePaths {
+			old.alternativePaths = mergeAlternativePath(old.alternativePaths, alternativePath)
+		}
+		old.alternativePaths = rebaseOptionalPicturePaths(old.path, old.alternativePaths)
+		old.count++
+		old.examples = append(old.examples, new.examples...)
+		return true
 	}
 
 	newPath := make(path, 0, len(old.path)) // Pre-allocate with capacity
@@ -753,16 +794,9 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 			continue
 		}
 
-		// Intersect class lists: keep only classes shared between old and new.
-		// Require that the shared classes cover a majority of at least one
-		// input list — this prevents merging genuinely different elements
-		// (e.g., header vs footer) that happen to share a single utility class.
-		sharedClasses := intersectStrings(oldFiltered, newFiltered)
-		if len(sharedClasses) == 0 {
+		sharedClasses, ok := mergeStructuralClasses(oldFiltered, newFiltered)
+		if !ok {
 			return false
-		}
-		if 2*len(sharedClasses) <= len(oldFiltered) && 2*len(sharedClasses) <= len(newFiltered) {
-			return false // Overlap is minority of both lists — structurally different
 		}
 		newNode.classes = sharedClasses
 		newPath = append(newPath, newNode)
@@ -771,9 +805,108 @@ func checkAndUpdateLocProps(old, new *locationProps) bool {
 	// slog.Debug("in checkAndUpdateLocProps, incrementing")
 	// If we get until here, there is an overlapping path.
 	old.path = newPath
+	for _, alternativePath := range new.alternativePaths {
+		old.alternativePaths = mergeAlternativePath(old.alternativePaths, alternativePath)
+	}
+	old.alternativePaths = rebaseOptionalPicturePaths(old.path, old.alternativePaths)
 	old.count++
 	old.examples = append(old.examples, new.examples...)
 	return true
+}
+
+func mergeOptionalPicturePaths(firstPath, secondPath path) (path, path, bool) {
+	shortPath, longPath := firstPath, secondPath
+	if len(shortPath) > len(longPath) {
+		shortPath, longPath = longPath, shortPath
+	}
+	if len(longPath) != len(shortPath)+1 {
+		return nil, nil, false
+	}
+
+	wrapperIndex := -1
+	for i := 1; i < len(longPath)-1; i++ {
+		if longPath[i].tagName == "picture" && longPath[i+1].tagName == "img" && shortPath[i].tagName == "img" {
+			wrapperIndex = i
+			break
+		}
+	}
+	if wrapperIndex == -1 {
+		return nil, nil, false
+	}
+
+	mergedShort := make(path, 0, len(shortPath))
+	mergedLong := make(path, 0, len(longPath))
+	for shortIndex, shortNode := range shortPath {
+		longIndex := shortIndex
+		if shortIndex >= wrapperIndex {
+			longIndex++
+		}
+		mergedNode, ok := mergeOptionalPathNode(shortNode, longPath[longIndex])
+		if !ok {
+			return nil, nil, false
+		}
+		mergedShort = append(mergedShort, mergedNode)
+		if shortIndex == wrapperIndex-1 {
+			mergedLong = append(mergedLong, mergedNode, longPath[wrapperIndex])
+			continue
+		}
+		mergedLong = append(mergedLong, mergedNode)
+	}
+	return mergedShort, mergedLong, true
+}
+
+func mergeOptionalPathNode(firstNode, secondNode node) (node, bool) {
+	if firstNode.tagName != secondNode.tagName || !slices.Equal(firstNode.pseudoClasses, secondNode.pseudoClasses) {
+		return node{}, false
+	}
+	classes, ok := mergeStructuralClasses(
+		filterAutoGeneratedClasses(firstNode.classes),
+		filterAutoGeneratedClasses(secondNode.classes),
+	)
+	if !ok {
+		return node{}, false
+	}
+	return node{tagName: firstNode.tagName, classes: classes, pseudoClasses: firstNode.pseudoClasses}, true
+}
+
+func mergeAlternativePath(alternativePaths []path, candidatePath path) []path {
+	for i, alternativePath := range alternativePaths {
+		mergedPath, ok := mergeSameLengthPath(alternativePath, candidatePath)
+		if !ok {
+			continue
+		}
+		alternativePaths[i] = mergedPath
+		return alternativePaths
+	}
+	return append(alternativePaths, clonePath(candidatePath))
+}
+
+func rebaseOptionalPicturePaths(canonicalPath path, alternativePaths []path) []path {
+	rebasedPaths := make([]path, 0, len(alternativePaths))
+	for _, alternativePath := range alternativePaths {
+		_, rebasedPath, ok := mergeOptionalPicturePaths(canonicalPath, alternativePath)
+		if !ok {
+			rebasedPaths = append(rebasedPaths, clonePath(alternativePath))
+			continue
+		}
+		rebasedPaths = mergeAlternativePath(rebasedPaths, rebasedPath)
+	}
+	return rebasedPaths
+}
+
+func mergeSameLengthPath(firstPath, secondPath path) (path, bool) {
+	if len(firstPath) != len(secondPath) {
+		return nil, false
+	}
+	mergedPath := make(path, 0, len(firstPath))
+	for i, firstNode := range firstPath {
+		mergedNode, ok := mergeOptionalPathNode(firstNode, secondPath[i])
+		if !ok {
+			return nil, false
+		}
+		mergedPath = append(mergedPath, mergedNode)
+	}
+	return mergedPath, true
 }
 
 // autoGeneratedClassRE matches CMS-generated per-page CSS classes that vary across
@@ -823,33 +956,85 @@ func filterBelowMinCount(lps []*locationProps, minCount int) []*locationProps {
 	return kept
 }
 
-// filterStaticFields removes location properties where all examples have the same value,
-// keeping only fields that vary across records.
+// filterStaticFields removes location properties where all examples have the
+// same value, keeping only fields that vary across records.
 func filterStaticFields(lps []*locationProps) locationManager {
+	kept, _ := filterStaticFieldsWithEvidence(lps, nil)
+	return kept
+}
+
+// filterStaticFieldsWithEvidence keeps varying locations plus otherwise-static
+// locations whose normalized page-local examples and exact occurrence count
+// match a supplied evidence row. The returned booleans align with evidence and
+// report whether each row matched at least one location on this document.
+func filterStaticFieldsWithEvidence(
+	lps []*locationProps,
+	evidence []StaticFieldEvidence,
+) (locationManager, []bool) {
 	var kept []*locationProps
+	matched := make([]bool, len(evidence))
 	for _, lp := range lps {
-		varied := false
+		varied := locationPropsVaries(lp)
 		if DoDebug {
 			slog.Debug("in filterStaticFields", "lp", lp.DebugString())
 			slog.Debug("in filterStaticFields", "len(lp.examples)", len(lp.examples), "lp.examples[0]", lp.examples[0])
-		}
-		for i, ex := range lp.examples {
-			if DoDebug {
-				slog.Debug("in filterStaticFields, looking for varying", "i", i, "ex", ex)
-			}
-			if ex != lp.examples[0] {
-				varied = true
-				// break
-			}
-		}
-		if DoDebug {
 			slog.Debug("in filterStaticFields", "varied", varied)
 		}
 		if varied {
 			kept = append(kept, lp)
+			continue
+		}
+		keep := false
+		for i, row := range evidence {
+			if !staticFieldEvidenceMatchesLocation(row, lp) {
+				continue
+			}
+			matched[i] = true
+			keep = true
+		}
+		if keep {
+			kept = append(kept, lp)
 		}
 	}
-	return kept
+	return kept, matched
+}
+
+func locationPropsVaries(lp *locationProps) bool {
+	if lp == nil || len(lp.examples) == 0 {
+		return false
+	}
+	varied := false
+	for i, example := range lp.examples {
+		if DoDebug {
+			slog.Debug("in filterStaticFields, looking for varying", "i", i, "ex", example)
+		}
+		if example != lp.examples[0] {
+			varied = true
+		}
+	}
+	return varied
+}
+
+func staticFieldEvidenceMatchesLocation(row StaticFieldEvidence, lp *locationProps) bool {
+	if lp == nil || lp.count != row.OccurrenceCount || len(lp.examples) != len(row.Values) {
+		return false
+	}
+	want := normalizeStaticFieldEvidenceValues(row.Values)
+	got := normalizeStaticFieldEvidenceValues(lp.examples)
+	return slices.Equal(got, want)
+}
+
+func normalizeStaticFieldEvidenceValues(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		out = append(out, normalizeStaticFieldEvidenceValue(value))
+	}
+	sort.Strings(out)
+	return out
+}
+
+func normalizeStaticFieldEvidenceValue(value string) string {
+	return strings.Join(strings.Fields(value), " ")
 }
 
 // findClusters groups field locations into clusters by extending the root selector by one level

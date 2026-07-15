@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/findyourpaths/goskyr/fetch"
 	"github.com/findyourpaths/goskyr/observability"
 )
 
@@ -146,6 +147,173 @@ func TestCheckAndUpdateLocPropsDrupalViewIDs(t *testing.T) {
 	}
 }
 
+func TestCheckAndUpdateLocPropsVaryingRecordStateClasses(t *testing.T) {
+	locations := locationManager{}
+	for _, availability := range []string{"yes", "limited", "no"} {
+		locations = mergeLocationProp(locations, &locationProps{
+			attr: "href",
+			path: path{
+				{tagName: "article", classes: []string{"practitioner-profile", "practice-availability-" + availability}},
+				{tagName: "div", classes: []string{"main"}},
+				{tagName: "a", classes: []string{"website"}},
+			},
+			count:    1,
+			examples: []string{"https://" + availability + ".example"},
+		})
+	}
+
+	if len(locations) != 1 {
+		t.Fatalf("record-state variants produced %d locations, want 1", len(locations))
+	}
+	if got, want := locations[0].path.string(), "article.practitioner-profile > div.main > a.website"; got != want {
+		t.Fatalf("merged selector = %q, want %q", got, want)
+	}
+	if got := locations[0].count; got != 3 {
+		t.Fatalf("merged count = %d, want 3", got)
+	}
+}
+
+func TestCheckAndUpdateLocPropsDoesNotMergeRoleClasses(t *testing.T) {
+	old := &locationProps{
+		path: path{
+			{tagName: "div", classes: []string{"block", "header"}},
+			{tagName: "a", classes: []string{"link"}},
+		},
+	}
+	new := &locationProps{
+		path: path{
+			{tagName: "div", classes: []string{"block", "footer"}},
+			{tagName: "a", classes: []string{"link"}},
+		},
+	}
+
+	if checkAndUpdateLocProps(old, new) {
+		t.Fatal("distinct header and footer roles merged")
+	}
+}
+
+func TestCheckAndUpdateLocPropsMergesOptionalPictureWrapper(t *testing.T) {
+	wrapped := &locationProps{
+		attr: "src",
+		path: path{
+			{tagName: "article", classes: []string{"card"}},
+			{tagName: "div", classes: []string{"media"}},
+			{tagName: "picture"},
+			{tagName: "img", classes: []string{"el-image"}},
+		},
+		count:    1,
+		examples: []string{"wrapped.jpg"},
+	}
+	direct := &locationProps{
+		attr: "src",
+		path: path{
+			{tagName: "article", classes: []string{"card"}},
+			{tagName: "div", classes: []string{"media"}},
+			{tagName: "img", classes: []string{"el-image"}},
+		},
+		count:    1,
+		examples: []string{"direct.jpg"},
+	}
+
+	if !checkAndUpdateLocProps(wrapped, direct) {
+		t.Fatal("direct and picture-wrapped images did not merge")
+	}
+	if got, want := wrapped.path.string(), "article.card > div.media > img.el-image"; got != want {
+		t.Fatalf("canonical path = %q, want %q", got, want)
+	}
+	if got, want := wrapped.count, 2; got != want {
+		t.Fatalf("merged count = %d, want %d", got, want)
+	}
+	if got, want := len(wrapped.alternativePaths), 1; got != want {
+		t.Fatalf("alternative path count = %d, want %d", got, want)
+	}
+	if got, want := wrapped.alternativePaths[0].string(), "article.card > div.media > picture > img.el-image"; got != want {
+		t.Fatalf("alternative path = %q, want %q", got, want)
+	}
+
+	rootSelector := path{
+		{tagName: "article", classes: []string{"card"}},
+	}
+	if got, want := relativeLocationSelector(wrapped, rootSelector), "div.media > img.el-image, div.media > picture > img.el-image"; got != want {
+		t.Fatalf("field selector = %q, want %q", got, want)
+	}
+}
+
+func TestCheckAndUpdateLocPropsDoesNotMergeArbitraryWrapper(t *testing.T) {
+	direct := &locationProps{
+		attr: "src",
+		path: path{
+			{tagName: "article", classes: []string{"card"}},
+			{tagName: "div", classes: []string{"media"}},
+			{tagName: "img", classes: []string{"el-image"}},
+		},
+	}
+	linked := &locationProps{
+		attr: "src",
+		path: path{
+			{tagName: "article", classes: []string{"card"}},
+			{tagName: "div", classes: []string{"media"}},
+			{tagName: "a", classes: []string{"profile"}},
+			{tagName: "img", classes: []string{"el-image"}},
+		},
+	}
+
+	if checkAndUpdateLocProps(direct, linked) {
+		t.Fatal("meaningful link wrapper merged as an optional structural wrapper")
+	}
+}
+
+func TestCheckAndUpdateLocPropsRebasesPictureAlternativeAfterCanonicalWidening(t *testing.T) {
+	wrappedStateA := &locationProps{
+		attr: "src",
+		path: path{
+			{tagName: "article", classes: []string{"card", "card-state-featured"}},
+			{tagName: "div", classes: []string{"media"}},
+			{tagName: "picture"},
+			{tagName: "img", classes: []string{"el-image"}},
+		},
+		count: 1,
+	}
+	directStateA := &locationProps{
+		attr: "src",
+		path: path{
+			{tagName: "article", classes: []string{"card", "card-state-featured"}},
+			{tagName: "div", classes: []string{"media"}},
+			{tagName: "img", classes: []string{"el-image"}},
+		},
+		count: 1,
+	}
+	directStateB := &locationProps{
+		attr: "src",
+		path: path{
+			{tagName: "article", classes: []string{"card", "card-state-standard"}},
+			{tagName: "div", classes: []string{"media"}},
+			{tagName: "img", classes: []string{"el-image"}},
+		},
+		count: 1,
+	}
+
+	if !checkAndUpdateLocProps(wrappedStateA, directStateA) {
+		t.Fatal("state A direct and picture-wrapped images did not merge")
+	}
+	if !checkAndUpdateLocProps(wrappedStateA, directStateB) {
+		t.Fatal("state B direct image did not merge into the existing location")
+	}
+	if got, want := wrappedStateA.path.string(), "article.card > div.media > img.el-image"; got != want {
+		t.Fatalf("canonical path = %q, want %q", got, want)
+	}
+	if got, want := len(wrappedStateA.alternativePaths), 1; got != want {
+		t.Fatalf("alternative path count = %d, want %d", got, want)
+	}
+	if got, want := wrappedStateA.alternativePaths[0].string(), "article.card > div.media > picture > img.el-image"; got != want {
+		t.Fatalf("rebased alternative path = %q, want %q", got, want)
+	}
+	rootSelector := path{{tagName: "article", classes: []string{"card"}}}
+	if got, want := relativeLocationSelector(wrappedStateA, rootSelector), "div.media > img.el-image, div.media > picture > img.el-image"; got != want {
+		t.Fatalf("field selector = %q, want %q", got, want)
+	}
+}
+
 // TestCheckAndUpdateLocPropsStructurallyDifferent verifies that nodes with different
 // structural classes (not just auto-generated) are NOT merged.
 func TestCheckAndUpdateLocPropsStructurallyDifferent(t *testing.T) {
@@ -214,6 +382,77 @@ func TestFilterAutoGeneratedClasses(t *testing.T) {
 				t.Errorf("filterAutoGeneratedClasses(%v)[%d] = %q, want %q", tt.input, i, r, tt.expected[i])
 			}
 		}
+	}
+}
+
+func TestConfigurationsForGQDocumentStaticFieldEvidenceBoundsExpansionAndReportsMatches(t *testing.T) {
+	ctx := context.Background()
+	endFn, err := observability.InitAll(ctx, t.TempDir(), true)
+	if err != nil {
+		t.Fatalf("InitAll: %v", err)
+	}
+	defer func() {
+		if err := endFn(); err != nil {
+			t.Fatalf("end observability: %v", err)
+		}
+	}()
+
+	doc, err := fetch.NewDocumentFromString(`<html><body><main class="directory">
+<article class="person"><h2>Aga</h2><div class="role">Assessor</div><div class="chrome">Directory</div></article>
+<article class="person"><h2>Ada</h2><div class="chrome">Directory</div></article>
+<article class="person"><h2>Alex</h2><div class="chrome">Directory</div></article>
+<article class="person"><h2>Ari</h2><div class="chrome">Directory</div></article>
+</main></body></html>`)
+	if err != nil {
+		t.Fatalf("NewDocumentFromString: %v", err)
+	}
+	opts, err := InitOpts(ConfigOptions{
+		Batch:             true,
+		URL:               "https://example.com/trainers",
+		MinOccs:           []int{1},
+		MinRecords:        2,
+		OnlyVaryingFields: true,
+		StaticFieldEvidence: []StaticFieldEvidence{
+			{Values: []string{"  Assessor\n"}, OccurrenceCount: 1},
+			{Values: []string{"Directory", "Directory", "Directory"}, OccurrenceCount: 3},
+			{Values: []string{"Mentor"}, OccurrenceCount: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("InitOpts: %v", err)
+	}
+
+	configs, report, err := ConfigurationsForGQDocumentWithEvidenceReport(ctx, nil, opts, doc)
+	if err != nil {
+		t.Fatalf("ConfigurationsForGQDocumentWithEvidenceReport: %v", err)
+	}
+	if len(configs) == 0 {
+		t.Fatal("ConfigurationsForGQDocumentWithEvidenceReport returned no configs")
+	}
+	if !slices.Equal(report.MatchedEvidenceIndexes, []int{0}) {
+		t.Fatalf("matched evidence indexes = %v, want [0]", report.MatchedEvidenceIndexes)
+	}
+	if !slices.Equal(report.UnmatchedEvidenceIndexes, []int{1, 2}) {
+		t.Fatalf("unmatched evidence indexes = %v, want [1 2]", report.UnmatchedEvidenceIndexes)
+	}
+	for _, config := range configs {
+		for recordIndex, record := range config.Records {
+			for fieldName, value := range record {
+				if value == "Directory" {
+					t.Fatalf("config %q record %d field %q retained unrelated static chrome", config.ID, recordIndex, fieldName)
+				}
+			}
+		}
+	}
+}
+
+func TestConfigurationsForGQDocumentStaticFieldEvidenceRequiresVaryingMode(t *testing.T) {
+	t.Parallel()
+	_, _, err := ConfigurationsForGQDocumentWithEvidenceReport(context.Background(), nil, ConfigOptions{
+		StaticFieldEvidence: []StaticFieldEvidence{{Values: []string{"Assessor"}, OccurrenceCount: 1}},
+	}, nil)
+	if err == nil {
+		t.Fatal("ConfigurationsForGQDocumentWithEvidenceReport error = nil, want OnlyVaryingFields contract error")
 	}
 }
 

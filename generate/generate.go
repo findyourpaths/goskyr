@@ -212,6 +212,58 @@ func shouldUseSequentialStrategy(gqdoc *fetch.Document, rootSel string, fields [
 	return true
 }
 
+// StaticFieldEvidence authorizes one otherwise-static field location for
+// generation when its page-local observed values and occurrence count match
+// exactly. Values are normalized inside generate on both sides of the match;
+// callers pass the raw observed evidence.
+type StaticFieldEvidence struct {
+	Values          []string
+	OccurrenceCount int
+}
+
+// StaticFieldEvidenceReport identifies evidence rows that matched at least one
+// location in the input document and rows that matched none. Indexes refer to
+// ConfigOptions.StaticFieldEvidence. A non-match is diagnostic, not an error:
+// evidence is scoped to the one document analyzed by this generation call.
+type StaticFieldEvidenceReport struct {
+	MatchedEvidenceIndexes   []int
+	UnmatchedEvidenceIndexes []int
+}
+
+func validateStaticFieldEvidence(rows []StaticFieldEvidence) error {
+	for i, row := range rows {
+		if row.OccurrenceCount <= 0 {
+			return fmt.Errorf("static field evidence row %d: positive occurrence count required", i)
+		}
+		if len(row.Values) != row.OccurrenceCount {
+			return fmt.Errorf(
+				"static field evidence row %d: value count %d must equal occurrence count %d",
+				i,
+				len(row.Values),
+				row.OccurrenceCount,
+			)
+		}
+		for valueIndex, value := range row.Values {
+			if normalizeStaticFieldEvidenceValue(value) == "" {
+				return fmt.Errorf("static field evidence row %d value %d: nonblank value required", i, valueIndex)
+			}
+		}
+	}
+	return nil
+}
+
+func staticFieldEvidenceReport(matched []bool) StaticFieldEvidenceReport {
+	report := StaticFieldEvidenceReport{}
+	for i, ok := range matched {
+		if ok {
+			report.MatchedEvidenceIndexes = append(report.MatchedEvidenceIndexes, i)
+			continue
+		}
+		report.UnmatchedEvidenceIndexes = append(report.UnmatchedEvidenceIndexes, i)
+	}
+	return report
+}
+
 // ConfigOptions contains configuration parameters for scraper generation.
 type ConfigOptions struct {
 	Batch           bool
@@ -231,10 +283,12 @@ type ConfigOptions struct {
 	RequireDates               bool
 	RequireDetailURL           string
 	RequireString              string
+	StaticFieldEvidence        []StaticFieldEvidence
 	URL                        string
 	WordsDir                   string
 	configID                   scrape.ConfigID
 	configPrefix               string
+	staticFieldEvidenceMatched []bool
 }
 
 // InitOpts initializes configuration options by parsing the URL and setting up directory paths.
@@ -332,9 +386,38 @@ func ConfigurationsForPage(ctx context.Context, cache fetch.Cache, opts ConfigOp
 	return ConfigurationsForGQDocument(ctx, cache, opts, gqdoc)
 }
 
-// ConfigurationsForGQDocument generates scraper configurations for a parsed HTML document by trying
-// multiple minimum occurrence thresholds to find repeating patterns.
+// ConfigurationsForGQDocument generates scraper configurations for a parsed
+// HTML document. Call ConfigurationsForGQDocumentWithEvidenceReport when the
+// caller supplies static-field evidence and needs its page-local match report.
 func ConfigurationsForGQDocument(ctx context.Context, cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document) (map[string]*scrape.Config, error) {
+	configs, _, err := ConfigurationsForGQDocumentWithEvidenceReport(ctx, cache, opts, gqdoc)
+	return configs, err
+}
+
+// ConfigurationsForGQDocumentWithEvidenceReport generates scraper
+// configurations and reports which static-field evidence rows matched the one
+// input document. Reports aggregate across MinOccs attempted for that document;
+// they never incorporate continuation or other pages not present in gqdoc.
+func ConfigurationsForGQDocumentWithEvidenceReport(
+	ctx context.Context,
+	cache fetch.Cache,
+	opts ConfigOptions,
+	gqdoc *fetch.Document,
+) (map[string]*scrape.Config, StaticFieldEvidenceReport, error) {
+	if len(opts.StaticFieldEvidence) > 0 && !opts.OnlyVaryingFields {
+		return nil, StaticFieldEvidenceReport{}, fmt.Errorf("static field evidence requires OnlyVaryingFields")
+	}
+	if err := validateStaticFieldEvidence(opts.StaticFieldEvidence); err != nil {
+		return nil, StaticFieldEvidenceReport{}, err
+	}
+	opts.staticFieldEvidenceMatched = make([]bool, len(opts.StaticFieldEvidence))
+	configs, err := configurationsForGQDocument(ctx, cache, opts, gqdoc)
+	return configs, staticFieldEvidenceReport(opts.staticFieldEvidenceMatched), err
+}
+
+// configurationsForGQDocument contains the generation loop shared by the
+// legacy configurations-only API and the evidence-reporting API.
+func configurationsForGQDocument(ctx context.Context, cache fetch.Cache, opts ConfigOptions, gqdoc *fetch.Document) (map[string]*scrape.Config, error) {
 	// Tracing
 	ctx, span := otel.Tracer("github.com/findyourpaths/goskyr/generate").Start(ctx, "generate.ConfigurationsForGQDocument")
 

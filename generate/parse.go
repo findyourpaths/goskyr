@@ -43,33 +43,79 @@ func (n node) string() string {
 }
 
 // structuralMatch returns whether two nodes represent the same structural element
-// (same tag, overlapping classes) and a merged node with only the shared classes.
-// This enables selector generalization across concatenated detail pages where the
-// same structural element has varying modifier classes (e.g., event_listing_category-*).
-// Returns (false, node{}) if tags differ or classes are completely disjoint.
+// and a merged node containing only their shared classes.
 func (n node) structuralMatch(n2 node) (bool, node) {
 	if n.tagName != n2.tagName {
 		return false, node{}
 	}
-	sharedClasses := intersectStrings(n.classes, n2.classes)
-	// Both have no classes — same structural element
-	if len(n.classes) == 0 && len(n2.classes) == 0 {
-		return true, node{tagName: n.tagName, pseudoClasses: intersectStrings(n.pseudoClasses, n2.pseudoClasses)}
-	}
-	// Require that the shared classes cover a majority of at least one
-	// input list — this prevents merging genuinely different elements
-	// (e.g., header vs footer) that happen to share a single utility class.
-	if len(sharedClasses) == 0 {
+	sharedClasses, ok := mergeStructuralClasses(n.classes, n2.classes)
+	if !ok {
 		return false, node{}
-	}
-	if 2*len(sharedClasses) <= len(n.classes) && 2*len(sharedClasses) <= len(n2.classes) {
-		return false, node{} // Overlap is minority of both lists — structurally different
 	}
 	return true, node{
 		tagName:       n.tagName,
 		classes:       sharedClasses,
 		pseudoClasses: intersectStrings(n.pseudoClasses, n2.pseudoClasses),
 	}
+}
+
+// mergeStructuralClasses accepts a shared class majority. It also accepts the
+// common component shape of one stable base class plus one record-state modifier
+// when both modifiers belong to the same multi-token or BEM class family.
+func mergeStructuralClasses(classes, otherClasses []string) ([]string, bool) {
+	if len(classes) == 0 && len(otherClasses) == 0 {
+		return nil, true
+	}
+	sharedClasses := intersectStrings(classes, otherClasses)
+	if len(sharedClasses) == 0 {
+		return nil, false
+	}
+	if 2*len(sharedClasses) > len(classes) || 2*len(sharedClasses) > len(otherClasses) {
+		return sharedClasses, true
+	}
+	if sameStructuralModifierFamily(classes, otherClasses, sharedClasses) {
+		return sharedClasses, true
+	}
+	return nil, false
+}
+
+func sameStructuralModifierFamily(classes, otherClasses, sharedClasses []string) bool {
+	if len(classes) != len(sharedClasses)+1 || len(otherClasses) != len(sharedClasses)+1 {
+		return false
+	}
+	class := unsharedClass(classes, sharedClasses)
+	otherClass := unsharedClass(otherClasses, sharedClasses)
+	family := structuralModifierFamily(class)
+	return family != "" && family == structuralModifierFamily(otherClass)
+}
+
+func unsharedClass(classes, sharedClasses []string) string {
+	for _, class := range classes {
+		shared := false
+		for _, sharedClass := range sharedClasses {
+			if class == sharedClass {
+				shared = true
+				break
+			}
+		}
+		if !shared {
+			return class
+		}
+	}
+	return ""
+}
+
+func structuralModifierFamily(class string) string {
+	separator := strings.LastIndexAny(class, "-_")
+	if separator <= 0 || separator == len(class)-1 {
+		return ""
+	}
+	stem := strings.TrimRight(class[:separator], "-_")
+	isBEMModifier := separator > 0 && class[separator-1] == class[separator]
+	if !isBEMModifier && !strings.ContainsAny(stem, "-_") {
+		return ""
+	}
+	return class[:separator+1]
 }
 
 // intersectStrings returns elements present in both slices, preserving order from a.

@@ -13,22 +13,25 @@ import (
 // locationProps contains metadata about a discovered field location including its DOM path,
 // occurrence count, example values, and generated field name.
 type locationProps struct {
-	path      path
-	attr      string
-	textIndex int // this will translate into child index within scrape.ElementLocation
-	count     int
-	examples  []string
-	selected  bool
-	color     tcell.Color
-	distance  float64
-	name      string
+	path path
+	// alternativePaths preserves exact DOM shapes that differ only by an optional
+	// picture wrapper so processFields can emit their selector union.
+	alternativePaths []path
+	attr             string
+	textIndex        int // this will translate into child index within scrape.ElementLocation
+	count            int
+	examples         []string
+	selected         bool
+	color            tcell.Color
+	distance         float64
+	name             string
 	// iStrip is the highest path index whose nth-child is wildcarded:
 	// checkAndUpdateLocProps ignores pseudo-class mismatches at indexes
 	// <= iStrip when merging, and requires exact matches above it. -1
 	// wildcards nothing; 0 is both the zero value and "index 0 wildcarded"
 	// (harmless for the html/body roots that never carry nth-child).
 	iStrip int
-	isText    bool
+	isText bool
 }
 
 // makeLocationProps creates a new locationProps from a DOM path and an example value.
