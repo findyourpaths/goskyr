@@ -272,6 +272,11 @@ func ConfigurationsForGQDocumentWithMinOccurrence(ctx context.Context, cache fet
    - Example: `Fd1f7685c-href-0`
    - Detect hash collisions (should be rare)
 
+6. **Require Record-Aligned Fields**
+   - Execute each generated scraper against the analyzed document
+   - Retain a dynamic field only when at least one returned record carries a non-empty value for that field
+   - Drop DOM locations that were discovered outside a recursively narrowed record root, because a generated config must not claim a field its own records cannot reproduce
+
 **Example**:
 
 ```html

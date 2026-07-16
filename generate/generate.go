@@ -142,15 +142,8 @@ func createSequentialConfig(ctx context.Context, opts ConfigOptions, gqdoc *fetc
 
 	seqScraper.Fields = processFields(ctx, exsCache, lps, rootSelector)
 
-	// Add validation requiring CTA (link) for sequential mode
-	for _, f := range seqScraper.Fields {
-		if f.Type == "url" && len(f.ElementLocations) > 0 {
-			seqScraper.Validation = &scrape.ValidationConfig{
-				RequiresCTASelector: f.ElementLocations[0].Selector,
-			}
-			break
-		}
-	}
+	// Add validation requiring CTA (link) for sequential mode.
+	seqScraper.Validation = sequentialCTAValidation(seqScraper.Fields)
 
 	seqConfig := &scrape.Config{
 		ID:       seqOpts.configID,
@@ -163,8 +156,48 @@ func createSequentialConfig(ctx context.Context, opts ConfigOptions, gqdoc *fetc
 		return nil, nil, err
 	}
 	slog.Info("in expandAllPossibleConfigs(), scraped sequential", "len(seqRecs)", len(seqRecs))
+	seqScraper.Fields = generatedFieldsWithRecordValues(seqScraper.Fields, seqRecs)
+	seqScraper.Validation = sequentialCTAValidation(seqScraper.Fields)
+	seqConfig.Scrapers[0] = seqScraper
 	seqConfig.Records = seqRecs
 	return seqConfig, seqRecs, nil
+}
+
+func sequentialCTAValidation(fields []scrape.Field) *scrape.ValidationConfig {
+	for _, field := range fields {
+		if field.Type == "url" && len(field.ElementLocations) > 0 {
+			return &scrape.ValidationConfig{RequiresCTASelector: field.ElementLocations[0].Selector}
+		}
+	}
+	return nil
+}
+
+// generatedFieldsWithRecordValues keeps only fields whose generated records
+// contain at least one non-empty aligned value. DOM analysis can discover a
+// field outside a recursively narrowed record root; returning that dead field
+// would make the config claim evidence its records cannot reproduce.
+func generatedFieldsWithRecordValues(fields []scrape.Field, records output.Records) []scrape.Field {
+	kept := make([]scrape.Field, 0, len(fields))
+	for _, field := range fields {
+		if field.Value != "" || generatedRecordsContainFieldValue(records, field.Name) {
+			kept = append(kept, field)
+		}
+	}
+	return kept
+}
+
+func generatedRecordsContainFieldValue(records output.Records, fieldName string) bool {
+	for _, record := range records {
+		value, ok := record[fieldName]
+		if !ok || value == nil {
+			continue
+		}
+		text, isText := value.(string)
+		if !isText || text != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // shouldUseSequentialStrategy determines whether the sequential extraction strategy should be used
@@ -688,6 +721,8 @@ func expandAllPossibleConfigsWithDepth(ctx context.Context, cache fetch.Cache, e
 		return nil, err
 	}
 	slog.Info("in expandAllPossibleConfigs(), scraped nested", "len(recs)", len(recs))
+	s.Fields = generatedFieldsWithRecordValues(s.Fields, recs)
+	nestedConfig.Scrapers[0] = s
 	nestedConfig.Records = recs
 
 	// Store nested config
